@@ -1,0 +1,29 @@
+[lib]
+crate-type = [ "staticlib" ]
+
+[package]
+name = "nocturne"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+x86 = "0.52.0"
+
+# Profiles
+
+[profile.release]
+panic = "abort"
+lto = true
+strip = true
+opt-level = 2
+
+[profile.release_no_opt]
+inherits = "release"
+opt-level = 0
+
+[profile.dev]
+panic = "abort"
+strip = true
+lto = true
+opt-level = 0
+codegen-units = 1

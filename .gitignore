@@ -1,0 +1,5 @@
+/target
+/cmake-build-*
+/ramdisk/test*
+*.iso
+*.elf
