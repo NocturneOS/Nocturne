@@ -31,6 +31,8 @@ process_t* current_proc = 0;
 extern uint32_t __init_esp;
 extern physical_addr_t kernel_page_directory;
 
+extern thread_t* sched_idle_thread;
+
 mutex_t proclist_scheduler_mutex = {.lock = false};
 
 /**
@@ -87,6 +89,8 @@ void init_task_manager(void){
 	current_thread = kernel_thread;
 
 	multi_task = true;
+
+	initialize_idle_thread();
 
     qemu_ok("OK");
 }
@@ -278,6 +282,11 @@ void task_switch_v2_wrapper(registers_t* regs) {
 
     // Choose next thread.
     thread_t* next_thread = sched_select_next();
+
+	// If no next thresd available, go idle.
+    if(!next_thread) {
+    	next_thread = sched_idle_thread;
+    }
 
     // Actually switch the context.
     task_switch_v2(get_current_thread(), next_thread);

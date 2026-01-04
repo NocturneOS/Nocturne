@@ -41,7 +41,11 @@ typedef struct {
     size_t          last_error;
 } thread_t;
 
+// Thread runs in kernel space
 #define THREAD_KERNEL (1 << 0)
+
+// Thread won't be added into a thread list
+#define THREAD_RAW (1 << 1)
 
 void initialize_thread_list();
 thread_t* get_kernel_thread();
@@ -57,3 +61,4 @@ thread_t* thread_create_arg1(process_t* proc, void* entry_point, size_t stack_si
 void thread_exit(thread_t* thread);
 
 __attribute__((noreturn)) void thread_exit_entrypoint();
+void initialize_idle_thread();
