@@ -30,4 +30,5 @@ void vector_shrink_fit(vector_t* original);
 void vector_swap(vector_t* vec, size_t first, size_t second);
 vector_t* vector_clone(vector_t* original);
 void vector_insert(vector_t* vec, size_t index, size_t value);
+vector_result_t vector_pop_front(vector_t* vec);
 void vector_destroy(vector_t* vec);

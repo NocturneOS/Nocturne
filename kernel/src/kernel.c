@@ -26,6 +26,7 @@
 #include "sys/cpuid.h"
 #include "sys/scheduler/scheduler.h"
 #include "sys/scheduler/thread.h"
+#include "lib/vector.h"
 
 #ifdef NOCTURNE_X86
 #include "arch/x86/msr.h"

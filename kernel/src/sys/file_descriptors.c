@@ -5,7 +5,7 @@
 // NOTE: They needed for userspace apps!
 
 #include "sys/file_descriptors.h"
-#include "../src/lib/libvector/include/vector.h"
+#include "lib/vector.h"
 #include "mem/vmm.h"
 #include <io/logging.h>
 

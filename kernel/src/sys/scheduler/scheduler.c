@@ -249,22 +249,22 @@ static inline thread_t* sched_select_next() {
     thread_t* next_thread = (thread_t *)get_current_thread()->list_item.next;
 
     while(next_thread != NULL) {
-        // Save the next of next thread because if our `next_thread` is dead, it will be removed, leaving us with gap.
-        thread_t* next_thread_soon = (thread_t *)next_thread->list_item.next;
-
         // If the thread is PAUSED, skip it.
         if(next_thread->state == PAUSED) {
-            next_thread = next_thread_soon;
+            next_thread = (thread_t *)next_thread->list_item.next;
             continue;
         }
 
-        // If we encountered dead thread, remove it.
+        // If we encountered dead thread, remove it and skip.
         if(next_thread->state == DEAD) {
         	qemu_log("QUICK NOTICE: WE ARE IN PROCESS NR. #%u", current_proc->pid);
 
+            // Select next of next process, becuase removing next process will free the resources. (Avoid use-after-free conditions).
+            thread_t* next_thread_soon = (thread_t *)next_thread->list_item.next;
+
             remove_thread(next_thread);
 
-            next_thread = next_thread_soon;
+            next_thread = (thread_t *)next_thread->list_item.next;
             continue;
         }
 
@@ -285,6 +285,8 @@ void task_switch_v2_wrapper(registers_t* regs) {
 
 	// If no next thresd available, go idle.
     if(!next_thread) {
+        qemu_note("No available threads, going to sleep...");
+
     	next_thread = sched_idle_thread;
     }
 

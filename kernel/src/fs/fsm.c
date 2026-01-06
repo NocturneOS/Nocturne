@@ -12,7 +12,7 @@
 #include <lib/php/pathinfo.h>
 #include "mem/vmm.h"
 
-#include <vector.h>
+#include <lib/vector.h>
 
 #include "generated/diskman.h"
 #include "generated/diskman_commands.h"

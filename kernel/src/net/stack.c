@@ -4,7 +4,7 @@
 
 #include "net/cards.h"
 #include "net/stack.h"
-#include "../lib/libvector/include/vector.h"
+#include "lib/vector.h"
 #include "mem/vmm.h"
 #include <io/logging.h>
 #include "sys/scheduler/scheduler.h"

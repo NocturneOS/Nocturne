@@ -10,7 +10,7 @@
 #include "mem/vmm.h"
 #include "arch/x86/isr.h"
 #include "arch/x86/registers.h"
-#include "../../lib/libvector/include/vector.h"
+#include "lib/vector.h"
 
 uint8_t hda_bus = 0,
         hda_slot = 0,

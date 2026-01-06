@@ -222,7 +222,7 @@ set(COMMON_C_SRC
 	kernel/src/net/tcp.c 
 	kernel/src/net/stack.c 
 	kernel/src/sys/grub_modules.c 
-    kernel/src/lib/libvector/src/vector.c
+    kernel/src/lib/vector.c
     # kernel/src/lib/intrin.c
 	kernel/src/io/keyboard.c
 	kernel/src/drv/disk/media_notifier.c

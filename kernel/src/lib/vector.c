@@ -2,7 +2,7 @@
 
 #include "portability.h"
 #include "lib/string.h"
-#include "../include/vector.h"
+#include "lib/vector.h"
 
 vector_t* vector_new() {
 	vector_t* vec = calloc(1, sizeof *vec);
@@ -64,6 +64,22 @@ vector_result_t vector_pop_back(vector_t* vec) {
 		return VEC_ERR;
 
 	return (vector_result_t){false, vec->data[(vec->size--) - 1]};
+}
+
+vector_result_t vector_pop_front(vector_t* vec) {
+	if(!vec)
+		return VEC_ERR;
+
+	if(vec->size == 0)
+		return VEC_ERR;
+
+	size_t element = vec->data[0];
+
+	memmove(vec->data, vec->data + 1, (vec->size - 1) * sizeof(size_t));
+	
+	vec->size--;
+	
+	return (vector_result_t){false, element};
 }
 
 vector_result_t vector_get(vector_t* vec, size_t index) {
