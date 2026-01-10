@@ -33,7 +33,7 @@ extern physical_addr_t kernel_page_directory;
 
 extern thread_t* sched_idle_thread;
 
-mutex_t proclist_scheduler_mutex = {.lock = false};
+atomic_flag proclist_scheduler_mutex = ATOMIC_FLAG_INIT;
 
 /**
  * @brief Initializes scheduler
@@ -297,19 +297,19 @@ void task_switch_v2_wrapper(registers_t* regs) {
 }
 
 void process_add_prepared(process_t* process) {
-    mutex_get(&proclist_scheduler_mutex);
+    spinlock_get(&proclist_scheduler_mutex);
 
     list_add(&process_list, (list_item_t*)&process->list_item);
 
-    mutex_release(&proclist_scheduler_mutex);
+    spinlock_release(&proclist_scheduler_mutex);
 }
 
 void process_remove_prepared(process_t* process) {
-    mutex_get(&proclist_scheduler_mutex);
+    spinlock_get(&proclist_scheduler_mutex);
 
     list_remove(&process->list_item);
 
-    mutex_release(&proclist_scheduler_mutex);
+    spinlock_release(&proclist_scheduler_mutex);
 }
 
 void yield() {

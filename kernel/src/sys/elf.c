@@ -62,7 +62,7 @@ void unload_elf(elf_t* elf) {
 	kfree(elf);
 }
 
-mutex_t elf_loader_mutex = {.lock = false};
+atomic_flag elf_loader_mutex = ATOMIC_FLAG_INIT;
 
 int32_t spawn_prog(const char *name, int argc, const char* const* eargv) {
     elf_t* elf_file = load_elf(name);
@@ -72,7 +72,7 @@ int32_t spawn_prog(const char *name, int argc, const char* const* eargv) {
         return -1;
     }
 
-    mutex_get(&elf_loader_mutex);
+    spinlock_get(&elf_loader_mutex);
 
     extern volatile uint32_t next_pid;
 
@@ -158,7 +158,7 @@ int32_t spawn_prog(const char *name, int argc, const char* const* eargv) {
 
     qemu_log("RESUMING...");
 
-    mutex_release(&elf_loader_mutex);
+    spinlock_release(&elf_loader_mutex);
 
     thread->state = CREATED;
 

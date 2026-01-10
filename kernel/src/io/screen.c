@@ -240,11 +240,11 @@ __attribute__((force_align_arg_pointer)) void clean_screen() {
 #endif
 }
 
-mutex_t graphics_flush_mutex = { .lock = false };
+atomic_flag graphics_flush_mutex = ATOMIC_FLAG_INIT;
 
 __attribute__((force_align_arg_pointer)) void screen_update() {
 // #ifdef __SSE2__
-    mutex_get(&graphics_flush_mutex);
+    spinlock_get(&graphics_flush_mutex);
 #if 0
     if((size_t)back_framebuffer_addr % 16 == 0) {
         __m128i* src_buffer = (__m128i*)back_framebuffer_addr;
@@ -260,5 +260,5 @@ __attribute__((force_align_arg_pointer)) void screen_update() {
     memcpy(framebuffer_addr, back_framebuffer_addr, framebuffer_size);
     // __builtin_memcpy(framebuffer_addr, back_framebuffer_addr, framebuffer_size);
 #endif
-    mutex_release(&graphics_flush_mutex);
+    spinlock_release(&graphics_flush_mutex);
 }

@@ -19,7 +19,7 @@
 #define AHCI_CLASS 1
 #define AHCI_SUBCLASS 6
 
-mutex_t ahci_mutex;
+atomic_flag ahci_mutex;
 
 void il_log(const char* message);
 
@@ -473,7 +473,7 @@ size_t ahci_read_sectors(size_t port_num, uint64_t location, size_t sector_count
 		return 0;
 	}
 
-	mutex_get(&ahci_mutex);
+	spinlock_get(&ahci_mutex);
 
 	// Get our port.
 	volatile AHCI_HBA_PORT* port = AHCI_PORT(port_num);
@@ -488,15 +488,15 @@ size_t ahci_read_sectors(size_t port_num, uint64_t location, size_t sector_count
 	if(desc.is_atapi) {
 		//tty_printf("ATAPI check media\n");
 		
-		mutex_release(&ahci_mutex);
+		spinlock_release(&ahci_mutex);
 		size_t status = ahci_atapi_check_media_presence(port_num);
-		mutex_get(&ahci_mutex);
+		spinlock_get(&ahci_mutex);
 
 		// tty_printf("ATAPI media is in: %d\n", status);
 
 		// Don't allow reading empty drive
 		if(status != DISKMAN_MEDIUM_ONLINE) {
-			mutex_release(&ahci_mutex);
+			spinlock_release(&ahci_mutex);
             // tty_printf("Refused.\n");
 			return 0;
 		}
@@ -598,7 +598,7 @@ size_t ahci_read_sectors(size_t port_num, uint64_t location, size_t sector_count
 
 	if(!status) {
 		kfree(buffer_mem);
-		mutex_release(&ahci_mutex);
+		spinlock_release(&ahci_mutex);
 
 		return 0;
 	}
@@ -609,7 +609,7 @@ size_t ahci_read_sectors(size_t port_num, uint64_t location, size_t sector_count
 
 	kfree(buffer_mem);
 
-	mutex_release(&ahci_mutex);
+	spinlock_release(&ahci_mutex);
 
 	return bytes;
 }
@@ -627,7 +627,7 @@ void ahci_write_sectors(size_t port_num, size_t location, size_t sector_count, v
 		return;
 	}
 
-	mutex_get(&ahci_mutex);
+	spinlock_get(&ahci_mutex);
 
 	qemu_warn("\033[7mAHCI WRITE STARTED\033[0m");
 
@@ -683,7 +683,7 @@ void ahci_write_sectors(size_t port_num, size_t location, size_t sector_count, v
 
 	kfree(buffer_mem);
 
-	mutex_release(&ahci_mutex);
+	spinlock_release(&ahci_mutex);
 
 	qemu_warn("\033[7mOK?\033[0m");
 }
@@ -691,7 +691,7 @@ void ahci_write_sectors(size_t port_num, size_t location, size_t sector_count, v
 bool ahci_send_atapi_nomem(size_t port_num, uint8_t command[16]) {
 	qemu_log("ATAPI command on port %d (CMD: %x)", port_num, command[0]);
 
-	mutex_get(&ahci_mutex);
+	spinlock_get(&ahci_mutex);
 
 	volatile AHCI_HBA_PORT* port = AHCI_PORT(port_num);
 
@@ -719,7 +719,7 @@ bool ahci_send_atapi_nomem(size_t port_num, uint8_t command[16]) {
 
     bool result = ahci_send_cmd(port, 0);
 	
-	mutex_release(&ahci_mutex);
+	spinlock_release(&ahci_mutex);
 
 	return result;
 }
@@ -727,7 +727,7 @@ bool ahci_send_atapi_nomem(size_t port_num, uint8_t command[16]) {
 void ahci_send_atapi(size_t port_num, uint8_t command[16], void* output, size_t size) {
 	// tty_printf("ATAPI command on port %d (CMD: %x)\n", port_num, command[0]);
 
-	mutex_get(&ahci_mutex);
+	spinlock_get(&ahci_mutex);
 	
 	volatile AHCI_HBA_PORT* port = AHCI_PORT(port_num);
 
@@ -777,7 +777,7 @@ void ahci_send_atapi(size_t port_num, uint8_t command[16], void* output, size_t 
 
 	kfree(buffer_mem);
 
-	mutex_release(&ahci_mutex);
+	spinlock_release(&ahci_mutex);
 }
 
 // Call SCSI START_STOP command to eject a disc

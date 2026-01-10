@@ -8,7 +8,7 @@ uint32_t next_thread_id = 0;
 thread_t* kernel_thread = 0;
 thread_t* current_thread = 0;
 
-mutex_t threadlist_scheduler_mutex = {.lock = false};
+atomic_flag threadlist_scheduler_mutex = ATOMIC_FLAG_INIT;
 
 thread_t* sched_idle_thread;
 
@@ -25,19 +25,19 @@ thread_t* get_current_thread() {
 }
 
 void thread_add_prepared(thread_t* thread) {
-    mutex_get(&threadlist_scheduler_mutex);
+    spinlock_get(&threadlist_scheduler_mutex);
 
     list_add(&thread_list, (list_item_t*)&thread->list_item);
 
-    mutex_release(&threadlist_scheduler_mutex);
+    spinlock_release(&threadlist_scheduler_mutex);
 }
 
 void thread_remove_prepared(thread_t* thread) {
-    mutex_get(&threadlist_scheduler_mutex);
+    spinlock_get(&threadlist_scheduler_mutex);
 
     list_remove(&thread->list_item);
 
-    mutex_release(&threadlist_scheduler_mutex);
+    spinlock_release(&threadlist_scheduler_mutex);
 }
 
 /**
