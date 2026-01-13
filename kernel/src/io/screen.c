@@ -210,55 +210,19 @@ void graphics_update(uint32_t new_width, uint32_t new_height, uint32_t new_pitch
     #endif
 }
 
-#ifdef NOCTURNE_X86
-    #ifdef __SSE2__
-        #include <emmintrin.h>
-    #endif
-#endif
-
 /**
  * @brief Очистка экрана
  *
  */
 __attribute__((force_align_arg_pointer)) void clean_screen() {
-// #ifdef __SSE2__
-#if 0
-  if((size_t)back_framebuffer_addr % 16 == 0) {
-    __m128i* buffer = (__m128i*)back_framebuffer_addr;
-
-    for(size_t index = 0, chunks = framebuffer_size / sizeof(__m128i); index < chunks; index ++) {
-        _mm_store_si128(buffer, _mm_setzero_si128());
-
-        buffer++;
-    }
-  } else {
-    memset(back_framebuffer_addr, 0, framebuffer_size);
-  }
-#else
-    //memset(back_framebuffer_addr, 0, framebuffer_size);
     __builtin_memset(back_framebuffer_addr, 0, framebuffer_size);
-#endif
 }
 
 atomic_flag graphics_flush_mutex = ATOMIC_FLAG_INIT;
 
 __attribute__((force_align_arg_pointer)) void screen_update() {
-// #ifdef __SSE2__
     spinlock_get(&graphics_flush_mutex);
-#if 0
-    if((size_t)back_framebuffer_addr % 16 == 0) {
-        __m128i* src_buffer = (__m128i*)back_framebuffer_addr;
-        __m128i* dest_buffer = (__m128i*)framebuffer_addr;
-
-        for(size_t index = 0, chunks = framebuffer_size / sizeof(__m128i); index < chunks; index ++) {
-            _mm_store_si128(dest_buffer++, _mm_load_si128(src_buffer++));
-        }
-    } else {
-        memcpy(framebuffer_addr, back_framebuffer_addr, framebuffer_size);
-    }
-#else
     memcpy(framebuffer_addr, back_framebuffer_addr, framebuffer_size);
     // __builtin_memcpy(framebuffer_addr, back_framebuffer_addr, framebuffer_size);
-#endif
     spinlock_release(&graphics_flush_mutex);
 }
