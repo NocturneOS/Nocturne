@@ -11,7 +11,6 @@
 #include "sys/apic.h"
 #include <arch/x86/ports.h>
 #include <io/logging.h>
-#include <sys/cdefs.h>
 #include "sys/cpu_isr.h"
 
 volatile isr_t interrupt_handlers[256];
