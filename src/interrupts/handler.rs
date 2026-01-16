@@ -3,9 +3,11 @@ use spin::RwLock;
 #[cfg(target_arch = "x86")]
 use crate::arch::x86::CPURegisters;
 
-use crate::{interrupts::CURRENT_INTERRUPT_CONTROLLER, qemu_println};
+use crate::{interrupts::CURRENT_INTERRUPT_CONTROLLER};
 
-static INTERRUPT_VECTORS: RwLock<[Option<fn (&mut CPURegisters) -> ()>; 256]> = unsafe { core::mem::zeroed() };
+pub type InterruptCallback = fn (&mut CPURegisters) -> ();
+
+static INTERRUPT_VECTORS: RwLock<[Option<InterruptCallback>; 256]> = unsafe { core::mem::zeroed() };
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn isr_handler(mut regs: CPURegisters) {
@@ -20,7 +22,7 @@ pub unsafe extern "C" fn irq_handler(mut regs: CPURegisters) {
     CURRENT_INTERRUPT_CONTROLLER.read().eoi(regs.int_num as _);
 }
 
-pub fn register_interrupt_handler(int_nr: u8, callback: fn(&mut CPURegisters) -> ()) {
+pub fn register_interrupt_handler(int_nr: u8, callback: InterruptCallback) {
     INTERRUPT_VECTORS.write()[int_nr as usize] = Some(callback);
 }
 

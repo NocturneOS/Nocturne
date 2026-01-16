@@ -1,6 +1,6 @@
 use x86::io::outb;
 
-use crate::interrupts::{self, InterruptController};
+use crate::interrupts::{InterruptController};
 
 struct PIC;
 

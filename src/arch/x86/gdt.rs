@@ -1,7 +1,3 @@
-use x86::segmentation::SegmentSelector;
-
-use crate::qemu_println;
-
 const ACCESS_PRESENT: u8 = 1 << 7;
 const ACCESS_DPL_0: u8 = 0 << 5;
 const ACCESS_DPL_3: u8 = 3 << 5;
