@@ -22,6 +22,11 @@ fn kmain() -> ! {
 
 #[panic_handler]
 fn __panic_handler(info: &PanicInfo) -> ! {
-    qemu_log!("Kernel panicked: {:?} {:?}", info.location(), info.message());
-    loop {}
+    if let Some(loc) = info.location() {
+        qemu_log!("Kernel panicked at {}:{}:{} {:?}", loc.file(), loc.line(), loc.column(), info.message());
+    } else {
+        qemu_log!("Kernel panicked: {:?}", info.message());
+    }
+
+    arch::halt_forever()
 }
