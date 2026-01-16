@@ -1,6 +1,7 @@
 use core::ffi::{CStr, c_char};
 
 #[repr(C, packed)]
+#[derive(Debug)]
 pub struct MultibootHeader {
     pub flags: u32,
     pub mem_lower: u32,
@@ -45,9 +46,18 @@ pub struct MultibootMMapEntry {
     pub type_: u32,
 }
 
+#[derive(Debug)]
+pub enum MultibootMMapType {
+    Available,
+    ACPI,
+    Reserved,
+    NVS,
+    BadRAM
+}
+
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
-pub struct MultibootModuleList {
+pub struct MultibootModule {
     pub mod_start: u32,
     pub mod_end: u32,
     pub cmdline: u32,
@@ -64,5 +74,54 @@ impl MultibootHeader {
 
     pub fn cmdline(&self) -> &str {
         unsafe { CStr::from_ptr(self.cmdline as *const c_char).to_str().unwrap() }
+    }
+
+    pub fn modules(&self) -> &[MultibootModule] {
+        unsafe { core::slice::from_raw_parts(self.mods_addr as _, self.mods_count as _) }
+    }
+
+    pub fn mmap(&self) -> &[MultibootMMapEntry] {
+        unsafe { core::slice::from_raw_parts(self.mmap_addr as _, (self.mmap_length as usize / core::mem::size_of::<MultibootMMapEntry>()) as _) }
+    }
+}
+
+impl MultibootModule {
+    pub fn cmdline(&self) -> &str {
+        unsafe { CStr::from_ptr(self.cmdline as *const c_char).to_str().unwrap() }
+    }
+
+    pub fn start(&self) -> usize {
+        let start = self.mod_start;
+
+        start as _
+    }
+
+    pub fn end(&self) -> usize {
+        let end = self.mod_end;
+
+        end as _
+    }
+}
+
+impl MultibootMMapEntry {
+    pub fn addr(&self) -> u64 {
+        (self.addr_high as u64) << 32 | self.addr_low as u64
+    }
+
+    pub fn length(&self) -> u64 {
+        (self.len_high as u64) << 32 | self.len_low as u64
+    }
+
+    pub fn ty(&self) -> MultibootMMapType {
+        let ty = self.type_;
+
+        match ty {
+            1 => MultibootMMapType::Available,
+            2 => MultibootMMapType::Reserved,
+            3 => MultibootMMapType::ACPI,
+            4 => MultibootMMapType::NVS,
+            5 => MultibootMMapType::BadRAM,
+            _ => todo!("Invalid MMAP type: 0x{:x}", ty)
+        }
     }
 }

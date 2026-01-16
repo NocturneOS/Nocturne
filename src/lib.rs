@@ -22,5 +22,6 @@ fn kmain() -> ! {
 
 #[panic_handler]
 fn __panic_handler(info: &PanicInfo) -> ! {
+    qemu_log!("Kernel panicked: {:?} {:?}", info.location(), info.message());
     loop {}
 }
