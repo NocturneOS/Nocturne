@@ -1,6 +1,8 @@
+use crate::{arch::x86::CPURegisters, interrupts::handler::register_interrupt_handler, qemu_println};
+
 const PIT_BASE_FREQ: u32 = 1193180;
 
-fn callback() {
+fn callback(regs: &mut CPURegisters) {
     crate::time::tick();
 }
 
@@ -18,4 +20,8 @@ pub fn init(frequency: u32) {
         x86::io::outb(0x40, low_byte);
         x86::io::outb(0x40, hi_byte);
     }
+
+    crate::time::set_timer_frequency(frequency as _);
+
+    register_interrupt_handler(0x20, callback);
 }

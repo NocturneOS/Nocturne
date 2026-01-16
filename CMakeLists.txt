@@ -71,6 +71,7 @@ set(MKRESCUE_FLAGS -o "${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE}" ${ISO_DIR} --loc
 if(NOCTURNE_ARCH STREQUAL "x86")
     set(ASM_SRC 
 		src/arch/x86/asm/init.s
+		src/arch/x86/asm/gdt.s
 		src/arch/x86/asm/interrupt.s
 	)
 endif()

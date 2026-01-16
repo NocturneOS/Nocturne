@@ -1,6 +1,21 @@
 use ::x86 as _x86;
 
+#[cfg(target_arch = "x86")]
 pub mod x86;
+
+pub fn enable_interrupts() {
+    #[cfg(target_arch = "x86")]
+    unsafe {
+        _x86::irq::enable()
+    };
+}
+
+pub fn disable_interrupts() {
+    #[cfg(target_arch = "x86")]
+    unsafe {
+        _x86::irq::disable()
+    };
+}
 
 #[inline]
 pub fn halt() {

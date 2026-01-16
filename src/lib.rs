@@ -12,12 +12,12 @@ mod time;
 mod interrupts;
 
 fn kmain() -> ! {
-    qemu_print!("It works!");
-
     clear_screen();
     test_write();
+    
+    qemu_log!("It works!");
 
-    arch::halt();
+    loop { arch::halt(); }
 }
 
 #[panic_handler]

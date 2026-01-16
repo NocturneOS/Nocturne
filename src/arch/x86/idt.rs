@@ -144,7 +144,7 @@ pub fn init() {
     IDT_ENTRIES.lock()[32 + 14] = IDTEntry::new(irq14 as *const () as _, 0x08, PRESENT | DPL_0 | GATE_32_INTERRUPT);
     IDT_ENTRIES.lock()[32 + 15] = IDTEntry::new(irq15 as *const () as _, 0x08, PRESENT | DPL_0 | GATE_32_INTERRUPT);
 
-    IDT_ENTRIES.lock()[128] = IDTEntry::new(isr80 as *const () as _, 0x08, PRESENT | DPL_3 | GATE_32_INTERRUPT);
+    IDT_ENTRIES.lock()[128] = IDTEntry::new(isr80 as *const () as _, 0x08, PRESENT | DPL_3 | GATE_32_TRAP);
 
     let entries = IDT_ENTRIES.lock();
 

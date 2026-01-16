@@ -106,8 +106,6 @@ isr80:
     mov   %ax, %fs
     mov   %ax, %gs
 
-    cld
-
     # Why isr_handler? Because irq_handler sends EOI to (A)PIC, but isr_handler not.
     # We are in syscall that user causes with `int` instruction which doesn't need any PIC.
     call  isr_handler
@@ -121,8 +119,6 @@ isr80:
     popa
     
     add   $8, %esp
-
-    sti
     
     iret
 
@@ -194,7 +190,6 @@ irq_common_stub:
     mov   %ax, %fs
     mov   %ax, %gs
     
-    cld
     call  irq_handler
 
     pop   %ebx

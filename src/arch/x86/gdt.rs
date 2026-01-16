@@ -1,3 +1,7 @@
+use x86::segmentation::SegmentSelector;
+
+use crate::qemu_println;
+
 const ACCESS_PRESENT: u8 = 1 << 7;
 const ACCESS_DPL_0: u8 = 0 << 5;
 const ACCESS_DPL_3: u8 = 3 << 5;
@@ -32,6 +36,10 @@ impl GDTEntry {
 
 static GDT_ENTRIES: spin::Mutex<[GDTEntry; 6]> = unsafe { core::mem::zeroed() };
 
+unsafe extern "C" {
+    fn gdt_flush(gdt_ptr: &x86::dtables::DescriptorTablePointer<GDTEntry>);
+}
+
 #[rustfmt::skip]
 pub fn init() {
     GDT_ENTRIES.lock()[0] = unsafe { core::mem::zeroed() };
@@ -51,9 +59,9 @@ pub fn init() {
     let entries = GDT_ENTRIES.lock();
 
     unsafe {
-        x86::dtables::lgdt(&x86::dtables::DescriptorTablePointer {
+        gdt_flush(&x86::dtables::DescriptorTablePointer {
             limit: (core::mem::size_of::<GDTEntry>() * entries.len() - 1) as u16,
             base: entries.as_ptr()
-        })
+        });
     };
 }

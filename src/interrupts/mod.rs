@@ -1,20 +1,38 @@
-#[cfg(target_arch = "x86")]
-use crate::arch::x86::CPURegisters;
+use spin::RwLock;
 
-use crate::qemu_println;
+pub mod handler;
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn isr_handler(mut regs: CPURegisters) {
-    interrupt_handler(&mut regs);
+struct ICStore {
+    ic: Option<&'static dyn InterruptController>
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn irq_handler(mut regs: CPURegisters) {
-    interrupt_handler(&mut regs);
-    
-    // Send EOI.
+impl ICStore {
+    pub const fn new() -> Self {
+        Self {
+            ic: None
+        }
+    }
+
+    pub fn eoi(&self, interrupt_nr: u8) {
+        if let Some(ic) = self.ic {
+            ic.eoi(interrupt_nr);
+        }
+    }
 }
 
-pub fn interrupt_handler(regs: &mut CPURegisters) {
-    qemu_println!("INTERRUPT!");
+unsafe impl Send for ICStore {}
+unsafe impl Sync for ICStore {}
+
+static CURRENT_INTERRUPT_CONTROLLER: RwLock<ICStore> = RwLock::new(ICStore::new());
+
+pub trait InterruptController {
+    fn eoi(&self, interrupt_nr: u8);
+}
+
+pub fn set_interrupt_controller(ic: &'static dyn InterruptController) {
+    CURRENT_INTERRUPT_CONTROLLER.write().ic = Some(ic);
+}
+
+pub fn eoi(interrupt_nr: u8) {
+    CURRENT_INTERRUPT_CONTROLLER.read().eoi(interrupt_nr);
 }
