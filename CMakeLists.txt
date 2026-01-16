@@ -69,7 +69,10 @@ set(MKRESCUE grub-mkrescue)
 set(MKRESCUE_FLAGS -o "${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE}" ${ISO_DIR} --locales="" -V NocturneOS --themes="" --fonts="ascii")
 
 if(NOCTURNE_ARCH STREQUAL "x86")
-    set(ASM_SRC src/arch/x86/init.s)
+    set(ASM_SRC 
+		src/arch/x86/asm/init.s
+		src/arch/x86/asm/interrupt.s
+	)
 endif()
 
 add_executable(${KERNEL} ${ASM_SRC})

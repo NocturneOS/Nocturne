@@ -42,6 +42,8 @@
 __pre_init:
     cli
 
+    # FIXME: Move this logic to x86_init.rs
+    
     movl $(boot_page_table - 0xC0000000), %eax
     orl $0b11, %eax
 
@@ -110,12 +112,11 @@ __init:
     or $(3 << 9), %ax
     mov %eax, %cr4
 
-    push	%esp
     push	%ebx
 
     xor %ebp, %ebp
 
-    call	kmain
+    call	__arch_init
 
     cli
     hlt

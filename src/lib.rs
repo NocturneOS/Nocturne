@@ -5,19 +5,19 @@ use core::panic::PanicInfo;
 use crate::arch::x86::video::bios_text_vga::{clear_screen, test_write};
 
 mod arch;
+mod io;
+mod mem;
+mod spec;
+mod time;
+mod interrupts;
 
-#[unsafe(no_mangle)]
-extern "C" fn kmain() {
-    for i in "It works!".bytes() {
-        unsafe {
-            x86::io::outb(0x3f8, i as u8);
-        }
-    }
+fn kmain() -> ! {
+    qemu_print!("It works!");
 
     clear_screen();
     test_write();
 
-    loop {}
+    arch::halt();
 }
 
 #[panic_handler]
