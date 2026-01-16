@@ -30,11 +30,11 @@ use crate::{arch::x86::multiboot::MultibootHeader, kmain, qemu_log};
 
 #[unsafe(no_mangle)]
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
-    qemu_log!("Welcome to NocturneOS NK! {}", env!("CARGO_PKG_VERSION"));
+    qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
 
     let mb = unsafe { &*((multiboot_header_address + 0xC000_0000) as *const MultibootHeader) };
 
-    qemu_log!("Memory: {} / {}", mb.mem_lower, mb.mem_upper);
+    qemu_log!("Memory: {} KB (lower) / {} KB (upper)", mb.memory().0, mb.memory().1);
 
     gdt::init();
     idt::init();

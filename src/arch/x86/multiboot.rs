@@ -1,3 +1,5 @@
+use core::ffi::{CStr, c_char};
+
 #[repr(C, packed)]
 pub struct MultibootHeader {
     pub flags: u32,
@@ -32,11 +34,35 @@ pub struct MultibootHeader {
     pub framebuffer_type: u8,
 }
 
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
+pub struct MultibootMMapEntry {
+    pub size: u32,
+    pub addr_low: u32,
+    pub addr_high: u32,
+    pub len_low: u32,
+    pub len_high: u32,
+    pub type_: u32,
+}
+
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
+pub struct MultibootModuleList {
+    pub mod_start: u32,
+    pub mod_end: u32,
+    pub cmdline: u32,
+    pub reserved: u32,
+}
+
 impl MultibootHeader {
     pub fn memory(&self) -> (u32, u32) {
         let low = self.mem_lower;
         let high = self.mem_upper;
 
         (low, high)
+    }
+
+    pub fn cmdline(&self) -> &str {
+        unsafe { CStr::from_ptr(self.cmdline as *const c_char).to_str().unwrap() }
     }
 }
