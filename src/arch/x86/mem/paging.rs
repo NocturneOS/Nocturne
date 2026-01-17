@@ -16,9 +16,6 @@ pub fn page_directory_mut() -> &'static mut [u32] {
 }
 
 pub fn init() {
-    // Unmap first 4MB of memory we mapped during boot stage.
-    page_directory_mut()[0] = 0;
-
     for (n, i) in page_directory().iter().enumerate() {
         if *i == 0 {
             continue;

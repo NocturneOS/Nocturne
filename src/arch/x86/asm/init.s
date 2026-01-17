@@ -42,7 +42,7 @@
 __pre_init:
     cli
 
-    # FIXME: Move this logic to x86_init.rs
+    # FIXME: Move this logic to x86_preinit.rs
     
     movl $(boot_page_table - 0xC0000000), %eax
     orl $0b11, %eax
@@ -90,6 +90,10 @@ __pre_init:
     jmp *%ecx
 
 __init:
+    # Unmap lower part of memory
+    xor %eax, %eax
+    movl %eax, boot_page_directory - 0xC0000000
+
     mov $stack_top, %esp
 
     # init FPU
