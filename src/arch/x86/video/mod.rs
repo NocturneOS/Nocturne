@@ -1,4 +1,4 @@
-use crate::spec::units::Size;
+use crate::spec::{KERNEL_BASE, units::Size};
 
 pub mod bios_text_vga;
 
@@ -39,7 +39,7 @@ use spin::Mutex;
 
 lazy_static! {
     static ref CURRENT_VIDEO_MODE: Mutex<VideoMode> = VideoMode {
-        buffer_ptr: 0xB8000,
+        buffer_ptr: 0xB8000 + KERNEL_BASE,
         resolution: Size::<usize> {
             width: 80,
             height: 25,

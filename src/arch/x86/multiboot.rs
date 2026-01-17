@@ -1,5 +1,7 @@
 use core::ffi::{CStr, c_char};
 
+use crate::spec::KERNEL_BASE;
+
 #[repr(C, packed)]
 #[derive(Debug)]
 pub struct MultibootHeader {
@@ -73,21 +75,21 @@ impl MultibootHeader {
     }
 
     pub fn cmdline(&self) -> &str {
-        unsafe { CStr::from_ptr(self.cmdline as *const c_char).to_str().unwrap() }
+        unsafe { CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char).to_str().unwrap() }
     }
 
     pub fn modules(&self) -> &[MultibootModule] {
-        unsafe { core::slice::from_raw_parts(self.mods_addr as _, self.mods_count as _) }
+        unsafe { core::slice::from_raw_parts((self.mods_addr as usize + KERNEL_BASE) as _, self.mods_count as _) }
     }
 
     pub fn mmap(&self) -> &[MultibootMMapEntry] {
-        unsafe { core::slice::from_raw_parts(self.mmap_addr as _, (self.mmap_length as usize / core::mem::size_of::<MultibootMMapEntry>()) as _) }
+        unsafe { core::slice::from_raw_parts((self.mmap_addr as usize + KERNEL_BASE) as _, (self.mmap_length as usize / core::mem::size_of::<MultibootMMapEntry>()) as _) }
     }
 }
 
 impl MultibootModule {
     pub fn cmdline(&self) -> &str {
-        unsafe { CStr::from_ptr(self.cmdline as *const c_char).to_str().unwrap() }
+        unsafe { CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char).to_str().unwrap() }
     }
 
     pub fn start(&self) -> usize {

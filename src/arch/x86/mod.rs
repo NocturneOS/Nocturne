@@ -1,6 +1,7 @@
 pub mod gdt;
 pub mod idt;
 pub mod interrupts;
+pub mod mem;
 pub mod multiboot;
 pub mod timer;
 pub mod video;
@@ -47,12 +48,13 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
         qemu_log!("- {:?} <{:08x} - {:08x}>", i.ty(), i.addr(), i.addr() + i.length());
     }
 
-
     gdt::init();
     idt::init();
 
     interrupts::exceptions::register_exceptions();
     interrupts::pic::init();
+
+    mem::paging::init();
 
     timer::pit::init(1000);
     
