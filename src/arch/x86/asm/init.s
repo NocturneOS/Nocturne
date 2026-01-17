@@ -19,7 +19,7 @@
 
 .section .bootstrap_stack, "aw", @nobits
     .global stack_bottom
-    .align 4096
+    .align 16
 	stack_bottom:
 		.skip STACK_SIZE
 	stack_top:

@@ -10,8 +10,9 @@ mod mem;
 mod spec;
 mod time;
 mod interrupts;
+mod unwind;
 
-fn kmain() -> ! {
+extern "C" fn kmain() -> ! {
     clear_screen();
     test_write();
     
@@ -23,10 +24,12 @@ fn kmain() -> ! {
 #[panic_handler]
 fn __panic_handler(info: &PanicInfo) -> ! {
     if let Some(loc) = info.location() {
-        qemu_log!("Kernel panicked at {}:{}:{} {:?}", loc.file(), loc.line(), loc.column(), info.message());
+        qemu_log!("Kernel panicked at {}:{}:{}: {:#?}", loc.file(), loc.line(), loc.column(), info.message());
     } else {
         qemu_log!("Kernel panicked: {:?}", info.message());
     }
+
+    unsafe { unwind::backtrace() };
 
     arch::halt_forever()
 }

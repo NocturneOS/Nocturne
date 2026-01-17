@@ -12,7 +12,7 @@ SECTIONS {
 
     . += 0xC0000000;
 
-    .text ALIGN (0x1000) : AT(ADDR (.text) - 0xC0000000) {
+    .text ALIGN (4K) : AT(ADDR (.text) - 0xC0000000) {
         PROVIDE(CODE_start = .);
 
         *(.text*)
@@ -20,7 +20,7 @@ SECTIONS {
         PROVIDE(CODE_end = .);
     }
 
-    .data ALIGN (0x1000) : AT(ADDR (.data) - 0xC0000000) {
+    .data ALIGN (4K) : AT(ADDR (.data) - 0xC0000000) {
         PROVIDE(DATA_start = .);
 
         *(.data*)
@@ -28,8 +28,11 @@ SECTIONS {
         PROVIDE(DATA_end = .);
     }
 
-    .rodata ALIGN (0x8000) : AT(ADDR (.rodata) - 0xC0000000) {
+    .rodata ALIGN (4K) : AT(ADDR (.rodata) - 0xC0000000) {
         PROVIDE(RODATA_start = .);
+        
+        *(.ctors)
+        *(.init_array)
 
         *(.rodata*)
 
@@ -44,7 +47,7 @@ SECTIONS {
         *(.bootstrap_paging*)
     }
 
-    .bss ALIGN (0x1000) : AT(ADDR (.bss) - 0xC0000000) {
+    .bss ALIGN (4K) : AT(ADDR (.bss) - 0xC0000000) {
         *(COMMON)
 
         PROVIDE(BSS_start = .);
@@ -54,7 +57,7 @@ SECTIONS {
         PROVIDE(BSS_end = .);
     }
 
-    .debug_symbols ALIGN(0x1000) : {
+    .debug_symbols ALIGN(4K) : {
         *(.debug_symbols*)
     }
 

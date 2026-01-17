@@ -45,10 +45,13 @@ endif()
 set(ISO_DIR "${CMAKE_SOURCE_DIR}/iso/")
 set(KERNEL nocturne.elf)
 
+
 if(NOCTURNE_ARCH STREQUAL "x86")
-    set(CMAKE_EXE_LINKER_FLAGS "-Wl,-T ${CMAKE_SOURCE_DIR}/src/arch/x86/link.ld -nostdlib -static -Wl,-znoexecstack -Wl,--stats")
+	set(LINKER_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/src/arch/x86/link.ld")
+    set(CMAKE_EXE_LINKER_FLAGS "-Wl,-T ${LINKER_SCRIPT_FILE} -nostdlib -static -Wl,-znoexecstack -Wl,--stats")
 elseif(NOCTURNE_ARCH STREQUAL "x86_64")
-    set(CMAKE_EXE_LINKER_FLAGS "-Wl,-T ${CMAKE_SOURCE_DIR}/src/arch/x86_64/link.ld -nostdlib -static -Wl,-znoexecstack -Wl,--stats")
+	set(LINKER_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/src/arch/x86_64/link.ld")
+    set(CMAKE_EXE_LINKER_FLAGS "-Wl,-T ${LINKER_SCRIPT_FILE} -nostdlib -static -Wl,-znoexecstack -Wl,--stats")
 endif()
 
 set(ISO_FILE "NocturneOS_${NOCTURNE_ARCH}_${CMAKE_BUILD_TYPE}.iso")
@@ -77,6 +80,10 @@ if(NOCTURNE_ARCH STREQUAL "x86")
 endif()
 
 add_executable(${KERNEL} ${ASM_SRC})
+
+set_property(TARGET ${KERNEL} PROPERTY
+    LINK_DEPENDS "${LINKER_SCRIPT_FILE}"
+)
 
 # Rust
 
