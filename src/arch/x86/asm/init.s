@@ -30,9 +30,6 @@
     .global boot_page_directory
     boot_page_directory:
         .skip 4096
-    .global boot_page_table
-    boot_page_table:
-        .skip 4096
 
 .extern IMAGE_PHYS_START
 .extern IMAGE_PHYS_END
@@ -43,31 +40,15 @@ __pre_init:
     cli
 
     # FIXME: Move this logic to x86_preinit.rs
-    
-    movl $(boot_page_table - 0xC0000000), %eax
-    orl $0b11, %eax
+
+    # Extended (1 << 7) | Writeable (1 << 1) | Present (1 << 0)
+    movl $0x83, %eax
 
     # Map the same PT to both lower and higher half.
     # We will unmap the lower one soon.
     movl %eax, boot_page_directory - 0xC0000000
     movl %eax, boot_page_directory - 0xC0000000 + (768 * 4)
 
-    movl $0b11, %eax
-
-    movl $(boot_page_table - 0xC0000000), %edx
-    movl $1024, %ecx
-
-.loop:
-    mov %eax, (%edx)
-
-    add $4, %edx
-    add $0x1000, %eax
-
-    sub $1, %ecx
-
-    jnz .loop
-
-.next:
     movl $(boot_page_directory - 0xC0000000), %eax
     orl $0b11, %eax
 

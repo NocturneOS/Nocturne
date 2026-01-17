@@ -6,10 +6,11 @@ use crate::arch::x86::video::bios_text_vga::{clear_screen, test_write};
 
 mod arch;
 mod io;
+mod interrupts;
 mod mem;
 mod spec;
+mod sys;
 mod time;
-mod interrupts;
 mod unwind;
 
 extern "C" fn kmain() -> ! {

@@ -5,6 +5,7 @@ pub mod mem;
 pub mod multiboot;
 pub mod timer;
 pub mod video;
+mod sys;
 
 #[repr(C, packed(1))]
 #[derive(Debug)]
@@ -48,13 +49,19 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
         qemu_log!("- {:?} <{:08x} - {:08x}>", i.ty(), i.addr(), i.addr() + i.length());
     }
 
+    // Fill system info
+
+    sys::init();
+
     gdt::init();
     idt::init();
 
     interrupts::exceptions::register_exceptions();
     interrupts::pic::init();
 
-    mem::paging::init();
+    mem::paging::preinit((mb.memory().1 << 10) as _);
+
+    crate::mem::physical::init();
 
     timer::pit::init(1000);
     
