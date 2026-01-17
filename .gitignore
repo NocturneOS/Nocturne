@@ -3,3 +3,5 @@
 /ramdisk/test*
 *.iso
 *.elf
+*.elf.map
+/iso/ramdisk
