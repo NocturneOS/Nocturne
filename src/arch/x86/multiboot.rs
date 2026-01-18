@@ -48,7 +48,7 @@ pub struct MultibootMMapEntry {
     pub type_: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum MultibootMMapType {
     Available,
     ACPI,
@@ -66,12 +66,37 @@ pub struct MultibootModule {
     pub reserved: u32,
 }
 
+pub struct MemorySize {
+    low: usize,
+    high: usize,
+}
+
+impl MemorySize {
+    #[inline]
+    pub fn low(&self) -> usize {
+        self.low << 10
+    }
+
+    #[inline]
+    pub fn high(&self) -> usize {
+        self.high << 10
+    }
+
+    #[inline]
+    pub fn total(&self) -> usize {
+        self.low() + self.high()
+    }
+}
+
 impl MultibootHeader {
-    pub fn memory(&self) -> (u32, u32) {
+    pub fn memory(&self) -> MemorySize {
         let low = self.mem_lower;
         let high = self.mem_upper;
 
-        (low, high)
+        MemorySize {
+            low: low as _,
+            high: high as _,
+        }
     }
 
     pub fn cmdline(&self) -> &str {

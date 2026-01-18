@@ -28,7 +28,13 @@ pub struct CPURegisters {
     pub ss: u32,
 }
 
-use crate::{arch::x86::multiboot::MultibootHeader, kmain, qemu_log};
+use crate::{
+    arch::{
+        self,
+        x86::multiboot::{MultibootHeader, MultibootMMapType},
+    },
+    kmain, qemu_log, tools,
+};
 
 #[unsafe(no_mangle)]
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
@@ -45,8 +51,8 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     qemu_log!(
         "Memory: {} KB (lower) / {} KB (upper)",
-        mb.memory().0,
-        mb.memory().1
+        mb.memory().low() >> 10,
+        mb.memory().high() >> 10
     );
 
     for i in mb.mmap() {
@@ -68,9 +74,35 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     interrupts::exceptions::register_exceptions();
     interrupts::pic::init();
 
-    mem::paging::preinit(((mb.memory().0 + mb.memory().1) << 10) as _);
+    mem::paging::preinit(mb.memory().total());
 
     crate::mem::physical::init();
+
+    // After physical memory initialization we have to mark reserved memory as used.
+    for i in mb
+        .mmap()
+        .iter()
+        .filter(|x| x.ty() != MultibootMMapType::Available)
+        .map(|x| (x.addr(), x.length()))
+    {
+        let addr_start = tools::align_value(i.0.try_into().unwrap(), arch::get_page_size());
+        
+        if i.0 + i.1 - 1 >= usize::MAX as _ {
+            break;
+        }
+
+        let addr_end = tools::align_value((i.0 + i.1 - 1).try_into().unwrap(), arch::get_page_size());
+
+        if addr_start > mb.memory().total() {
+            continue;
+        }
+
+        for addr in (addr_start..addr_end).step_by(arch::get_page_size()) {
+            crate::mem::physical::mark_page(addr.try_into().unwrap(), true);
+        }
+
+        qemu_log!("Marked {:#x?} - {:#x?} as reserved.", addr_start, addr_end);
+    }
 
     timer::pit::init(1000);
 

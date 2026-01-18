@@ -69,7 +69,7 @@ fn is_used(address: usize) -> bool {
 }
 
 /// Mark one page at `address` used or free.
-fn mark_page(address: usize, is_used: bool) {
+pub fn mark_page(address: usize, is_used: bool) {
     let (idx, bitidx) = addr_to_indices(address);
 
     let data = bitmap()[idx];
