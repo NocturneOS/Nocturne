@@ -35,3 +35,12 @@ pub fn halt_forever() -> ! {
 
     loop {}
 }
+
+#[inline]
+pub fn get_page_size() -> usize {
+    #[cfg(target_arch = "x86")]
+    return x86::mem::paging::PAGE_SIZE;
+
+    #[cfg(not(target_arch = "x86"))]
+    compile_error!("No page size is specified for architecture {:#?}", env!("CARGO_CFG_TARGET_ARCH"));
+}

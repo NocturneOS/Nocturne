@@ -59,7 +59,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     interrupts::exceptions::register_exceptions();
     interrupts::pic::init();
 
-    mem::paging::preinit((mb.memory().1 << 10) as _);
+    mem::paging::preinit(((mb.memory().0 + mb.memory().1) << 10) as _);
 
     crate::mem::physical::init();
 

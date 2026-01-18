@@ -12,6 +12,7 @@ mod spec;
 mod sys;
 mod time;
 mod unwind;
+mod tools;
 
 extern "C" fn kmain() -> ! {
     clear_screen();

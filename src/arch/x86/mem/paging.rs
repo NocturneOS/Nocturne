@@ -1,6 +1,6 @@
 use core::ptr::{addr_of, addr_of_mut};
 
-use crate::qemu_log;
+use crate::{qemu_log, tools};
 
 pub const PAGE_SIZE: usize = 0x1000;
 
@@ -47,8 +47,9 @@ pub fn preinit(available_memory_size: usize) {
     let mut phys_bitmap_size = (available_memory_size / PAGE_SIZE) / 8;
 
     // Align it to usize boundary.
-    if phys_bitmap_size.is_multiple_of(crate::spec::WORD_SIZE) {
-        phys_bitmap_size += phys_bitmap_size % crate::spec::WORD_SIZE;
+    if !phys_bitmap_size.is_multiple_of(crate::spec::WORD_SIZE) {
+        qemu_log!("Aligning it");
+        phys_bitmap_size = tools::align_value(phys_bitmap_size, crate::spec::WORD_SIZE);
     }
 
     crate::sys::info::info_mut().physical_memory_bitmap_size = Some(phys_bitmap_size);
