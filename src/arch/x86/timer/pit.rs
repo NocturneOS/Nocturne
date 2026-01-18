@@ -6,6 +6,7 @@ fn callback(_regs: &mut CPURegisters) {
     crate::time::tick();
 }
 
+#[allow(clippy::identity_op)]
 pub fn init(frequency: u32) {
     let divisor = PIT_BASE_FREQ / frequency;
 

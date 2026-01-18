@@ -89,6 +89,7 @@ unsafe extern "C" {
 }
 
 #[rustfmt::skip]
+#[allow(clippy::identity_op)]
 pub fn init() {
     IDT_ENTRIES.lock()[0] = IDTEntry::new(isr0 as *const () as _, 0x08, PRESENT | DPL_0 | GATE_32_TRAP);
     IDT_ENTRIES.lock()[1] = IDTEntry::new(isr1 as *const () as _, 0x08, PRESENT | DPL_0 | GATE_32_TRAP);
