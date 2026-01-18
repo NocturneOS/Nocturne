@@ -54,7 +54,7 @@ pub enum MultibootMMapType {
     ACPI,
     Reserved,
     NVS,
-    BadRAM
+    BadRAM,
 }
 
 #[repr(C, packed)]
@@ -75,21 +75,39 @@ impl MultibootHeader {
     }
 
     pub fn cmdline(&self) -> &str {
-        unsafe { CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char).to_str().unwrap() }
+        unsafe {
+            CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char)
+                .to_str()
+                .unwrap()
+        }
     }
 
     pub fn modules(&self) -> &[MultibootModule] {
-        unsafe { core::slice::from_raw_parts((self.mods_addr as usize + KERNEL_BASE) as _, self.mods_count as _) }
+        unsafe {
+            core::slice::from_raw_parts(
+                (self.mods_addr as usize + KERNEL_BASE) as _,
+                self.mods_count as _,
+            )
+        }
     }
 
     pub fn mmap(&self) -> &[MultibootMMapEntry] {
-        unsafe { core::slice::from_raw_parts((self.mmap_addr as usize + KERNEL_BASE) as _, (self.mmap_length as usize / core::mem::size_of::<MultibootMMapEntry>()) as _) }
+        unsafe {
+            core::slice::from_raw_parts(
+                (self.mmap_addr as usize + KERNEL_BASE) as _,
+                (self.mmap_length as usize / core::mem::size_of::<MultibootMMapEntry>()) as _,
+            )
+        }
     }
 }
 
 impl MultibootModule {
     pub fn cmdline(&self) -> &str {
-        unsafe { CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char).to_str().unwrap() }
+        unsafe {
+            CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char)
+                .to_str()
+                .unwrap()
+        }
     }
 
     pub fn start(&self) -> usize {
@@ -123,7 +141,7 @@ impl MultibootMMapEntry {
             3 => MultibootMMapType::ACPI,
             4 => MultibootMMapType::NVS,
             5 => MultibootMMapType::BadRAM,
-            _ => todo!("Invalid MMAP type: 0x{:x}", ty)
+            _ => todo!("Invalid MMAP type: 0x{:x}", ty),
         }
     }
 }

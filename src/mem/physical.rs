@@ -5,7 +5,11 @@
 // C010_0000: Kernel itself
 // C010_0000 + KERNEL_SIZE: Physical memory bitmap
 
-use crate::{arch::{self, get_page_size}, qemu_log, spec::WORD_SIZE_BITS};
+use crate::{
+    arch::{self, get_page_size},
+    qemu_log,
+    spec::WORD_SIZE_BITS,
+};
 
 unsafe extern "C" {
     static IMAGE_VIRT_END: *const ();
@@ -15,7 +19,9 @@ fn bitmap() -> &'static [usize] {
     let rawptr = (unsafe { &IMAGE_VIRT_END } as *const *const ()).addr() as *const usize;
 
     // Size - in bytes; Length - in items.
-    let size = crate::sys::info::info().physical_memory_bitmap_size.unwrap();
+    let size = crate::sys::info::info()
+        .physical_memory_bitmap_size
+        .unwrap();
 
     assert!(size % crate::spec::WORD_SIZE == 0);
 
@@ -28,7 +34,9 @@ fn bitmap_mut() -> &'static mut [usize] {
     let rawptr = (unsafe { &IMAGE_VIRT_END } as *const *const ()).addr() as *mut usize;
 
     // Size - in bytes; Length - in items.
-    let size = crate::sys::info::info().physical_memory_bitmap_size.unwrap();
+    let size = crate::sys::info::info()
+        .physical_memory_bitmap_size
+        .unwrap();
 
     assert!(size % crate::spec::WORD_SIZE == 0);
 
@@ -51,7 +59,7 @@ fn addr_to_indices(address: usize) -> (usize, usize) {
 fn indices_to_addr(index: usize, bit_index: usize) -> usize {
     assert!(bit_index < WORD_SIZE_BITS);
 
-    return ((index * WORD_SIZE_BITS) + bit_index) * arch::get_page_size()
+    return ((index * WORD_SIZE_BITS) + bit_index) * arch::get_page_size();
 }
 
 fn is_used(address: usize) -> bool {
@@ -146,7 +154,11 @@ pub fn allocate_one() -> Option<usize> {
 pub fn allocate_bulk(page_count: usize) -> Option<usize> {
     let first_free = first_free_cluster(page_count)?;
 
-    qemu_log!("Bulk found first free block: {:x} (with page count: {})", first_free, page_count);
+    qemu_log!(
+        "Bulk found first free block: {:x} (with page count: {})",
+        first_free,
+        page_count
+    );
 
     for i in 0..page_count {
         let addr = first_free + (i * arch::get_page_size());
@@ -172,6 +184,9 @@ pub fn init() {
 
     bitmap_mut().fill(0);
 
-    qemu_log!("Bitmap size: {} bytes", bitmap().len() * crate::spec::WORD_SIZE);
+    qemu_log!(
+        "Bitmap size: {} bytes",
+        bitmap().len() * crate::spec::WORD_SIZE
+    );
     qemu_log!("Bitmap length: {}", bitmap().len());
 }

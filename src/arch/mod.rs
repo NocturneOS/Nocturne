@@ -42,5 +42,8 @@ pub fn get_page_size() -> usize {
     return x86::mem::paging::PAGE_SIZE;
 
     #[cfg(not(target_arch = "x86"))]
-    compile_error!("No page size is specified for architecture {:#?}", env!("CARGO_CFG_TARGET_ARCH"));
+    compile_error!(
+        "No page size is specified for architecture {:#?}",
+        env!("CARGO_CFG_TARGET_ARCH")
+    );
 }

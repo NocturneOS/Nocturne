@@ -42,7 +42,7 @@ pub fn preinit(available_memory_size: usize) {
 
     qemu_log!("Available memory: {:#?}", available_memory_size);
     qemu_log!("Pages: {:?}", available_memory_size / PAGE_SIZE);
-    
+
     // Divide memory by pages and then by 8 (bits in one byte) - it's the bitmap size.
     let mut phys_bitmap_size = (available_memory_size / PAGE_SIZE) / 8;
 
@@ -60,7 +60,7 @@ pub fn preinit(available_memory_size: usize) {
     let total_needed_size = kernel_size + phys_bitmap_size;
 
     qemu_log!("Total size: {} bytes", total_needed_size);
-    
+
     let total_needed_pages = total_needed_size / PAGE_SIZE;
 
     qemu_log!("Total page count: {}", total_needed_pages);
@@ -70,7 +70,10 @@ pub fn preinit(available_memory_size: usize) {
         // but in this stage we can't have an allocator.
 
         // TODO: Use extended 4MB pages instead? They don't have to allocate.
-        panic!("Needed more than one page table for kernel initialization! (Total pages needed: {})", total_needed_pages);
+        panic!(
+            "Needed more than one page table for kernel initialization! (Total pages needed: {})",
+            total_needed_pages
+        );
     }
 
     // We did all checks, let's list the entries.

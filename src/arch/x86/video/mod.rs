@@ -5,15 +5,15 @@ pub mod bios_text_vga;
 #[derive(Debug)]
 pub enum VideoModeType {
     Text,
-    Graphics
+    Graphics,
 }
 
 #[derive(Debug)]
 pub struct VideoMode {
     buffer_ptr: usize,
-    
+
     resolution: Size<usize>,
-    mode_type: VideoModeType
+    mode_type: VideoModeType,
 }
 
 impl VideoMode {
@@ -45,5 +45,6 @@ lazy_static! {
             height: 25,
         },
         mode_type: VideoModeType::Text
-    }.into();
+    }
+    .into();
 }

@@ -1,6 +1,6 @@
 use x86::io::outb;
 
-use crate::interrupts::{InterruptController};
+use crate::interrupts::InterruptController;
 
 struct PIC;
 
@@ -23,13 +23,13 @@ pub fn init() {
 
         outb(0x21, 0x20);
         outb(0xA1, 0x28);
-        
+
         outb(0x21, 0x04);
         outb(0xA1, 0x02);
-        
+
         outb(0x21, 0x01);
         outb(0xA1, 0x01);
-        
+
         outb(0x21, 0x0);
         outb(0xA1, 0x0);
     }
@@ -44,13 +44,13 @@ pub fn disable() {
 
         outb(0xA1, 0x20);
         outb(0x21, 0x28);
-        
+
         outb(0xA1, 0x2);
         outb(0x21, 0x4);
-        
+
         outb(0xA1, 0x01);
         outb(0x21, 0x01);
-        
+
         outb(0xA1, 0xFF);
         outb(0x21, 0xFF);
     }

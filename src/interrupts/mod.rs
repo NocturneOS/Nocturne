@@ -3,14 +3,12 @@ use spin::RwLock;
 pub mod handler;
 
 struct ICStore {
-    ic: Option<&'static dyn InterruptController>
+    ic: Option<&'static dyn InterruptController>,
 }
 
 impl ICStore {
     pub const fn new() -> Self {
-        Self {
-            ic: None
-        }
+        Self { ic: None }
     }
 
     pub fn eoi(&self, interrupt_nr: u8) {

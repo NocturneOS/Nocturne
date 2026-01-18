@@ -3,9 +3,9 @@ use spin::RwLock;
 #[cfg(target_arch = "x86")]
 use crate::arch::x86::CPURegisters;
 
-use crate::{interrupts::CURRENT_INTERRUPT_CONTROLLER};
+use crate::interrupts::CURRENT_INTERRUPT_CONTROLLER;
 
-pub type InterruptCallback = fn (&mut CPURegisters) -> ();
+pub type InterruptCallback = fn(&mut CPURegisters) -> ();
 
 static INTERRUPT_VECTORS: RwLock<[Option<InterruptCallback>; 256]> = unsafe { core::mem::zeroed() };
 
@@ -33,7 +33,11 @@ pub fn unregister_interrupt_handler(int_nr: u8) {
 pub fn interrupt_handler(regs: &mut CPURegisters) {
     let interrupt_num = regs.int_num as usize;
 
-    let iv = INTERRUPT_VECTORS.read().get(interrupt_num).map(|x| *x).flatten();
+    let iv = INTERRUPT_VECTORS
+        .read()
+        .get(interrupt_num)
+        .map(|x| *x)
+        .flatten();
 
     if let Some(iv) = iv {
         iv(regs);

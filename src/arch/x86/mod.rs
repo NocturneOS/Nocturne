@@ -3,9 +3,9 @@ pub mod idt;
 pub mod interrupts;
 pub mod mem;
 pub mod multiboot;
+mod sys;
 pub mod timer;
 pub mod video;
-mod sys;
 
 #[repr(C, packed(1))]
 #[derive(Debug)]
@@ -25,7 +25,7 @@ pub struct CPURegisters {
     pub cs: u32,
     pub eflags: u32,
     pub useresp: u32,
-    pub ss: u32
+    pub ss: u32,
 }
 
 use crate::{arch::x86::multiboot::MultibootHeader, kmain, qemu_log};
@@ -43,10 +43,19 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
         qemu_log!("- {:?} <{:08x} - {:08x}>", i.cmdline(), i.start(), i.end());
     }
 
-    qemu_log!("Memory: {} KB (lower) / {} KB (upper)", mb.memory().0, mb.memory().1);
+    qemu_log!(
+        "Memory: {} KB (lower) / {} KB (upper)",
+        mb.memory().0,
+        mb.memory().1
+    );
 
     for i in mb.mmap() {
-        qemu_log!("- {:?} <{:08x} - {:08x}>", i.ty(), i.addr(), i.addr() + i.length());
+        qemu_log!(
+            "- {:?} <{:08x} - {:08x}>",
+            i.ty(),
+            i.addr(),
+            i.addr() + i.length()
+        );
     }
 
     // Fill system info
@@ -64,8 +73,8 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     crate::mem::physical::init();
 
     timer::pit::init(1000);
-    
+
     unsafe { x86::irq::enable() };
-    
+
     kmain()
 }

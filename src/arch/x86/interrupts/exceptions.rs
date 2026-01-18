@@ -1,4 +1,8 @@
-use crate::{arch::{halt_forever, x86::CPURegisters}, interrupts::handler::register_interrupt_handler, qemu_println};
+use crate::{
+    arch::{halt_forever, x86::CPURegisters},
+    interrupts::handler::register_interrupt_handler,
+    qemu_println,
+};
 
 fn division_by_zero(regs: &mut CPURegisters) {
     qemu_println!("Division by zero...");
