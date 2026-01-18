@@ -1,4 +1,3 @@
-use core::ptr::{addr_of, addr_of_mut};
 
 use crate::{qemu_log, tools};
 

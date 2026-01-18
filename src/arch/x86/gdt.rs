@@ -24,7 +24,7 @@ impl GDTEntry {
             base_middle: ((base >> 16) & 0xff) as u8,
             base_high: ((base >> 24) & 0xff) as u8,
             limit_low: (limit & 0xffff) as u16,
-            granularity: (((limit >> 16) & 0xf) as u8 | (flags << 4)) as u8,
+            granularity: (((limit >> 16) & 0xf) as u8 | (flags << 4)),
             access,
         }
     }

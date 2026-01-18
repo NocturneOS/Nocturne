@@ -19,7 +19,7 @@ impl fmt::Write for SerialWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for i in s.bytes() {
             unsafe {
-                x86::io::outb(self.port, i as u8);
+                x86::io::outb(self.port, i);
             }
         }
 
@@ -30,7 +30,7 @@ impl fmt::Write for SerialWriter {
 #[macro_export]
 macro_rules! qemu_print {
     ($($arg:tt)*) => {
-        crate::io::logging::__qemu_print(format_args!($($arg)*))
+        $crate::io::logging::__qemu_print(format_args!($($arg)*))
     };
 }
 
@@ -47,7 +47,7 @@ macro_rules! qemu_println {
 #[macro_export]
 macro_rules! qemu_log {
     ($($arg:tt)*) => {
-        let time = crate::time::get_uptime_nanos();
+        let time = $crate::time::get_uptime_nanos();
 
         $crate::qemu_print!("<{:.9}> {}\n", time as f64 / 1_000_000_000.0, format_args!($($arg)*))
     };

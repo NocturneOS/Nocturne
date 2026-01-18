@@ -6,7 +6,7 @@
 // C010_0000 + KERNEL_SIZE: Physical memory bitmap
 
 use crate::{
-    arch::{self, get_page_size},
+    arch::{self},
     qemu_log,
     spec::WORD_SIZE_BITS,
 };
@@ -23,7 +23,7 @@ fn bitmap() -> &'static [usize] {
         .physical_memory_bitmap_size
         .unwrap();
 
-    assert!(size % crate::spec::WORD_SIZE == 0);
+    assert!(size.is_multiple_of(crate::spec::WORD_SIZE));
 
     let length = size / crate::spec::WORD_SIZE;
 
@@ -38,7 +38,7 @@ fn bitmap_mut() -> &'static mut [usize] {
         .physical_memory_bitmap_size
         .unwrap();
 
-    assert!(size % crate::spec::WORD_SIZE == 0);
+    assert!(size.is_multiple_of(crate::spec::WORD_SIZE));
 
     let length = size / crate::spec::WORD_SIZE;
 
@@ -59,7 +59,7 @@ fn addr_to_indices(address: usize) -> (usize, usize) {
 fn indices_to_addr(index: usize, bit_index: usize) -> usize {
     assert!(bit_index < WORD_SIZE_BITS);
 
-    return ((index * WORD_SIZE_BITS) + bit_index) * arch::get_page_size();
+    ((index * WORD_SIZE_BITS) + bit_index) * arch::get_page_size()
 }
 
 fn is_used(address: usize) -> bool {
