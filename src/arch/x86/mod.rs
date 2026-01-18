@@ -86,7 +86,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
         .map(|x| (x.addr(), x.length()))
     {
         let addr_start = tools::align_value(i.0.try_into().unwrap(), arch::get_page_size());
-        
+
         if i.0 + i.1 - 1 >= usize::MAX as _ {
             break;
         }
@@ -102,6 +102,18 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
         }
 
         qemu_log!("Marked {:#x?} - {:#x?} as reserved.", addr_start, addr_end);
+    }
+
+    // Mark all the memory past the kernel as used
+
+    {
+        let start = crate::sys::info::info().kernel_start - crate::spec::KERNEL_BASE;
+
+        for addr in (0..start).step_by(arch::get_page_size()) {
+            crate::mem::physical::mark_page(addr, true);
+        }
+
+        qemu_log!("Marked {:#x?} - {:#x?} as used.", 0, start);
     }
 
     timer::pit::init(1000);
