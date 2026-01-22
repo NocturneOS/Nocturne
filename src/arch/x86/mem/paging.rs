@@ -48,6 +48,8 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: u
     let page_table = page_table_mut(pdi);
 
     page_table[pti] = physical_address | flags as usize | 1;
+
+    unsafe { x86::tlb::flush(virtual_address) };
 }
 
 pub fn unmap_single_page(virtual_address: usize) {
@@ -62,6 +64,8 @@ pub fn unmap_single_page(virtual_address: usize) {
     let page_table = page_table_mut(pdi);
 
     page_table[pti] = 0;
+
+    unsafe { x86::tlb::flush(virtual_address) };
 }
 
 pub fn map_pages(phys_addr: usize, virt_addr: usize, byte_count: usize, flags: u32) {
