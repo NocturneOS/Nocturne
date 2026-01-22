@@ -3,7 +3,7 @@ use spin::RwLock;
 #[cfg(target_arch = "x86")]
 use crate::arch::x86::CPURegisters;
 
-use crate::interrupts::CURRENT_INTERRUPT_CONTROLLER;
+use crate::interrupts::{CURRENT_INTERRUPT_CONTROLLER, eoi};
 
 pub type InterruptCallback = fn(&mut CPURegisters) -> ();
 
@@ -19,7 +19,7 @@ pub unsafe extern "C" fn irq_handler(mut regs: CPURegisters) {
     interrupt_handler(&mut regs);
 
     // Send EOI.
-    CURRENT_INTERRUPT_CONTROLLER.read().eoi(regs.int_num as _);
+    eoi(regs.int_num as _);
 }
 
 pub fn register_interrupt_handler(int_nr: u8, callback: InterruptCallback) {
