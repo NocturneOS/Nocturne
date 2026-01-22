@@ -1,8 +1,10 @@
 #![no_std]
 
-use core::panic::PanicInfo;
+use core::{alloc::{GlobalAlloc, Layout}, panic::PanicInfo};
 
-use crate::arch::x86::video::bios_text_vga::{clear_screen, test_write};
+use alloc::vec::Vec;
+
+use crate::{arch::x86::video::bios_text_vga::{clear_screen, test_write}, sys::info::info};
 
 mod arch;
 mod interrupts;
@@ -14,10 +16,25 @@ mod time;
 mod tools;
 mod unwind;
 
+extern crate alloc;
+
 // This entry point is called from `arch_init`.
 extern "C" fn kmain() -> ! {
     // Now `arch_init` initialized paging and PMM for us.
     // To make kernel fully initialized we should initialize heap.
+
+    mem::heap::init();
+    
+    // arch::halt_forever();    
+
+    // let mut what = Vec::<i32>::new();
+
+    // for i in 0..1024 {
+    //     qemu_log!("Added: {i}");
+    //     what.push(i);
+    // }
+
+    // qemu_log!("{:?}", what);
 
     clear_screen();
     test_write();

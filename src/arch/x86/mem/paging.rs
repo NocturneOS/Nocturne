@@ -1,6 +1,22 @@
 use crate::{arch::get_page_size, qemu_log, tools};
+use bitflags::bitflags;
 
 pub const PAGE_SIZE: usize = 0x1000;
+
+bitflags! {
+    #[derive(Copy, Clone)]
+    pub struct PageFlags : usize {
+        const Present = 1 << 0;
+        const Writeable = 1 << 1;
+        const Userspace = 1 << 2;
+        const WriteThrough = 1 << 3;
+        const CacheDisable = 1 << 4;
+        const Accessed = 1 << 5;
+        const Dirty = 1 << 6;
+        const Extended = 1 << 7;
+        const Global = 1 << 8;
+    }
+}
 
 unsafe extern "C" {
     // Defined in src/arch/x86/asm/init.s
@@ -8,31 +24,36 @@ unsafe extern "C" {
 
 }
 
+#[inline]
 pub fn page_directory() -> &'static [usize] {
     unsafe { core::slice::from_raw_parts(0xFFFF_F000 as *const usize, 1023) }
 }
 
+#[inline]
 pub fn page_directory_mut() -> &'static mut [usize] {
     unsafe { core::slice::from_raw_parts_mut(0xFFFF_F000 as *mut usize, 1023) }
 }
 
+#[inline]
 pub fn page_table(pd_idx: usize) -> &'static [usize] {
     unsafe {
         core::slice::from_raw_parts((0xFFC0_0000 + (pd_idx * PAGE_SIZE)) as *const usize, 1024)
     }
 }
 
+#[inline]
 pub fn page_table_mut(pd_idx: usize) -> &'static mut [usize] {
     unsafe {
         core::slice::from_raw_parts_mut((0xFFC0_0000 + (pd_idx * PAGE_SIZE)) as *mut usize, 1024)
     }
 }
 
+#[inline]
 pub fn vaddr2indices(vaddr: usize) -> (usize, usize) {
     (vaddr >> 22, (vaddr >> 12) & 0x3ff)
 }
 
-pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: u32) {
+pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: PageFlags) {
     let (pdi, pti) = vaddr2indices(virtual_address);
     let pt = page_directory()[pdi];
 
@@ -47,7 +68,7 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: u
 
     let page_table = page_table_mut(pdi);
 
-    page_table[pti] = physical_address | flags as usize | 1;
+    page_table[pti] = physical_address | flags.bits() | 1;
 
     unsafe { x86::tlb::flush(virtual_address) };
 }
@@ -68,7 +89,7 @@ pub fn unmap_single_page(virtual_address: usize) {
     unsafe { x86::tlb::flush(virtual_address) };
 }
 
-pub fn map_pages(phys_addr: usize, virt_addr: usize, byte_count: usize, flags: u32) {
+pub fn map_pages(phys_addr: usize, virt_addr: usize, byte_count: usize, flags: PageFlags) {
     let page_size = get_page_size();
     let pages_count = byte_count.div_ceil(page_size);
 
@@ -105,6 +126,11 @@ pub fn virt2phys(virt_addr: usize) -> Option<usize> {
 
     // Otherwise, get the page table entry and clear service bits.
     Some(page_table(pdi)[pti] & !0x3ff)
+}
+
+#[inline]
+pub fn is_memory_accessible(addr: usize) -> bool {
+    virt2phys(addr).is_some()
 }
 
 // Kernel memory layout:

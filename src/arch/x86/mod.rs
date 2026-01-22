@@ -32,7 +32,6 @@ use crate::{
     arch::{
         self,
         x86::{
-            mem::paging::{map_pages, map_single_page, virt2phys},
             multiboot::{MultibootHeader, MultibootMMapType},
         },
     },
@@ -120,10 +119,27 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
         qemu_log!("Marked {:#x?} - {:#x?} as used.", 0, start);
     }
 
+    // Reserve memory for modules we load.
+
+    {
+        for (n, i) in mb.modules().iter().enumerate() {
+            let start_addr = i.mod_start as usize;
+            let end_addr = tools::align_value(i.mod_end as usize, arch::get_page_size());
+
+            for addr in (start_addr..end_addr).step_by(arch::get_page_size()) {
+                crate::mem::physical::mark_page(addr, true);
+            }
+            
+            qemu_log!("Marked module #{} {:#?} ({:x} - {:x}) as reserved.", n, i.cmdline(), start_addr, end_addr);
+        }
+    }
+
     // Update info for `kmain`
     {
         let kernel_end = crate::sys::info::info().kernel_end;
         let mut info = crate::sys::info::info_mut();
+
+        info.installed_memory = Some(mb.memory().total());
 
         // Set the start of `free memory zone` to the end of last module.
         // If no modules specified, use kernel end address.
