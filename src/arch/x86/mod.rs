@@ -31,7 +31,10 @@ pub struct CPURegisters {
 use crate::{
     arch::{
         self,
-        x86::multiboot::{MultibootHeader, MultibootMMapType},
+        x86::{
+            mem::paging::{map_pages, map_single_page, virt2phys},
+            multiboot::{MultibootHeader, MultibootMMapType},
+        },
     },
     kmain, qemu_log, tools,
 };
@@ -91,7 +94,8 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
             break;
         }
 
-        let addr_end = tools::align_value((i.0 + i.1 - 1).try_into().unwrap(), arch::get_page_size());
+        let addr_end =
+            tools::align_value((i.0 + i.1 - 1).try_into().unwrap(), arch::get_page_size());
 
         if addr_start > mb.memory().total() {
             continue;
@@ -104,16 +108,31 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
         qemu_log!("Marked {:#x?} - {:#x?} as reserved.", addr_start, addr_end);
     }
 
-    // Mark all the memory past the kernel as used
+    // Mark all the memory past the kernel (and the kernel region) as used
 
     {
-        let start = crate::sys::info::info().kernel_start - crate::spec::KERNEL_BASE;
+        let start = crate::sys::info::info().kernel_end - crate::spec::KERNEL_BASE;
 
         for addr in (0..start).step_by(arch::get_page_size()) {
             crate::mem::physical::mark_page(addr, true);
         }
 
         qemu_log!("Marked {:#x?} - {:#x?} as used.", 0, start);
+    }
+
+    // Update info for `kmain`
+    {
+        let kernel_end = crate::sys::info::info().kernel_end;
+        let mut info = crate::sys::info::info_mut();
+
+        // Set the start of `free memory zone` to the end of last module.
+        // If no modules specified, use kernel end address.
+        info.available_memory_start = Some(
+            mb.modules()
+                .last()
+                .map(|x| x.mod_end as usize)
+                .unwrap_or(kernel_end),
+        );
     }
 
     timer::pit::init(1000);

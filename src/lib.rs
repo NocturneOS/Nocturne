@@ -14,7 +14,11 @@ mod time;
 mod tools;
 mod unwind;
 
+// This entry point is called from `arch_init`.
 extern "C" fn kmain() -> ! {
+    // Now `arch_init` initialized paging and PMM for us.
+    // To make kernel fully initialized we should initialize heap.
+
     clear_screen();
     test_write();
 

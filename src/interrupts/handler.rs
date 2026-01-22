@@ -35,7 +35,8 @@ pub fn interrupt_handler(regs: &mut CPURegisters) {
 
     let iv = INTERRUPT_VECTORS
         .read()
-        .get(interrupt_num).copied()
+        .get(interrupt_num)
+        .copied()
         .flatten();
 
     if let Some(iv) = iv {

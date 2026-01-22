@@ -1,5 +1,4 @@
-
-use crate::{qemu_log, tools};
+use crate::{arch::get_page_size, qemu_log, tools};
 
 pub const PAGE_SIZE: usize = 0x1000;
 
@@ -9,20 +8,99 @@ unsafe extern "C" {
 
 }
 
-pub fn page_directory() -> &'static [u32] {
-    unsafe { core::slice::from_raw_parts(0xFFFF_F000 as *const u32, 1023) }
+pub fn page_directory() -> &'static [usize] {
+    unsafe { core::slice::from_raw_parts(0xFFFF_F000 as *const usize, 1023) }
 }
 
-pub fn page_directory_mut() -> &'static mut [u32] {
-    unsafe { core::slice::from_raw_parts_mut(0xFFFF_F000 as *mut u32, 1023) }
+pub fn page_directory_mut() -> &'static mut [usize] {
+    unsafe { core::slice::from_raw_parts_mut(0xFFFF_F000 as *mut usize, 1023) }
 }
 
-pub fn page_table(idx: usize) -> &'static [u32] {
-    unsafe { core::slice::from_raw_parts((0xFFC0_0000 + (idx * PAGE_SIZE)) as *const u32, 1024) }
+pub fn page_table(pd_idx: usize) -> &'static [usize] {
+    unsafe {
+        core::slice::from_raw_parts((0xFFC0_0000 + (pd_idx * PAGE_SIZE)) as *const usize, 1024)
+    }
 }
 
-pub fn page_table_mut(idx: usize) -> &'static mut [u32] {
-    unsafe { core::slice::from_raw_parts_mut((0xFFC0_0000 + (idx * PAGE_SIZE)) as *mut u32, 1024) }
+pub fn page_table_mut(pd_idx: usize) -> &'static mut [usize] {
+    unsafe {
+        core::slice::from_raw_parts_mut((0xFFC0_0000 + (pd_idx * PAGE_SIZE)) as *mut usize, 1024)
+    }
+}
+
+pub fn vaddr2indices(vaddr: usize) -> (usize, usize) {
+    (vaddr >> 22, (vaddr >> 12) & 0x3ff)
+}
+
+pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: u32) {
+    let (pdi, pti) = vaddr2indices(virtual_address);
+    let pt = page_directory()[pdi];
+
+    if pt == 0 {
+        let new_pt = crate::mem::physical::allocate_one().unwrap();
+
+        page_directory_mut()[pdi] = new_pt | 3;
+
+        let page_table = page_table_mut(pdi);
+        page_table.fill(0);
+    }
+
+    let page_table = page_table_mut(pdi);
+
+    page_table[pti] = physical_address | flags as usize | 1;
+}
+
+pub fn unmap_single_page(virtual_address: usize) {
+    let (pdi, pti) = vaddr2indices(virtual_address);
+
+    let pt = page_directory()[pdi];
+
+    if pt == 0 {
+        return;
+    }
+
+    let page_table = page_table_mut(pdi);
+
+    page_table[pti] = 0;
+}
+
+pub fn map_pages(phys_addr: usize, virt_addr: usize, byte_count: usize, flags: u32) {
+    let page_size = get_page_size();
+    let pages_count = byte_count.div_ceil(page_size);
+
+    for n in 0..pages_count {
+        map_single_page(
+            phys_addr + (n * page_size),
+            virt_addr + (n * page_size),
+            flags,
+        );
+    }
+}
+
+pub fn unmap_pages(virt_addr: usize, byte_count: usize) {
+    let page_size = get_page_size();
+    let pages_count = byte_count.div_ceil(page_size);
+
+    for n in 0..pages_count {
+        unmap_single_page(virt_addr + (n * page_size));
+    }
+}
+
+pub fn virt2phys(virt_addr: usize) -> Option<usize> {
+    let (pdi, pti) = vaddr2indices(virt_addr & !0xfff);
+
+    // If no page table in page directory, exit.
+    if (page_directory()[pdi] & 1) == 0 {
+        return None;
+    }
+
+    // If page directory entry is an extended page, return it.
+    if (page_directory()[pdi] & (1 << 7)) != 0 {
+        return Some(page_directory()[pdi] & !0xfff);
+    }
+
+    // Otherwise, get the page table entry and clear service bits.
+    Some(page_table(pdi)[pti] & !0x3ff)
 }
 
 // Kernel memory layout:
