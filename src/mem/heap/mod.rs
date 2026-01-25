@@ -8,7 +8,7 @@ use core::ptr::{self, NonNull};
 use core::usize;
 use spin::{Mutex, MutexGuard};
 
-use crate::arch::x86::mem::paging::{self, PageFlags, map_single_page};
+use crate::arch::x86::mem::paging::{self, PageFlags, map_single_page, unmap_single_page};
 use crate::mem::physical;
 use crate::tools::align_value;
 use crate::{arch, qemu_log, tools};
@@ -85,6 +85,8 @@ impl InnerArenaAllocator {
         arena[0].address = heap_start;
         arena[0].size = arch::get_page_size();
 
+        self.alloc_count += 1;
+
         self.arena = Some(arena);
 
         self.heap_size = heap_size;
@@ -125,7 +127,7 @@ impl InnerArenaAllocator {
     fn add_block(&mut self, index: usize, addr: usize, size: usize) {
         let arena = self.arena.as_mut().unwrap();
 
-        arena.copy_within(index..self.alloc_count, index + 1);
+        arena.copy_within(index..self.alloc_count + 1, index + 1);
 
         arena[index] = Block {
             address: addr,
@@ -158,6 +160,8 @@ impl InnerArenaAllocator {
         idx
     }
 
+    /// Ensures that the region [ addr; addr + size ) is accessible.
+    /// If region within the range above is not accessible, allocate a physical page and map it.
     fn ensure_mapped(&self, addr: usize, size: usize) {
         qemu_log!("Range is: {:08x?} - {:08x?}", addr, addr + size);
 
@@ -171,9 +175,41 @@ impl InnerArenaAllocator {
 
                 map_single_page(page, i, PAGE_FLAGS);
 
-                qemu_log!("Page allocated!");
+                qemu_log!("Page {page:08x} allocated and mapped to {i:08x}!");
             }
         }
+    }
+
+    // Checks that the region [ addr; addr + size ) doesn't overlap with other regions.
+    // This method unmaps pages inside the region if it finds completely free pages.
+    fn delicate_unmap_and_free(&self, addr: usize, size: usize, is_last_block: bool) {
+        let page_size = arch::get_page_size();
+
+        let lower_bound = tools::align_value(addr, page_size);
+        let mut upper_bound = (addr + size) & !(page_size - 1);
+
+        qemu_log!("Aligned region: {:08x?}", lower_bound..upper_bound);
+
+        // If we're checking last block, we do an inclusive free because there's no successor block ahead.
+        // Since Range and RangeInclusive are different types, the other option is to make Range behave like it's inclusive.
+        if is_last_block {
+            upper_bound += page_size;
+        }
+
+        for i in (lower_bound..upper_bound).step_by(page_size) {
+            if let Some(free_addr) = paging::virt2phys(i) {
+                unmap_single_page(i);
+                physical::free_one(free_addr);
+
+                qemu_log!("Unmapped: V{:08x}", i);
+                qemu_log!("Freed: P{:08x}", free_addr);
+            }
+        }
+    }
+
+    #[inline]
+    fn is_last_block(&self, idx: usize) -> bool {
+        idx == self.alloc_count - 1
     }
 
     /// Allocate memory with the given layout
@@ -182,9 +218,9 @@ impl InnerArenaAllocator {
 
         self.ensure_mapped(address, layout.size());
 
-        self.alloc_count += 1;
-
         self.add_block(index, address, layout.size());
+        
+        self.alloc_count += 1;
 
         NonNull::new(address as *mut u8)
     }
@@ -196,6 +232,12 @@ impl InnerArenaAllocator {
         };
 
         self.remove_block(idx);
+
+        if self.is_last_block(idx) {
+            qemu_log!("{:08x} is a last block!", ptr.addr());
+        }
+
+        self.delicate_unmap_and_free(ptr.addr().into(), layout.size(), self.is_last_block(idx));
         
         self.alloc_count -= 1;
     }

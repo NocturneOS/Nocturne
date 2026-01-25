@@ -26,14 +26,11 @@ extern "C" fn kmain() -> ! {
     mem::heap::init();
 
     unsafe {
-        let ptr = alloc::alloc::alloc_zeroed(Layout::from_size_align(10, 4).unwrap());
-        let ptr2 = alloc::alloc::alloc_zeroed(Layout::from_size_align(20, 4).unwrap());
-        let ptr3 = alloc::alloc::alloc_zeroed(Layout::from_size_align(30, 4).unwrap());
-        let ptr4 = alloc::alloc::alloc_zeroed(Layout::from_size_align(40, 4).unwrap());
-        let ptr5 = alloc::alloc::alloc_zeroed(Layout::from_size_align(50, 4).unwrap());
-        let ptr6 = alloc::alloc::alloc_zeroed(Layout::from_size_align(60, 4).unwrap());
+        let size: usize = 0x1100;
+        let lay = Layout::from_size_align(size, 4).unwrap();
+        let ptr = alloc::alloc::alloc_zeroed(lay);
 
-        alloc::alloc::dealloc(ptr4, Layout::from_size_align(40, 4).unwrap());
+        alloc::alloc::dealloc(ptr, lay);
     }
     
     mem::heap::dump();
