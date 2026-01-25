@@ -1,7 +1,7 @@
 mod alloc_support;
 
 // Re-export the init function for convenience
-pub use alloc_support::{dump, init};
+pub use alloc_support::init;
 
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::{self, NonNull};
@@ -10,7 +10,6 @@ use spin::{Mutex, MutexGuard};
 
 use crate::arch::x86::mem::paging::{self, PageFlags, map_single_page, unmap_single_page};
 use crate::mem::physical;
-use crate::tools::align_value;
 use crate::{arch, qemu_log, tools};
 
 /// Page flags for kernel heap: Present + Writable

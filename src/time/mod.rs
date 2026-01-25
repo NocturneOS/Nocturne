@@ -1,4 +1,4 @@
-use core::cell::{RefCell, UnsafeCell};
+use core::cell::UnsafeCell;
 
 use lazy_static::lazy_static;
 use spin::Mutex;

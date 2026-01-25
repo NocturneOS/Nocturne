@@ -3,7 +3,7 @@ use spin::RwLock;
 #[cfg(target_arch = "x86")]
 use crate::arch::x86::CPURegisters;
 
-use crate::interrupts::{CURRENT_INTERRUPT_CONTROLLER, eoi};
+use crate::interrupts::eoi;
 
 pub type InterruptCallback = fn(&mut CPURegisters) -> ();
 

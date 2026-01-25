@@ -1,10 +1,8 @@
 #![no_std]
 
-use core::{alloc::{GlobalAlloc, Layout}, panic::PanicInfo};
+use core::panic::PanicInfo;
 
-use alloc::vec::{self, Vec};
-
-use crate::{arch::{disable_interrupts, enable_interrupts, x86::video::bios_text_vga::{clear_screen, test_write}}, sys::info::info};
+use crate::{arch::{x86::video::bios_text_vga::{clear_screen, test_write}}};
 
 mod arch;
 mod interrupts;

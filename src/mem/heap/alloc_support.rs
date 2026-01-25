@@ -1,4 +1,4 @@
-use crate::{arch, mem::heap::ArenaAllocator, qemu_log, sys::info::info, tools};
+use crate::{mem::heap::ArenaAllocator, qemu_log, sys::info::info};
 
 /// Global allocator instance for the `alloc` crate
 #[global_allocator]
