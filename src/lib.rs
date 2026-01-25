@@ -4,7 +4,7 @@ use core::{alloc::{GlobalAlloc, Layout}, panic::PanicInfo};
 
 use alloc::vec;
 
-use crate::{arch::x86::video::bios_text_vga::{clear_screen, test_write}, sys::info::info};
+use crate::{arch::{disable_interrupts, enable_interrupts, x86::video::bios_text_vga::{clear_screen, test_write}}, sys::info::info};
 
 mod arch;
 mod interrupts;
@@ -25,15 +25,23 @@ extern "C" fn kmain() -> ! {
 
     mem::heap::init();
 
+    
     unsafe {
-        let size: usize = 0x1100;
-        let lay = Layout::from_size_align(size, 4).unwrap();
-        let ptr = alloc::alloc::alloc_zeroed(lay);
+        let layout = Layout::from_size_align_unchecked(0x20, 4);
+        
+        disable_interrupts();
+        
+        for i in 0..1024 {
+            let _ = alloc::alloc::alloc(layout);
 
-        alloc::alloc::dealloc(ptr, lay);
+            qemu_log!("Allocated {i} blocks!");
+        }
+
+        mem::heap::dump();
+        
+        enable_interrupts();
     }
     
-    mem::heap::dump();
 
     qemu_log!("OK!");
     

@@ -75,9 +75,8 @@ impl InnerArenaAllocator {
 
         qemu_log!("Heap: {entries_count} entries");
 
-        let arena = unsafe {
-            core::slice::from_raw_parts_mut(heap_start as *mut Block, entries_count)
-        };
+        let arena =
+            unsafe { core::slice::from_raw_parts_mut(heap_start as *mut Block, entries_count) };
 
         arena.fill(unsafe { core::mem::zeroed() });
 
@@ -93,7 +92,8 @@ impl InnerArenaAllocator {
     }
 
     pub fn blocks<'a>(&'a self) -> &'a [Block] {
-        self.arena.as_ref()
+        self.arena
+            .as_ref()
             .expect("Getting blocks on uninitialized allocator!")
     }
 
@@ -115,7 +115,7 @@ impl InnerArenaAllocator {
             }
 
             if aligned_new_block_addr + layout.size() < next_block.address {
-                todo!("FOUND!");
+                return Some((index + 1, aligned_new_block_addr));
             }
 
             index += 1;
@@ -131,7 +131,7 @@ impl InnerArenaAllocator {
 
         arena[index] = Block {
             address: addr,
-            size: size
+            size: size,
         };
     }
 
@@ -163,15 +163,14 @@ impl InnerArenaAllocator {
     /// Ensures that the region [ addr; addr + size ) is accessible.
     /// If region within the range above is not accessible, allocate a physical page and map it.
     fn ensure_mapped(&self, addr: usize, size: usize) {
-        qemu_log!("Range is: {:08x?} - {:08x?}", addr, addr + size);
-
         let start_addr = addr & !(arch::get_page_size() - 1);
         let end_addr = tools::align_value(addr + size, arch::get_page_size());
 
         for i in (start_addr..end_addr).step_by(arch::get_page_size()) {
             if !paging::is_memory_accessible(i) {
                 // TODO: Cancel whole operation if page allocation fails and return None.
-                let page = physical::allocate_one().expect("Failed to allocate a physical page during allocation.");
+                let page = physical::allocate_one()
+                    .expect("Failed to allocate a physical page during allocation.");
 
                 map_single_page(page, i, PAGE_FLAGS);
 
@@ -212,23 +211,66 @@ impl InnerArenaAllocator {
         idx == self.alloc_count - 1
     }
 
-    /// Allocate memory with the given layout
-    pub fn allocate(&mut self, layout: Layout) -> Option<NonNull<u8>> {
+    fn ensure_arena_available(&mut self) {
+        let old_arena_addr = self.arena.as_ref().unwrap().as_ptr().addr();
+        let arena_len = self.arena.as_ref().unwrap().len();
+
+        if self.alloc_count == arena_len - 2 {
+            qemu_log!("Arena reallocation condition!");
+
+            // New arena is two times bigger than old
+            let new_arena_len = arena_len * 2;
+
+            // Allocate memory
+            let block = self
+                .inner_allocate(Layout::array::<Block>(new_arena_len).unwrap())
+                .unwrap()
+                .as_ptr() as *mut Block;
+
+            // Convert it to slice
+            let new_arena = unsafe { core::slice::from_raw_parts_mut(block, new_arena_len) };
+
+            // And copy all old entries from old to new.
+            new_arena[..arena_len].copy_from_slice(self.arena.as_ref().unwrap());
+
+            // Set the new arena.
+            self.arena = Some(new_arena);
+
+            // And free the old arena.
+            self.deallocate(
+                NonNull::new(old_arena_addr as *mut u8).unwrap(),
+                Layout::array::<Block>(arena_len).unwrap(),
+            );
+        }
+    }
+
+    fn inner_allocate(&mut self, layout: Layout) -> Option<NonNull<u8>> {
         let (index, address) = self.find_suitable_block(&layout)?;
 
         self.ensure_mapped(address, layout.size());
 
         self.add_block(index, address, layout.size());
-        
+
         self.alloc_count += 1;
 
         NonNull::new(address as *mut u8)
     }
 
+    /// Allocate memory with the given layout
+    pub fn allocate(&mut self, layout: Layout) -> Option<NonNull<u8>> {
+        self.ensure_arena_available();
+
+        self.inner_allocate(layout)
+    }
+
     /// Deallocate memory
     pub fn deallocate(&mut self, ptr: NonNull<u8>, layout: Layout) {
         let Some(idx) = self.find_block_by_address(ptr.addr().into()) else {
-            panic!("BUG: Deallocating a non-existent block! ({} of size {})", ptr.addr(), layout.size());
+            panic!(
+                "BUG: Deallocating a non-existent block! ({} of size {})",
+                ptr.addr(),
+                layout.size()
+            );
         };
 
         self.remove_block(idx);
@@ -238,7 +280,7 @@ impl InnerArenaAllocator {
         }
 
         self.delicate_unmap_and_free(ptr.addr().into(), layout.size(), self.is_last_block(idx));
-        
+
         self.alloc_count -= 1;
     }
 }
