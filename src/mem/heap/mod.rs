@@ -1,0 +1,221 @@
+mod alloc_support;
+
+// Re-export the init function for convenience
+pub use alloc_support::{dump, init};
+
+use core::alloc::{GlobalAlloc, Layout};
+use core::ptr::{self, NonNull};
+use core::usize;
+use spin::{Mutex, MutexGuard};
+
+use crate::arch::x86::mem::paging::{self, PageFlags, map_single_page};
+use crate::mem::physical;
+use crate::tools::align_value;
+use crate::{arch, qemu_log, tools};
+
+/// Page flags for kernel heap: Present + Writable
+///
+/// WTH with the code I could use `PageFlags::Present | PageFlags::Writeable`, but it's not a `const` operation.
+const PAGE_FLAGS: PageFlags = PageFlags::Present.union(PageFlags::Writeable);
+
+pub struct ArenaAllocator {
+    inner: Mutex<InnerArenaAllocator>,
+}
+
+impl ArenaAllocator {
+    pub const fn new() -> Self {
+        Self {
+            inner: Mutex::new(InnerArenaAllocator::new()),
+        }
+    }
+
+    pub fn init(&self, heap_start: usize, heap_size: usize) {
+        self.inner.lock().init(heap_start, heap_size)
+    }
+
+    pub fn inner<'t>(&'t self) -> MutexGuard<'t, InnerArenaAllocator> {
+        let lock = self.inner.lock();
+        lock
+    }
+}
+
+pub struct InnerArenaAllocator {
+    arena: Option<&'static mut [Block]>,
+    alloc_count: usize,
+    heap_size: usize,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct Block {
+    pub address: usize,
+    pub size: usize,
+}
+
+impl InnerArenaAllocator {
+    /// Create a new uninitialized allocator
+    pub const fn new() -> Self {
+        Self {
+            arena: None,
+            alloc_count: 0,
+            heap_size: 0,
+        }
+    }
+
+    /// Initialize the allocator with a heap region
+    pub fn init(&mut self, heap_start: usize, heap_size: usize) {
+        let page =
+            physical::allocate_one().expect("Could not allocate an initial page for the heap!");
+
+        map_single_page(page, heap_start, PAGE_FLAGS);
+
+        // Now `heap_start` is our heap arena start.
+
+        let entries_count = arch::get_page_size() / size_of::<Block>();
+
+        qemu_log!("Heap: {entries_count} entries");
+
+        let arena = unsafe {
+            core::slice::from_raw_parts_mut(heap_start as *mut Block, entries_count)
+        };
+
+        arena.fill(unsafe { core::mem::zeroed() });
+
+        // The first block is an arena itself. We allocated one page of memory for arena for now.
+        arena[0].address = heap_start;
+        arena[0].size = arch::get_page_size();
+
+        self.arena = Some(arena);
+
+        self.heap_size = heap_size;
+    }
+
+    pub fn blocks<'a>(&'a self) -> &'a [Block] {
+        self.arena.as_ref()
+            .expect("Getting blocks on uninitialized allocator!")
+    }
+
+    // Returns Option<(INDEX, ADDRESS)>
+    fn find_suitable_block(&self, layout: &Layout) -> Option<(usize, usize)> {
+        let mut index = 0usize;
+
+        for i in self.blocks().windows(2) {
+            let this_block = &i[0];
+            let next_block = &i[1];
+
+            let this_block_end = this_block.address + this_block.size;
+
+            let aligned_new_block_addr = tools::align_value(this_block_end, layout.align());
+
+            if next_block.address == 0 && next_block.size == 0 {
+                // Since we are at end of the block list, we have to increment the index to avoid last block overwrite.
+                return Some((index + 1, aligned_new_block_addr));
+            }
+
+            if aligned_new_block_addr + layout.size() < next_block.address {
+                todo!("FOUND!");
+            }
+
+            index += 1;
+        }
+
+        None
+    }
+
+    fn add_block(&mut self, index: usize, addr: usize, size: usize) {
+        let arena = self.arena.as_mut().unwrap();
+
+        arena.copy_within(index..self.alloc_count, index + 1);
+
+        arena[index] = Block {
+            address: addr,
+            size: size
+        };
+    }
+
+    fn remove_block(&mut self, index: usize) {
+        let arena = self.arena.as_mut().unwrap();
+
+        arena.copy_within(index + 1..self.alloc_count + 1, index);
+
+        arena[self.alloc_count] = unsafe { core::mem::zeroed() };
+    }
+
+    fn find_block_by_address(&self, addr: usize) -> Option<usize> {
+        let mut idx: Option<usize> = None;
+
+        for (n, i) in self.blocks().iter().enumerate() {
+            if i.address == 0 && i.size == 0 {
+                break;
+            }
+
+            if i.address == addr {
+                idx = Some(n);
+                break;
+            }
+        }
+
+        idx
+    }
+
+    fn ensure_mapped(&self, addr: usize, size: usize) {
+        qemu_log!("Range is: {:08x?} - {:08x?}", addr, addr + size);
+
+        let start_addr = addr & !(arch::get_page_size() - 1);
+        let end_addr = tools::align_value(addr + size, arch::get_page_size());
+
+        for i in (start_addr..end_addr).step_by(arch::get_page_size()) {
+            if !paging::is_memory_accessible(i) {
+                // TODO: Cancel whole operation if page allocation fails and return None.
+                let page = physical::allocate_one().expect("Failed to allocate a physical page during allocation.");
+
+                map_single_page(page, i, PAGE_FLAGS);
+
+                qemu_log!("Page allocated!");
+            }
+        }
+    }
+
+    /// Allocate memory with the given layout
+    pub fn allocate(&mut self, layout: Layout) -> Option<NonNull<u8>> {
+        let (index, address) = self.find_suitable_block(&layout)?;
+
+        self.ensure_mapped(address, layout.size());
+
+        self.alloc_count += 1;
+
+        self.add_block(index, address, layout.size());
+
+        NonNull::new(address as *mut u8)
+    }
+
+    /// Deallocate memory
+    pub fn deallocate(&mut self, ptr: NonNull<u8>, layout: Layout) {
+        let Some(idx) = self.find_block_by_address(ptr.addr().into()) else {
+            panic!("BUG: Deallocating a non-existent block! ({} of size {})", ptr.addr(), layout.size());
+        };
+
+        self.remove_block(idx);
+        
+        self.alloc_count -= 1;
+    }
+}
+
+unsafe impl GlobalAlloc for ArenaAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        self.inner
+            .lock()
+            .allocate(layout)
+            .map(|ptr| ptr.as_ptr())
+            .unwrap_or(ptr::null_mut())
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        if let Some(non_null_ptr) = NonNull::new(ptr) {
+            self.inner.lock().deallocate(non_null_ptr, layout);
+        }
+    }
+}
+
+unsafe impl Send for ArenaAllocator {}
+unsafe impl Sync for ArenaAllocator {}

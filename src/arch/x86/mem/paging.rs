@@ -124,6 +124,11 @@ pub fn virt2phys(virt_addr: usize) -> Option<usize> {
         return Some(page_directory()[pdi] & !0xfff);
     }
 
+    // If page is not mapped in page table, exit.
+    if (page_table(pdi)[pti] & 1) == 0 {
+        return None;
+    }
+
     // Otherwise, get the page table entry and clear service bits.
     Some(page_table(pdi)[pti] & !0x3ff)
 }

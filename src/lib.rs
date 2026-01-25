@@ -2,7 +2,7 @@
 
 use core::{alloc::{GlobalAlloc, Layout}, panic::PanicInfo};
 
-use alloc::vec::Vec;
+use alloc::vec;
 
 use crate::{arch::x86::video::bios_text_vga::{clear_screen, test_write}, sys::info::info};
 
@@ -24,8 +24,23 @@ extern "C" fn kmain() -> ! {
     // To make kernel fully initialized we should initialize heap.
 
     mem::heap::init();
+
+    unsafe {
+        let ptr = alloc::alloc::alloc_zeroed(Layout::from_size_align(10, 4).unwrap());
+        let ptr2 = alloc::alloc::alloc_zeroed(Layout::from_size_align(20, 4).unwrap());
+        let ptr3 = alloc::alloc::alloc_zeroed(Layout::from_size_align(30, 4).unwrap());
+        let ptr4 = alloc::alloc::alloc_zeroed(Layout::from_size_align(40, 4).unwrap());
+        let ptr5 = alloc::alloc::alloc_zeroed(Layout::from_size_align(50, 4).unwrap());
+        let ptr6 = alloc::alloc::alloc_zeroed(Layout::from_size_align(60, 4).unwrap());
+
+        alloc::alloc::dealloc(ptr4, Layout::from_size_align(40, 4).unwrap());
+    }
     
-    // arch::halt_forever();    
+    mem::heap::dump();
+
+    qemu_log!("OK!");
+    
+    arch::halt_forever();
 
     // let mut what = Vec::<i32>::new();
 
