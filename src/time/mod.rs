@@ -1,8 +1,12 @@
+use core::cell::{RefCell, UnsafeCell};
+
 use lazy_static::lazy_static;
 use spin::Mutex;
 
+use crate::tools::pseudosync::PseudoSync;
+
 lazy_static! {
-    static ref TIME_TICKS: Mutex<u128> = 0.into();
+    static ref TIME_TICKS: PseudoSync<UnsafeCell<u128>> = PseudoSync::new(UnsafeCell::new(0));
     static ref TICKING_FREQUENCY: Mutex<usize> = 1.into();
 }
 
@@ -13,17 +17,19 @@ pub fn set_timer_frequency(freq: usize) {
 
 #[inline]
 pub fn tick() {
-    *TIME_TICKS.lock() += 1;
+    let current_ticks = unsafe { TIME_TICKS.as_ref().get().read() };
+
+    unsafe { TIME_TICKS.as_ref().get().write(current_ticks + 1) };
 }
 
 #[inline]
 pub fn get_uptime_ticks() -> u128 {
-    *TIME_TICKS.lock()
+    unsafe { TIME_TICKS.as_ref().get().read() }
 }
 
 #[inline]
 pub fn get_uptime_nanos() -> u128 {
-    let ticks = *TIME_TICKS.lock();
+    let ticks = get_uptime_ticks();
     let freq = *TICKING_FREQUENCY.lock();
 
     (ticks * 1_000_000_000) / freq as u128

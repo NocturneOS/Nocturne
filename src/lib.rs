@@ -2,7 +2,7 @@
 
 use core::{alloc::{GlobalAlloc, Layout}, panic::PanicInfo};
 
-use alloc::vec;
+use alloc::vec::{self, Vec};
 
 use crate::{arch::{disable_interrupts, enable_interrupts, x86::video::bios_text_vga::{clear_screen, test_write}}, sys::info::info};
 
@@ -20,42 +20,11 @@ extern crate alloc;
 
 // This entry point is called from `arch_init`.
 extern "C" fn kmain() -> ! {
-    // Now `arch_init` initialized paging and PMM for us.
+    // Now `__arch_init` initialized paging and PMM for us.
     // To make kernel fully initialized we should initialize heap.
 
-    mem::heap::init();
-
+    mem::heap::init();    
     
-    unsafe {
-        let layout = Layout::from_size_align_unchecked(0x20, 4);
-        
-        disable_interrupts();
-        
-        for i in 0..1024 {
-            let _ = alloc::alloc::alloc(layout);
-
-            qemu_log!("Allocated {i} blocks!");
-        }
-
-        mem::heap::dump();
-        
-        enable_interrupts();
-    }
-    
-
-    qemu_log!("OK!");
-    
-    arch::halt_forever();
-
-    // let mut what = Vec::<i32>::new();
-
-    // for i in 0..1024 {
-    //     qemu_log!("Added: {i}");
-    //     what.push(i);
-    // }
-
-    // qemu_log!("{:?}", what);
-
     clear_screen();
     test_write();
 

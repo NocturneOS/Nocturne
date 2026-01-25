@@ -31,11 +31,8 @@ pub struct CPURegisters {
 use crate::{
     arch::{
         self,
-        x86::{
-            multiboot::{MultibootHeader, MultibootMMapType},
-        },
-    },
-    kmain, qemu_log, tools,
+        x86::multiboot::{MultibootHeader, MultibootMMapType},
+    }, kmain, qemu_log, spec::KERNEL_BASE, tools
 };
 
 #[unsafe(no_mangle)]
@@ -147,7 +144,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
             mb.modules()
                 .last()
                 .map(|x| x.mod_end as usize)
-                .unwrap_or(kernel_end),
+                .unwrap_or(kernel_end - KERNEL_BASE),
         );
     }
 
