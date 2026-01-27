@@ -1,4 +1,4 @@
-use crate::{arch::x86::CPURegisters, interrupts::handler::register_interrupt_handler};
+use crate::{arch::CPURegisters, interrupts::handler::register_interrupt_handler};
 
 const PIT_BASE_FREQ: u32 = 1193180;
 

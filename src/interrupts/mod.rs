@@ -1,4 +1,7 @@
+use lazy_static::lazy_static;
 use spin::RwLock;
+
+use crate::tools::pseudosync::PseudoSync;
 
 pub mod handler;
 
@@ -21,16 +24,18 @@ impl ICStore {
 unsafe impl Send for ICStore {}
 unsafe impl Sync for ICStore {}
 
-static CURRENT_INTERRUPT_CONTROLLER: RwLock<ICStore> = RwLock::new(ICStore::new());
+lazy_static! {
+    static ref CURRENT_INTERRUPT_CONTROLLER: PseudoSync<ICStore> = PseudoSync::new(ICStore::new());
+}
 
 pub trait InterruptController {
     fn eoi(&self, interrupt_nr: u8);
 }
 
 pub fn set_interrupt_controller(ic: &'static dyn InterruptController) {
-    CURRENT_INTERRUPT_CONTROLLER.write().ic = Some(ic);
+    unsafe { CURRENT_INTERRUPT_CONTROLLER.get_mut().ic = Some(ic) };
 }
 
 pub fn eoi(interrupt_nr: u8) {
-    CURRENT_INTERRUPT_CONTROLLER.read().eoi(interrupt_nr);
+    CURRENT_INTERRUPT_CONTROLLER.get().eoi(interrupt_nr);
 }

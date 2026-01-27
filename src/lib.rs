@@ -40,14 +40,14 @@ extern "C" fn kmain() -> ! {
     {
         sched::create_thread(
             test_task,
-            0x1000,
+            0x100,
             ThreadFlags::empty(),
         );
 
         loop {
             qemu_log!("Main!");
 
-            sched::sleep(Duration::from_millis(1000));
+            sched::sleep(Duration::from_millis(500));
         }
     }
 

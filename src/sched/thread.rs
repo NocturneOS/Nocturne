@@ -4,8 +4,10 @@ use bitflags::bitflags;
 use crate::{arch::CPURegisters, sched::{archspec::ArchitectureSpecificRegion, process::Process}};
 
 bitflags! {
+    #[derive(Copy, Clone, PartialEq, Eq)]
     pub struct ThreadFlags : usize {
         const User = 1 << 0;
+        const Raw = 1 << 1;
     }
 }
 
@@ -19,7 +21,7 @@ pub enum ThreadState {
     Dead
 }
 
-#[repr(packed(4))]
+#[repr(C, packed(4))]
 pub struct Thread {
     pub id: usize,
 

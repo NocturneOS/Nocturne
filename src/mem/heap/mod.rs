@@ -29,11 +29,12 @@ impl ArenaAllocator {
     }
 
     pub fn init(&self, heap_start: usize, heap_size: usize) {
-        self.inner.lock().init(heap_start, heap_size)
+        self.inner.try_lock().expect("Failed to acquire lock on heap initialization!").init(heap_start, heap_size)
     }
 
     fn inner<'t>(&'t self) -> MutexGuard<'t, InnerArenaAllocator> {
-        let lock = self.inner.lock();
+        let lock = self.inner.try_lock().expect("Heap locking failed!");
+        // let lock = self.inner.lock();
         lock
     }
 }
@@ -286,8 +287,7 @@ impl InnerArenaAllocator {
 
 unsafe impl GlobalAlloc for ArenaAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        self.inner
-            .lock()
+        self.inner()
             .allocate(layout)
             .map(|ptr| ptr.as_ptr())
             .unwrap_or(ptr::null_mut())
@@ -295,7 +295,7 @@ unsafe impl GlobalAlloc for ArenaAllocator {
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         if let Some(non_null_ptr) = NonNull::new(ptr) {
-            self.inner.lock().deallocate(non_null_ptr, layout);
+            self.inner().deallocate(non_null_ptr, layout);
         }
     }
 }

@@ -1,3 +1,5 @@
+use crate::tools::pseudosync::PseudoSync;
+
 const ACCESS_PRESENT: u8 = 1 << 7;
 const ACCESS_DPL_0: u8 = 0 << 5;
 const ACCESS_DPL_3: u8 = 3 << 5;
@@ -30,7 +32,7 @@ impl GDTEntry {
     }
 }
 
-static GDT_ENTRIES: spin::Mutex<[GDTEntry; 6]> = unsafe { core::mem::zeroed() };
+static GDT_ENTRIES: PseudoSync<[GDTEntry; 6]> = unsafe { core::mem::zeroed() };
 
 unsafe extern "C" {
     fn gdt_flush(gdt_ptr: &x86::dtables::DescriptorTablePointer<GDTEntry>);
@@ -38,21 +40,23 @@ unsafe extern "C" {
 
 #[rustfmt::skip]
 pub fn init() {
-    GDT_ENTRIES.lock()[0] = unsafe { core::mem::zeroed() };
+    let binding = unsafe { GDT_ENTRIES.get_mut() };
+
+    binding[0] = unsafe { core::mem::zeroed() };
 
     // 0x08: Ring 0 / Code
-    GDT_ENTRIES.lock()[1] = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_0 | ACCESS_CODE_OR_DATA | ACCESS_EXECUTABLE | ACCESS_RW, 0b1100);
+    binding[1] = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_0 | ACCESS_CODE_OR_DATA | ACCESS_EXECUTABLE | ACCESS_RW, 0b1100);
     
     // 0x10: Ring 0 / Data
-    GDT_ENTRIES.lock()[2] = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_0 | ACCESS_CODE_OR_DATA | ACCESS_RW, 0b1100);
+    binding[2] = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_0 | ACCESS_CODE_OR_DATA | ACCESS_RW, 0b1100);
     
     // 0x18: Ring 3 / Code
-    GDT_ENTRIES.lock()[3] = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_EXECUTABLE | ACCESS_RW , 0b1100);
+    binding[3] = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_EXECUTABLE | ACCESS_RW , 0b1100);
     
     // 0x20: Ring 3 / Data
-    GDT_ENTRIES.lock()[4] = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_RW, 0b1100);
+    binding[4] = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_RW, 0b1100);
 
-    let entries = GDT_ENTRIES.lock();
+    let entries = binding;
 
     unsafe {
         gdt_flush(&x86::dtables::DescriptorTablePointer {

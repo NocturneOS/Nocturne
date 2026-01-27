@@ -1,7 +1,7 @@
-use core::alloc::Layout;
+use core::{alloc::Layout, arch::asm};
 
 #[cfg(target_arch = "x86")]
-pub(super) struct ArchitectureSpecificRegion {
+pub struct ArchitectureSpecificRegion {
     fxsave_region: *mut u8,
 }
 
@@ -10,11 +10,14 @@ unsafe impl Send for ArchitectureSpecificRegion {}
 
 impl ArchitectureSpecificRegion {
     pub fn new() -> Self {
-        Self {
-            fxsave_region: unsafe {
-                alloc::alloc::alloc_zeroed(Layout::from_size_align_unchecked(512, 16))
-            },
+        let fxsave_region =
+            unsafe { alloc::alloc::alloc_zeroed(Layout::from_size_align_unchecked(512, 16)) };
+
+        unsafe {
+            asm!("fxsave ({})", in(reg) fxsave_region.addr(), options(att_syntax, nostack));
         }
+
+        Self { fxsave_region }
     }
 }
 
