@@ -3,16 +3,26 @@ use core::fmt::{self, Write};
 use lazy_static::lazy_static;
 use spin::Mutex;
 
+use crate::arch;
+
 lazy_static! {
     pub static ref QEMU: Mutex<SerialWriter> = Mutex::new(SerialWriter { port: 0x3f8 });
 }
 
 pub struct SerialWriter {
-    port: u16,
+    pub port: u16,
 }
 
 pub fn __qemu_print(args: fmt::Arguments) {
+    let is_ena = arch::are_interrupts_enabled();
+
+    arch::disable_interrupts();
+
     QEMU.lock().write_fmt(args).unwrap();
+
+    if is_ena {
+        arch::enable_interrupts();
+    }
 }
 
 impl fmt::Write for SerialWriter {

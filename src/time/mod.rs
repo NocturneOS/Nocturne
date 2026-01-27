@@ -3,7 +3,7 @@ use core::cell::UnsafeCell;
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-use crate::tools::pseudosync::PseudoSync;
+use crate::{sched, tools::pseudosync::PseudoSync};
 
 lazy_static! {
     static ref TIME_TICKS: PseudoSync<UnsafeCell<u128>> = PseudoSync::new(UnsafeCell::new(0));
@@ -20,6 +20,8 @@ pub fn tick() {
     let current_ticks = unsafe { TIME_TICKS.as_ref().get().read() };
 
     unsafe { TIME_TICKS.as_ref().get().write(current_ticks + 1) };
+
+    sched::schedule();
 }
 
 #[inline]

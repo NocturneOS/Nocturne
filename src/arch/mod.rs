@@ -3,6 +3,18 @@ use ::x86 as _x86;
 #[cfg(target_arch = "x86")]
 pub mod x86;
 
+#[cfg(target_arch = "x86")]
+pub use x86::CPURegisters;
+
+pub fn are_interrupts_enabled() -> bool {
+    #[cfg(target_arch = "x86")]
+    {
+        use ::x86::bits32::eflags::EFlags;
+
+        (unsafe { _x86::current::eflags::read() } & EFlags::FLAGS_IF).bits() != 0
+    }
+}
+
 pub fn enable_interrupts() {
     #[cfg(target_arch = "x86")]
     unsafe {

@@ -1,7 +1,7 @@
 mod alloc_support;
 
 // Re-export the init function for convenience
-pub use alloc_support::init;
+pub use alloc_support::{init, dump};
 
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::{self, NonNull};
@@ -32,7 +32,7 @@ impl ArenaAllocator {
         self.inner.lock().init(heap_start, heap_size)
     }
 
-    pub fn inner<'t>(&'t self) -> MutexGuard<'t, InnerArenaAllocator> {
+    fn inner<'t>(&'t self) -> MutexGuard<'t, InnerArenaAllocator> {
         let lock = self.inner.lock();
         lock
     }

@@ -9,17 +9,10 @@ static GLOBAL_ALLOCATOR: ArenaAllocator = ArenaAllocator::new();
 /// This should be called once during kernel initialization, after
 /// physical memory management and paging are set up.
 pub fn init() {
-    qemu_log!(
-        "Installed memory: {:08x}; Heap start: {:08x}",
-        info().installed_memory.unwrap(),
-        info().available_memory_start.unwrap()
-    );
-
     let available_size = info().installed_memory.unwrap() - info().available_memory_start.unwrap();
 
     GLOBAL_ALLOCATOR.init(
         0x100_000,
-        // tools::align_value(info().available_memory_start.unwrap(), arch::get_page_size()),
         available_size,
     );
 }
