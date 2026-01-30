@@ -40,7 +40,7 @@ lazy_static! {
 }
 
 pub struct Scheduler {
-    is_initialized: bool,
+    pub is_initialized: bool,
 
     process_list: LinkedList<Arc<Process>>,
     thread_list: LinkedList<Arc<Thread>>,
@@ -54,12 +54,14 @@ pub struct Scheduler {
 }
 
 unsafe extern "C" {
-    fn __context_switch(
-        this_process: &Process,
-        this_thread: &Thread,
-        next_process: &Process,
-        next_thread: &Thread,
+    pub unsafe fn __context_switch(
+        this_process: *const Process,
+        this_thread: *mut Thread,
+        next_process: *const Process,
+        next_thread: *const Thread,
     );
+
+    fn __thread_entry_wrapper();
 }
 
 fn next_pid() -> usize {
@@ -126,7 +128,7 @@ impl Scheduler {
         self.idle_task = self.create_thread(
             Arc::clone(&kernel_process),
             idle_task,
-            0x100,
+            0x1000,
             ThreadFlags::Raw,
         );
 
@@ -145,29 +147,37 @@ impl Scheduler {
         stack_size: usize,
         flags: ThreadFlags,
     ) -> Option<Arc<Thread>> {
-        let stack =
+        let stack: *mut u8 =
             unsafe { alloc::alloc::alloc_zeroed(Layout::from_size_align(stack_size, 0x1000).ok()?) };
 
         let id = next_tid();
 
-        let mut writeable_esp = unsafe { stack.add(stack_size).addr() } as *mut usize;
+        let mut writeable_esp = unsafe { stack.addr() + stack_size } as *mut usize;
 
         unsafe {
-            // Entry point
-            writeable_esp.sub(1).write(entry as *const () as usize);
+            writeable_esp = writeable_esp.sub(1);
+            writeable_esp.write(entry as *const () as usize);
 
-            // EFLAGS
-            writeable_esp.sub(2).write(0x202);
-
-            // writeable_esp.sub(3).write(0x10101010);  // EAX
-            // writeable_esp.sub(4).write(0x20202020);  // EBX
-            // writeable_esp.sub(5).write(0x30303030);  // ECX
-            // writeable_esp.sub(6).write(0x40404040);  // EDX
-            // writeable_esp.sub(7).write(0x50505050);  // ESI
-            // writeable_esp.sub(8).write(0x60606060);  // EDI
-
-            // 2 is EP and EFLAGS, 7 is the register count we will save on stack on context change.
-            writeable_esp = writeable_esp.sub(2 + 7);
+            writeable_esp = writeable_esp.sub(1);
+            writeable_esp.write(__thread_entry_wrapper as *const () as usize);
+            
+            writeable_esp = writeable_esp.sub(1);
+            writeable_esp.write(0x00000202);  // IF=1, IOPL=0
+           
+            writeable_esp = writeable_esp.sub(1);
+            writeable_esp.write(0x00000000);  // EAX
+            writeable_esp = writeable_esp.sub(1);
+            writeable_esp.write(0x00000000);  // EBX
+            writeable_esp = writeable_esp.sub(1);
+            writeable_esp.write(0x00000000);  // ECX
+            writeable_esp = writeable_esp.sub(1);
+            writeable_esp.write(0x00000000);  // EDX
+            writeable_esp = writeable_esp.sub(1);
+            writeable_esp.write(0x00000000);  // ESI
+            writeable_esp = writeable_esp.sub(1);
+            writeable_esp.write(0x00000000);  // EDI
+            writeable_esp = writeable_esp.sub(1);
+            writeable_esp.write(0x00000000);  // EBP
         }
 
         qemu_log!("ESP: {:08x?}", writeable_esp.addr());
@@ -186,7 +196,6 @@ impl Scheduler {
         };
 
         let tcb = Arc::new(tcb);
-
         self.thread_list.push_back(Arc::clone(&tcb));
 
         if !flags.contains(ThreadFlags::Raw) {
@@ -194,7 +203,6 @@ impl Scheduler {
         }
 
         qemu_log!("Added thread nr: {id}");
-
         Some(tcb)
     }
 
@@ -216,7 +224,7 @@ impl Scheduler {
         Arc::clone(self.idle_task.as_ref().unwrap())
     }
 
-    pub fn schedule(&mut self) {
+    pub unsafe extern "C" fn schedule(&mut self) {
         // qemu_log!("Entered scheduler");
 
         let this = self.this_task();
@@ -244,17 +252,22 @@ impl Scheduler {
             let next_ref = next.as_ref();
             let next_proc = this.as_ref().process.as_ref();
 
+            self.current_process = Some(Arc::clone(&next.process));
+            self.current_thread = Some(Arc::clone(&next));
+
             unsafe {
-                __context_switch(this_proc, this_ref, next_proc, next_ref);
+                let tp_ptr = this_proc as *const Process;
+                let tt_ptr = this_ref as *const Thread;
+                let np_ptr = next_proc as *const Process;
+                let nt_ptr = next_ref as *const Thread;
+
+                __context_switch(tp_ptr, tt_ptr as *mut Thread, np_ptr, nt_ptr);
             }
         }
-
-        self.current_process = Some(Arc::clone(&next.process));
-        self.current_thread = Some(next);
     }
 }
 
-fn this() -> MutexGuard<'static, Scheduler> {
+pub fn this() -> MutexGuard<'static, Scheduler> {
     SCHEDULER.try_lock().expect("Failed to lock a scheduler!")
 }
 
@@ -263,7 +276,9 @@ pub fn init() {
 
     arch::disable_interrupts();
 
-    this().init();
+    {
+        this().init();
+    }
 
     if is_ena {
         arch::enable_interrupts();
@@ -275,11 +290,13 @@ fn this_process() -> Arc<Process> {
 
     arch::disable_interrupts();
 
-    let lock = this();
+    let value = {
+        let lock = this();
 
-    let proc = lock.current_process.as_ref().unwrap();
+        let proc = lock.current_process.as_ref().unwrap();
 
-    let value = Arc::clone(proc);
+        Arc::clone(proc)
+    };
 
     if is_ena {
         arch::enable_interrupts();
@@ -295,9 +312,11 @@ pub fn create_thread(entry: fn() -> (), stack_size: usize, flags: ThreadFlags) {
 
     //
 
-    let proc = this_process();
+    {
+        let proc = this_process();
 
-    this().create_thread(proc, entry, stack_size, flags);
+        this().create_thread(proc, entry, stack_size, flags);
+    }
 
     //
 
@@ -306,15 +325,17 @@ pub fn create_thread(entry: fn() -> (), stack_size: usize, flags: ThreadFlags) {
     }
 }
 
-pub fn schedule() {
+pub extern "C" fn schedule() {
     let is_ena = arch::are_interrupts_enabled();
 
     arch::disable_interrupts();
 
     //
 
-    if this().is_initialized {
-        this().schedule();
+    {
+        if this().is_initialized {
+            unsafe { this().schedule() };
+        }
     }
 
     //

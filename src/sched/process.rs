@@ -1,6 +1,6 @@
 use alloc::string::String;
 
-#[repr(C)]
+#[repr(C, packed(4))]
 pub struct Process {
     pub id: usize,
     pub page_directory_phys: usize,

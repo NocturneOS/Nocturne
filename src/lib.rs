@@ -40,7 +40,7 @@ extern "C" fn kmain() -> ! {
     {
         sched::create_thread(
             test_task,
-            0x100,
+            0x1000,
             ThreadFlags::empty(),
         );
 

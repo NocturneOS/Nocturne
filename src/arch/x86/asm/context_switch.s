@@ -1,3 +1,13 @@
+.global __thread_entry_wrapper
+__thread_entry_wrapper:
+    pop %eax        # Get the real entry point
+    call *%eax
+
+    # push %eax
+    # call thread_exit_handler
+
+    hlt
+
 .global __context_switch
 __context_switch:
     pushf

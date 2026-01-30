@@ -1,6 +1,8 @@
+use x86::io::outb;
 use crate::arch::CPURegisters;
 
 use crate::interrupts::eoi;
+use crate::qemu_log;
 use crate::tools::pseudosync::PseudoSync;
 
 pub type InterruptCallback = fn(&mut CPURegisters) -> ();
@@ -14,10 +16,18 @@ pub unsafe extern "C" fn isr_handler(mut regs: CPURegisters) {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn irq_handler(mut regs: CPURegisters) {
-    interrupt_handler(&mut regs);
-
     // Send EOI.
-    eoi(regs.int_num as _);
+    // eoi(regs.int_num as _);
+
+    {
+        if regs.int_num >= 0x28 {
+            unsafe { outb(0xA0, 0x20) };
+        }
+
+        unsafe { outb(0x20, 0x20) };
+    }
+
+    interrupt_handler(&mut regs);
 }
 
 pub fn register_interrupt_handler(int_nr: u8, callback: InterruptCallback) {
