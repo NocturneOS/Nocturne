@@ -26,7 +26,7 @@ use crate::{
         thread::{Thread, ThreadFlags},
     },
     spec::WORD_SIZE,
-    time::get_uptime_ticks,
+    time::get_uptime_ticks, tools::pseudosync::PseudoSync,
 };
 
 mod archspec;
@@ -34,7 +34,7 @@ pub mod process;
 pub mod thread;
 
 lazy_static! {
-    static ref SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler::new());
+    static ref SCHEDULER: PseudoSync<Scheduler> = PseudoSync::new(Scheduler::new());
     static ref GLOBAL_PID: AtomicUsize = AtomicUsize::new(0);
     static ref GLOBAL_TID: AtomicUsize = AtomicUsize::new(0);
 }
@@ -267,11 +267,14 @@ impl Scheduler {
     }
 }
 
-pub fn this() -> MutexGuard<'static, Scheduler> {
-    SCHEDULER.try_lock().expect("Failed to lock a scheduler!")
+pub fn this() -> &'static mut Scheduler { // MutexGuard<'static, Scheduler> {
+    unsafe { SCHEDULER.get_mut() }
+    //SCHEDULER.try_lock().expect("Failed to lock a scheduler!")
 }
 
 pub fn init() {
+    qemu_log!("-- init");
+
     let is_ena = arch::are_interrupts_enabled();
 
     arch::disable_interrupts();
@@ -283,29 +286,39 @@ pub fn init() {
     if is_ena {
         arch::enable_interrupts();
     }
+
+    qemu_log!("-- finished");
+}
+
+fn this_process_unlocked() -> Arc<Process> {
+    let lock = this();
+
+    let proc = lock.current_process.as_ref().unwrap();
+
+    Arc::clone(proc)
 }
 
 fn this_process() -> Arc<Process> {
+    qemu_log!("-- this_process");
+
     let is_ena = arch::are_interrupts_enabled();
 
     arch::disable_interrupts();
 
-    let value = {
-        let lock = this();
-
-        let proc = lock.current_process.as_ref().unwrap();
-
-        Arc::clone(proc)
-    };
+    let value = this_process_unlocked();
 
     if is_ena {
         arch::enable_interrupts();
     }
+
+    qemu_log!("-- finished");
 
     value
 }
 
 pub fn create_thread(entry: fn() -> (), stack_size: usize, flags: ThreadFlags) {
+    qemu_log!("-- create_thread");
+
     let is_ena = arch::are_interrupts_enabled();
 
     arch::disable_interrupts();
@@ -313,9 +326,10 @@ pub fn create_thread(entry: fn() -> (), stack_size: usize, flags: ThreadFlags) {
     //
 
     {
-        let proc = this_process();
+        let proc = this_process_unlocked();
+        let mut binding = this();
 
-        this().create_thread(proc, entry, stack_size, flags);
+        binding.create_thread(proc, entry, stack_size, flags);
     }
 
     //
@@ -323,9 +337,13 @@ pub fn create_thread(entry: fn() -> (), stack_size: usize, flags: ThreadFlags) {
     if is_ena {
         arch::enable_interrupts();
     }
+
+    qemu_log!("-- finished");
 }
 
 pub extern "C" fn schedule() {
+    qemu_log!("-- schedule");
+
     let is_ena = arch::are_interrupts_enabled();
 
     arch::disable_interrupts();
@@ -333,8 +351,10 @@ pub extern "C" fn schedule() {
     //
 
     {
-        if this().is_initialized {
-            unsafe { this().schedule() };
+        let mut binding = this();
+
+        if binding.is_initialized {
+            unsafe { binding.schedule() };
         }
     }
 
@@ -343,6 +363,8 @@ pub extern "C" fn schedule() {
     if is_ena {
         arch::enable_interrupts();
     }
+    
+    qemu_log!("-- finished");
 }
 
 #[inline]

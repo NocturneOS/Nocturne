@@ -1,4 +1,5 @@
 use crate::tools::pseudosync::PseudoSync;
+use spin::mutex::Mutex;
 
 const ACCESS_PRESENT: u8 = 1 << 7;
 const ACCESS_DPL_0: u8 = 0 << 5;
@@ -32,7 +33,7 @@ impl GDTEntry {
     }
 }
 
-static GDT_ENTRIES: PseudoSync<[GDTEntry; 6]> = unsafe { core::mem::zeroed() };
+static GDT_ENTRIES: Mutex<[GDTEntry; 6]> = unsafe { core::mem::zeroed() };
 
 unsafe extern "C" {
     fn gdt_flush(gdt_ptr: &x86::dtables::DescriptorTablePointer<GDTEntry>);
@@ -40,7 +41,7 @@ unsafe extern "C" {
 
 #[rustfmt::skip]
 pub fn init() {
-    let binding = unsafe { GDT_ENTRIES.get_mut() };
+    let mut binding = unsafe { GDT_ENTRIES.lock() };
 
     binding[0] = unsafe { core::mem::zeroed() };
 

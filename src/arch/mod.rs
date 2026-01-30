@@ -13,6 +13,7 @@ pub fn are_interrupts_enabled() -> bool {
         use ::x86::bits32::eflags::EFlags;
 
         unsafe { _x86::current::eflags::read() }.contains(EFlags::FLAGS_IF)
+        // (unsafe { _x86::current::eflags::read().bits() } & EFlags::FLAGS_IF.bits()) != 0
     }
 }
 
