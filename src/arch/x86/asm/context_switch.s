@@ -25,15 +25,15 @@ __context_switch:
     mov %esp, 0x18(%eax)
 
     # Save SIMD context (0x20 = Thread::arch_specific_region)
-    # mov 0x20(%eax), %ecx
-    # fxsave (%ecx)
+    mov 0x20(%eax), %ecx
+    fxsave (%ecx)
 
     # Load stack
     mov 0x18(%ebx), %esp
 
     # Restore SIMD context
-    # mov 0x20(%ebx), %edx
-    # fxrstor (%edx)
+    mov 0x20(%ebx), %edx
+    fxrstor (%edx)
 
     # TODO: TSS
 
