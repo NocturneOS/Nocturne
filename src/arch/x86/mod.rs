@@ -19,7 +19,7 @@ use crate::{
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
 
-    let mb = unsafe { &*((multiboot_header_address + 0xC000_0000) as *const MultibootHeader) };
+    let mb = unsafe { &*((multiboot_header_address + KERNEL_BASE) as *const MultibootHeader) };
 
     qemu_log!("Command line: {:?}", mb.cmdline());
     qemu_log!("Modules count: {}", mb.modules().len());
@@ -41,6 +41,18 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
             i.addr(),
             i.addr() + i.length()
         );
+    }
+
+    {
+        let num = mb.num;
+        let size = mb.size;
+        let addr = mb.addr;
+        let shndx = mb.shndx;
+
+        qemu_log!("NUM: {:08x}", num);
+        qemu_log!("SIZE: {:08x}", size);
+        qemu_log!("ADDR: {:08x}", addr);
+        qemu_log!("SHNDX: {:08x}", shndx);
     }
 
     // Fill system info

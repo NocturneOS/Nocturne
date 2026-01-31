@@ -25,7 +25,7 @@ pub enum ThreadState {
 pub struct Thread {
     pub id: usize,
 
-    pub process: Arc<Process>,
+    pub(crate) process: Arc<Process>,
     pub flags: ThreadFlags,
     pub state: ThreadState,
 

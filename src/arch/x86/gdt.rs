@@ -1,4 +1,3 @@
-use crate::tools::pseudosync::PseudoSync;
 use spin::mutex::Mutex;
 
 const ACCESS_PRESENT: u8 = 1 << 7;

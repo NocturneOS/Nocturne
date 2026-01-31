@@ -1,3 +1,5 @@
+use spin::Mutex;
+
 use crate::tools::pseudosync::PseudoSync;
 
 const PRESENT: u8 = 1 << 7;
@@ -32,7 +34,7 @@ impl IDTEntry {
     }
 }
 
-static IDT_ENTRIES: PseudoSync<[IDTEntry; 256]> = unsafe { core::mem::zeroed() };
+static IDT_ENTRIES: Mutex<[IDTEntry; 256]> = unsafe { core::mem::zeroed() };
 
 #[rustfmt::skip]
 unsafe extern "C" {
@@ -93,7 +95,7 @@ unsafe extern "C" {
 #[rustfmt::skip]
 #[allow(clippy::identity_op)]
 pub fn init() {
-    let bind = unsafe { IDT_ENTRIES.get_mut() };
+    let mut bind = IDT_ENTRIES.lock();
 
     bind[0] = IDTEntry::new(isr0 as *const () as _, 0x08, PRESENT | DPL_0 | GATE_32_TRAP);
     bind[1] = IDTEntry::new(isr1 as *const () as _, 0x08, PRESENT | DPL_0 | GATE_32_TRAP);

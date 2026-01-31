@@ -129,22 +129,22 @@ impl MultibootHeader {
 impl MultibootModule {
     pub fn cmdline(&self) -> &str {
         unsafe {
-            CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char)
-                .to_str()
-                .unwrap()
+            let cstr = CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char);
+
+            cstr.to_str().unwrap()
         }
     }
 
     pub fn start(&self) -> usize {
         let start = self.mod_start;
 
-        start as _
+        start as usize
     }
 
     pub fn end(&self) -> usize {
         let end = self.mod_end;
 
-        end as _
+        end as usize
     }
 }
 

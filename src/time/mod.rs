@@ -21,10 +21,10 @@ pub fn tick() {
         *TIME_TICKS.get_mut() += 1;
     }
 
-    if sched::this().is_initialized {
-        unsafe { sched::this().schedule() };
-    }
-    //sched::schedule();
+    // if sched::this().is_initialized {
+    //     unsafe { sched::this().schedule() };
+    // }
+    sched::schedule();
 }
 
 #[inline]

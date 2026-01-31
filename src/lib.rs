@@ -2,6 +2,8 @@
 
 use core::{panic::PanicInfo, time::Duration};
 
+use alloc::vec::Vec;
+
 use crate::{
     arch::x86::video::bios_text_vga::{clear_screen, test_write},
     sched::thread::ThreadFlags,
@@ -22,7 +24,7 @@ extern crate alloc;
 
 fn test_task() {
     loop {
-        qemu_log!("Hello, world!");
+        qemu_println!("Hello, world!");
 
         sched::sleep(Duration::from_secs(1));
     }
@@ -35,17 +37,37 @@ extern "C" fn kmain() -> ! {
 
     mem::heap::init();
 
+    /*
+    {
+        let mut blocks: Vec<Vec<usize>> = Vec::new();
+
+        for i in 0..2048 {
+            let mut block: Vec<usize> = Vec::with_capacity(8);
+
+            block.fill(0xfa);
+
+            blocks.push(block);
+        }
+    }
+
+    mem::heap::dump();
+    */
+
     sched::init();
 
     {
-        sched::create_thread(
-            test_task,
-            0x1000,
-            ThreadFlags::empty(),
-        );
+        for _ in 0..128 {
+            sched::create_thread(
+                test_task,
+                0x1000,
+                ThreadFlags::empty(),
+            );
+            
+            sched::sleep(Duration::from_millis(50));
+        }
 
         loop {
-            qemu_log!("Main!");
+            qemu_println!("Main!");
 
             sched::sleep(Duration::from_millis(500));
         }

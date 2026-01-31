@@ -174,7 +174,7 @@ impl InnerArenaAllocator {
 
                 map_single_page(page, i, PAGE_FLAGS);
 
-                qemu_log!("Page {page:08x} allocated and mapped to {i:08x}!");
+                // qemu_log!("Page {page:08x} allocated and mapped to {i:08x}!");
             }
         }
     }
@@ -187,7 +187,7 @@ impl InnerArenaAllocator {
         let lower_bound = tools::align_value(addr, page_size);
         let mut upper_bound = (addr + size) & !(page_size - 1);
 
-        qemu_log!("Aligned region: {:08x?}", lower_bound..upper_bound);
+        // qemu_log!("Aligned region: {:08x?}", lower_bound..upper_bound);
 
         // If we're checking last block, we do an inclusive free because there's no successor block ahead.
         // Since Range and RangeInclusive are different types, the other option is to make Range behave like it's inclusive.

@@ -34,7 +34,7 @@ pub mod process;
 pub mod thread;
 
 lazy_static! {
-    static ref SCHEDULER: PseudoSync<Scheduler> = PseudoSync::new(Scheduler::new());
+    static ref SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler::new());
     static ref GLOBAL_PID: AtomicUsize = AtomicUsize::new(0);
     static ref GLOBAL_TID: AtomicUsize = AtomicUsize::new(0);
 }
@@ -60,8 +60,6 @@ unsafe extern "C" {
         next_process: *const Process,
         next_thread: *const Thread,
     );
-
-    fn __thread_entry_wrapper();
 }
 
 fn next_pid() -> usize {
@@ -157,9 +155,6 @@ impl Scheduler {
         unsafe {
             writeable_esp = writeable_esp.sub(1);
             writeable_esp.write(entry as *const () as usize);
-
-            writeable_esp = writeable_esp.sub(1);
-            writeable_esp.write(__thread_entry_wrapper as *const () as usize);
             
             writeable_esp = writeable_esp.sub(1);
             writeable_esp.write(0x00000202);  // IF=1, IOPL=0
@@ -267,9 +262,9 @@ impl Scheduler {
     }
 }
 
-pub fn this() -> &'static mut Scheduler { // MutexGuard<'static, Scheduler> {
-    unsafe { SCHEDULER.get_mut() }
-    //SCHEDULER.try_lock().expect("Failed to lock a scheduler!")
+pub fn this() -> MutexGuard<'static, Scheduler> {
+    // unsafe { SCHEDULER.get_mut() }
+    SCHEDULER.try_lock().expect("Failed to lock a scheduler!")
 }
 
 pub fn init() {
@@ -299,8 +294,6 @@ fn this_process_unlocked() -> Arc<Process> {
 }
 
 fn this_process() -> Arc<Process> {
-    qemu_log!("-- this_process");
-
     let is_ena = arch::are_interrupts_enabled();
 
     arch::disable_interrupts();
@@ -311,14 +304,10 @@ fn this_process() -> Arc<Process> {
         arch::enable_interrupts();
     }
 
-    qemu_log!("-- finished");
-
     value
 }
 
 pub fn create_thread(entry: fn() -> (), stack_size: usize, flags: ThreadFlags) {
-    qemu_log!("-- create_thread");
-
     let is_ena = arch::are_interrupts_enabled();
 
     arch::disable_interrupts();
@@ -337,13 +326,9 @@ pub fn create_thread(entry: fn() -> (), stack_size: usize, flags: ThreadFlags) {
     if is_ena {
         arch::enable_interrupts();
     }
-
-    qemu_log!("-- finished");
 }
 
 pub extern "C" fn schedule() {
-    qemu_log!("-- schedule");
-
     let is_ena = arch::are_interrupts_enabled();
 
     arch::disable_interrupts();
@@ -351,6 +336,8 @@ pub extern "C" fn schedule() {
     //
 
     {
+        unsafe { SCHEDULER.force_unlock() };
+
         let mut binding = this();
 
         if binding.is_initialized {
@@ -363,8 +350,6 @@ pub extern "C" fn schedule() {
     if is_ena {
         arch::enable_interrupts();
     }
-    
-    qemu_log!("-- finished");
 }
 
 #[inline]

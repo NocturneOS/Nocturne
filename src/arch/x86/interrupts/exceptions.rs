@@ -17,7 +17,29 @@ fn general_protection_fault(regs: &mut CPURegisters) {
 }
 
 fn page_fault(regs: &mut CPURegisters) {
-    qemu_println!("Page fault...");
+    qemu_println!("Page fault... ({:08x})", unsafe { x86::controlregs::cr2() });
+
+    let err = regs.err_code;
+
+    if (err & 0x1) == 0 {
+        qemu_println!("- Not present");
+    }
+
+    if (err & 0x2) != 0 {
+        qemu_println!("- Read only");
+    }
+
+    if (err & 0x4) != 0 {
+        qemu_println!("- Not available for user");
+    }
+
+    if (err & 0x8) != 0 {
+        qemu_println!("- Writing to reserved bits");
+    }
+
+    if (err & 0x10) != 0 {
+        qemu_println!("- Instruction fetch");
+    }
 
     common_fault_entry(regs);
 }
