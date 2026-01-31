@@ -37,22 +37,6 @@ extern "C" fn kmain() -> ! {
 
     mem::heap::init();
 
-    /*
-    {
-        let mut blocks: Vec<Vec<usize>> = Vec::new();
-
-        for i in 0..2048 {
-            let mut block: Vec<usize> = Vec::with_capacity(8);
-
-            block.fill(0xfa);
-
-            blocks.push(block);
-        }
-    }
-
-    mem::heap::dump();
-    */
-
     sched::init();
 
     {
