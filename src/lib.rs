@@ -2,8 +2,6 @@
 
 use core::{panic::PanicInfo, time::Duration};
 
-use alloc::vec::Vec;
-
 use crate::{
     arch::x86::video::bios_text_vga::{clear_screen, test_write},
     sched::thread::ThreadFlags,

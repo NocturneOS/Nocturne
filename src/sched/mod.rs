@@ -1,32 +1,24 @@
 use core::{
     alloc::Layout,
-    arch::{asm, naked_asm},
-    fmt::Write,
     sync::atomic::{AtomicUsize, Ordering},
 };
 
 use alloc::{
     collections::{linked_list::LinkedList, vec_deque::VecDeque},
-    fmt::format,
     string::String,
     sync::Arc,
-    vec::Vec,
 };
 use lazy_static::lazy_static;
 use spin::{Mutex, MutexGuard};
-use x86::bits32::eflags::EFlags;
 
 use crate::{
-    arch::{self, CPURegisters},
-    io::logging::SerialWriter,
-    qemu_log, qemu_print, qemu_println,
+    arch,
+    qemu_log,
     sched::{
         archspec::ArchitectureSpecificRegion,
         process::Process,
         thread::{Thread, ThreadFlags},
     },
-    spec::WORD_SIZE,
-    time::get_uptime_ticks, tools::pseudosync::PseudoSync,
 };
 
 mod archspec;

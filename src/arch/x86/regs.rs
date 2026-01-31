@@ -1,4 +1,4 @@
-use core::fmt::{Arguments, Debug};
+use core::fmt::Debug;
 
 #[repr(C, packed(4))]
 pub struct CPURegisters {

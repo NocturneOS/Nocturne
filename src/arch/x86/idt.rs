@@ -1,7 +1,5 @@
 use spin::Mutex;
 
-use crate::tools::pseudosync::PseudoSync;
-
 const PRESENT: u8 = 1 << 7;
 
 const DPL_0: u8 = 0 << 5;
