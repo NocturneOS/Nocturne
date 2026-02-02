@@ -22,7 +22,7 @@ extern crate alloc;
 
 fn test_task() {
     loop {
-        qemu_println!("Hello, world!");
+        qemu_log!("Hello, world!");
 
         sched::sleep(Duration::from_secs(1));
     }

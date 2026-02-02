@@ -58,8 +58,9 @@ macro_rules! qemu_println {
 #[macro_export]
 macro_rules! qemu_log {
     ($($arg:tt)*) => {
+        let factor = 1_000_000_000;
         let time = $crate::time::get_uptime_nanos();
 
-        $crate::qemu_print!("<{:.9}> {}\n", time as f64 / 1_000_000_000.0, format_args!($($arg)*))
+        $crate::qemu_print!("<{:3}.{:.9}> {}\n", time / factor, time % factor, format_args!($($arg)*))
     };
 }
