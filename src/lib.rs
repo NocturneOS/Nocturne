@@ -3,7 +3,6 @@
 use core::{panic::PanicInfo, time::Duration};
 
 use crate::{
-    arch::x86::video::bios_text_vga::{clear_screen, test_write},
     sched::thread::ThreadFlags,
 };
 
@@ -55,8 +54,8 @@ extern "C" fn kmain() -> ! {
         }
     }
 
-    clear_screen();
-    test_write();
+    // clear_screen();
+    // test_write();
 
     qemu_log!("It works!");
 

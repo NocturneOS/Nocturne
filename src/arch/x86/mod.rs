@@ -4,7 +4,7 @@ pub mod interrupts;
 pub mod mem;
 pub mod multiboot;
 pub mod regs;
-mod sys;
+pub mod sys;
 pub mod timer;
 pub mod video;
 
@@ -15,6 +15,7 @@ use crate::{
     }, kmain, qemu_log, spec::KERNEL_BASE, tools
 };
 
+#[cfg(target_arch = "x86")]
 #[unsafe(no_mangle)]
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
