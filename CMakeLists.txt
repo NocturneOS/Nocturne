@@ -29,9 +29,9 @@ if(__INDEX EQUAL -1)
 endif()
 
 if(NOCTURNE_ARCH STREQUAL "x86")
-	set(CMAKE_ASM_FLAGS "-m32 -g -I${CMAKE_SOURCE_DIR}/src/arch/x86/asm")
+	set(CMAKE_ASM_FLAGS "-m32 -mcmodel=medium -fno-pic -static -g -I${CMAKE_SOURCE_DIR}/src/arch/x86/asm")
 elseif(NOCTURNE_ARCH STREQUAL "x86_64")
-    set(CMAKE_ASM_FLAGS "-m64 -fPIC -mcmodel=large -g -I${CMAKE_SOURCE_DIR}/src/arch/x86/asm -I${CMAKE_SOURCE_DIR}/src/arch/x86_64/asm")
+    set(CMAKE_ASM_FLAGS "-m64 -mcmodel=medium -fno-pic -static -g -I${CMAKE_SOURCE_DIR}/src/arch/x86/asm -I${CMAKE_SOURCE_DIR}/src/arch/x86_64/asm")
 endif()
 
 if(NOCTURNE_ARCH STREQUAL "x86")
@@ -85,6 +85,7 @@ if(NOCTURNE_ARCH STREQUAL "x86")
 elseif(NOCTURNE_ARCH STREQUAL "x86_64")
     set(ASM_SRC 
 		src/arch/x86_64/asm/init.s
+		src/arch/x86_64/asm/gdt.s
 	)
 endif()
 
