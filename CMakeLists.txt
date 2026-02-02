@@ -29,9 +29,9 @@ if(__INDEX EQUAL -1)
 endif()
 
 if(NOCTURNE_ARCH STREQUAL "x86")
-	set(CMAKE_ASM_FLAGS "-m32 -g")
+	set(CMAKE_ASM_FLAGS "-m32 -g -I${CMAKE_SOURCE_DIR}/src/arch/x86/asm")
 elseif(NOCTURNE_ARCH STREQUAL "x86_64")
-	set(CMAKE_ASM_FLAGS "-m64 -g")
+    set(CMAKE_ASM_FLAGS "-m64 -fPIC -mcmodel=large -g -I${CMAKE_SOURCE_DIR}/src/arch/x86/asm -I${CMAKE_SOURCE_DIR}/src/arch/x86_64/asm")
 endif()
 
 if(NOCTURNE_ARCH STREQUAL "x86")
@@ -66,8 +66,11 @@ elseif(NOCTURNE_ARCH STREQUAL "x86")
     set(QEMU "qemu-system-i386")
 endif()
 
-#set(QEMU_FLAGS -no-reboot -no-shutdown ${QEMU_ADDITIONAL_FLAGS} -m ${QEMU_MEMORY_SIZE} -cdrom ${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE} -d int,cpu_reset,guest_errors,invalid_mem -serial mon:stdio -rtc base=localtime -boot d -usb -audiodev pa,id=audiopa -device ac97,audiodev=audiopa -netdev user,id=net0,net=192.168.111.0,dhcpstart=192.168.111.128,hostfwd=tcp::9999-:9999 -device rtl8139,netdev=net0,id=mydev0 -object filter-dump,id=dump0,netdev=net0,file=netdump.pcap -trace "*ac97*")
-set(QEMU_FLAGS -no-reboot -no-shutdown ${QEMU_ADDITIONAL_FLAGS} -m ${QEMU_MEMORY_SIZE} -kernel ${CMAKE_CURRENT_BINARY_DIR}/nocturne.elf -d int,cpu_reset,guest_errors,invalid_mem -serial mon:stdio -rtc base=localtime -boot d -usb -audiodev pa,id=audiopa -device ac97,audiodev=audiopa -netdev user,id=net0,net=192.168.111.0,dhcpstart=192.168.111.128,hostfwd=tcp::9999-:9999 -device rtl8139,netdev=net0,id=mydev0 -object filter-dump,id=dump0,netdev=net0,file=netdump.pcap -trace "*ac97*")
+if(NOCTURNE_ARCH STREQUAL "x86_64")
+    set(QEMU_FLAGS -no-reboot -no-shutdown ${QEMU_ADDITIONAL_FLAGS} -m ${QEMU_MEMORY_SIZE} -cdrom ${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE} -d int,cpu_reset,guest_errors,invalid_mem -serial mon:stdio -rtc base=localtime -boot d -usb -audiodev pa,id=audiopa -device ac97,audiodev=audiopa -netdev user,id=net0,net=192.168.111.0,dhcpstart=192.168.111.128,hostfwd=tcp::9999-:9999 -device rtl8139,netdev=net0,id=mydev0 -object filter-dump,id=dump0,netdev=net0,file=netdump.pcap -trace "*ac97*")
+else()
+    set(QEMU_FLAGS -no-reboot -no-shutdown ${QEMU_ADDITIONAL_FLAGS} -m ${QEMU_MEMORY_SIZE} -kernel ${CMAKE_CURRENT_BINARY_DIR}/nocturne.elf -d int,cpu_reset,guest_errors,invalid_mem -serial mon:stdio -rtc base=localtime -boot d -usb -audiodev pa,id=audiopa -device ac97,audiodev=audiopa -netdev user,id=net0,net=192.168.111.0,dhcpstart=192.168.111.128,hostfwd=tcp::9999-:9999 -device rtl8139,netdev=net0,id=mydev0 -object filter-dump,id=dump0,netdev=net0,file=netdump.pcap -trace "*ac97*")
+endif()
 
 set(MKRESCUE grub-mkrescue)
 set(MKRESCUE_FLAGS -o "${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE}" ${ISO_DIR} --locales="" -V NocturneOS --themes="" --fonts="ascii")
@@ -78,6 +81,10 @@ if(NOCTURNE_ARCH STREQUAL "x86")
 		src/arch/x86/asm/gdt.s
 		src/arch/x86/asm/context_switch.s
 		src/arch/x86/asm/interrupt.s
+	)
+elseif(NOCTURNE_ARCH STREQUAL "x86_64")
+    set(ASM_SRC 
+		src/arch/x86_64/asm/init.s
 	)
 endif()
 
@@ -91,14 +98,12 @@ set_property(TARGET ${KERNEL} PROPERTY
 
 include(cmake/Rust.cmake)
 
-if(NOCTURNE_ARCH STREQUAL "x86")
-	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-		add_rust_integration("debug")
-	elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-		add_rust_integration("release_no_opt")
-	else()
-		add_rust_integration("release")
-	endif()
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_rust_integration("debug")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_rust_integration("release_no_opt")
+else()
+    add_rust_integration("release")
 endif()
 
 # Targets

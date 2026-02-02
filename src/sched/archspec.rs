@@ -1,6 +1,6 @@
 use core::{alloc::Layout, arch::asm};
 
-#[cfg(target_arch = "x86")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub struct ArchitectureSpecificRegion {
     fxsave_region: *mut u8,
 }

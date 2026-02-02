@@ -1,7 +1,6 @@
 use core::fmt::{self, Write};
 
 use lazy_static::lazy_static;
-use spin::Mutex;
 
 use crate::{arch, tools::pseudosync::PseudoSync};
 
@@ -61,6 +60,6 @@ macro_rules! qemu_log {
         let factor = 1_000_000_000;
         let time = $crate::time::get_uptime_nanos();
 
-        $crate::qemu_print!("<{:3}.{:.9}> {}\n", time / factor, time % factor, format_args!($($arg)*))
+        $crate::qemu_print!("<{:3}.{:09}> {}\n", time / factor, time % factor, format_args!($($arg)*))
     };
 }

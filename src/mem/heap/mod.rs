@@ -8,7 +8,7 @@ use core::ptr::{self, NonNull};
 use core::usize;
 use spin::{Mutex, MutexGuard};
 
-use crate::arch::x86::mem::paging::{self, PageFlags, map_single_page, unmap_single_page};
+use crate::arch::mem::paging::{self, PageFlags, map_single_page, unmap_single_page};
 use crate::mem::physical;
 use crate::{arch, qemu_log, tools};
 
