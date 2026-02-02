@@ -17,10 +17,14 @@ struct GDTEntry {
     access: u8,
     granularity: u8,
     base_high: u8,
+    #[cfg(target_arch = "x86_64")]
+    base_higher: u32,
+    #[cfg(target_arch = "x86_64")]
+    reserved: u32
 }
 
 impl GDTEntry {
-    pub fn new(base: u32, limit: u32, access: u8, flags: u8) -> Self {
+    pub fn new(base: usize, limit: u32, access: u8, flags: u8) -> Self {
         Self {
             base_low: (base & 0xffff) as u16,
             base_middle: ((base >> 16) & 0xff) as u8,
@@ -28,6 +32,10 @@ impl GDTEntry {
             limit_low: (limit & 0xffff) as u16,
             granularity: (((limit >> 16) & 0xf) as u8 | (flags << 4)),
             access,
+            #[cfg(target_arch = "x86_64")]
+            base_higher: (base >> 32) as u32,
+            #[cfg(target_arch = "x86_64")]
+            reserved: 0
         }
     }
 }

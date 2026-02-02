@@ -29,7 +29,9 @@ pub unsafe extern "C" fn backtrace() {
     };
 
     #[cfg(target_arch = "x86_64")]
-    asm!("mov {}, rbp", out(reg) frame);
+    unsafe {
+        asm!("mov {}, rbp", out(reg) frame);
+    }
 
     while !frame.is_null() {
         let f = unsafe { &*frame };

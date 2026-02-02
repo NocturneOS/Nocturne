@@ -43,7 +43,7 @@ fn main() {
             continue;
         }
 
-        let address: u32 = u32::from_str_radix(address, 16).unwrap();
+        let address: u64 = u64::from_str_radix(address, 16).unwrap();
         let mut name = stems.collect::<String>();
 
         if name.len() > 64 {

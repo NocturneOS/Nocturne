@@ -21,7 +21,8 @@ pub enum ThreadState {
     Dead
 }
 
-#[repr(C, packed(4))]
+#[cfg_attr(target_arch = "x86", repr(C, packed(4)))]
+#[cfg_attr(target_arch = "x86_64", repr(C, packed(8)))]
 pub struct Thread {
     pub id: usize,
 
