@@ -154,11 +154,13 @@ __pre_init:
     
     retf
 
-    #ljmp $0x08, $go64
-
 .code64
 .section .text
 go64_p1:
+    # Currently we are in lower-half code
+    # Because of `lea (go64_p1 - 0xFFFFFFFF80000000), %eax`
+    # So let's load a real address of entry point and do far jump.
+
     lea (go64_p2), %rax
 
     push $0x08

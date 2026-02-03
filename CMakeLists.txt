@@ -86,6 +86,8 @@ elseif(NOCTURNE_ARCH STREQUAL "x86_64")
     set(ASM_SRC 
 		src/arch/x86_64/asm/init.s
 		src/arch/x86_64/asm/gdt.s
+		src/arch/x86_64/asm/interrupt.s
+		src/arch/x86_64/asm/context_switch.s
 	)
 endif()
 

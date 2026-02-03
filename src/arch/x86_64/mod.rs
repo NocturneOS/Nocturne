@@ -3,7 +3,7 @@ pub mod regs;
 
 use crate::spec::KERNEL_BASE;
 use crate::arch::x86::multiboot::MultibootHeader;
-use crate::arch::x86::{gdt, sys};
+use crate::arch::x86::{gdt, idt, interrupts, sys, timer};
 use crate::qemu_log;
 
 #[unsafe(no_mangle)]
@@ -51,6 +51,14 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     sys::init();
 
     gdt::init();
+    idt::init();
+
+    interrupts::exceptions::register_exceptions();
+    interrupts::pic::init();
+
+    timer::pit::init(1000);
+
+    unsafe { x86::irq::enable() };
 
     qemu_log!("OK!");
 

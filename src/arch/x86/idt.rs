@@ -18,16 +18,24 @@ struct IDTEntry {
     always0: u8,
     flags: u8,
     base_high: u16,
+    #[cfg(target_arch = "x86_64")]
+    base_higher: u32,
+    #[cfg(target_arch = "x86_64")]
+    reserved: u32,
 }
 
 impl IDTEntry {
-    pub fn new(base: u32, selector: u16, flags: u8) -> Self {
+    pub fn new(base: usize, selector: u16, flags: u8) -> Self {
         Self {
             base_low: (base & 0xffff) as u16,
             selector,
             always0: 0,
             flags,
             base_high: ((base >> 16) & 0xffff) as u16,
+            #[cfg(target_arch = "x86_64")]
+            base_higher: ((base >> 32) & 0xffffffff) as u32,
+            #[cfg(target_arch = "x86_64")]
+            reserved: 0
         }
     }
 }

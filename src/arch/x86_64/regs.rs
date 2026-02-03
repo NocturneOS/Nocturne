@@ -3,6 +3,12 @@ use core::fmt::Debug;
 #[repr(C, packed(8))]
 pub struct CPURegisters {
     pub ds: u64,
+    pub r15: u64,
+    pub r14: u64,
+    pub r13: u64,
+    pub r12: u64,
+    pub r11: u64,
+    pub r10: u64,
     pub r9: u64,
     pub r8: u64,
     pub rdi: u64,
@@ -31,6 +37,9 @@ impl Debug for CPURegisters {
         write!(f, "RSI: {:016x}; RDI: {:016x}\n", self.rsi, self.rdi)?;
         write!(f, "RSP: {:016x}; RBP: {:016x}\n", self.rsp, self.rbp)?;
         write!(f, "R8:  {:016x}; R9:  {:016x}\n", self.r8, self.r9)?;
+        write!(f, "R10: {:016x}; R11: {:016x}\n", self.r10, self.r11)?;
+        write!(f, "R12: {:016x}; R13: {:016x}\n", self.r12, self.r13)?;
+        write!(f, "R14: {:016x}; R15: {:016x}\n", self.r14, self.r15)?;
         write!(f, "EIP: {:08x}\n", self.rip)?;
         write!(f, "CS:  {:04x}; DS: {:04x}\n", self.cs, self.ds)?;
         write!(f, "EFLAGS: {:08x}\n", self.rflags)?;
