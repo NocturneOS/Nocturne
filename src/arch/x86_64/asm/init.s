@@ -180,6 +180,10 @@ go64_p2:
 
     xor %rax, %rax
 
+    # PML4T[0] is an entry that identity maps PDP[0], but we are in "higher-half" addressing, so we can unmap 0x0 without any pain.
+    lea (boot_pml4t + 0xffffffff80000000), %rax
+    movq $0, (%rax)
+
     # PDP[0] is an entry that identity maps 0x0, but we are in "higher-half" addressing, so we can unmap 0x0 without any pain.
     lea (boot_pdpt + 0xffffffff80000000), %rax
     movq $0, (%rax)

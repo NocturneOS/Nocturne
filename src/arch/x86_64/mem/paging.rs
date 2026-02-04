@@ -1,5 +1,6 @@
 use crate::{arch::get_page_size, qemu_log, tools};
 use bitflags::bitflags;
+use cfg_if::cfg_if;
 
 pub const PAGE_SIZE: usize = 0x1000;
 
@@ -24,69 +25,69 @@ unsafe extern "C" {
 
 }
 
+const PML4T: usize = 0xFFFF_FF7F_BFDF_E000;
+const PDPT: usize = 0xFFFF_FF7F_BFC0_0000;
+const PDT: usize = 0xFFFF_FF7F_8000_0000;
+const PT: usize = 0xFFFF_FF00_0000_0000;
+
 #[inline]
-pub fn page_directory() -> &'static [usize] {
-    unsafe { core::slice::from_raw_parts(0xFFFF_F000 as *const usize, 1023) }
+pub fn pml4t() -> &'static [usize] {
+    unsafe { core::slice::from_raw_parts(PML4T as *const usize, 512) }
 }
 
 #[inline]
-pub fn page_directory_mut() -> &'static mut [usize] {
-    unsafe { core::slice::from_raw_parts_mut(0xFFFF_F000 as *mut usize, 1023) }
+pub fn pml4t_mut() -> &'static mut [usize] {
+    unsafe { core::slice::from_raw_parts_mut(PML4T as *mut usize, 512) }
 }
 
 #[inline]
-pub fn page_table(pd_idx: usize) -> &'static [usize] {
+pub fn pdpt(pml4t_idx: usize) -> &'static [usize] {
     unsafe {
-        core::slice::from_raw_parts((0xFFC0_0000 + (pd_idx * PAGE_SIZE)) as *const usize, 1024)
+        core::slice::from_raw_parts((PDPT | (pml4t_idx << 12)) as *const usize, 512)
     }
 }
 
 #[inline]
-pub fn page_table_mut(pd_idx: usize) -> &'static mut [usize] {
+pub fn pdpt_mut(pml4t_idx: usize) -> &'static mut [usize] {
     unsafe {
-        core::slice::from_raw_parts_mut((0xFFC0_0000 + (pd_idx * PAGE_SIZE)) as *mut usize, 1024)
+        core::slice::from_raw_parts_mut((PDPT | (pml4t_idx << 12)) as *mut usize, 512)
     }
 }
 
 #[inline]
-pub fn vaddr2indices(vaddr: usize) -> (usize, usize) {
-    (vaddr >> 22, (vaddr >> 12) & 0x3ff)
+pub fn pd(pml4t_idx: usize, pd_idx: usize) -> &'static [usize] {
+    unsafe {
+        core::slice::from_raw_parts((PDT | (pml4t_idx << 21) | (pd_idx << 12)) as *const usize, 511)
+    }
+}
+
+#[inline]
+pub fn pd_mut(pml4t_idx: usize, pd_idx: usize) -> &'static mut [usize] {
+    unsafe {
+        core::slice::from_raw_parts_mut((PDT | (pml4t_idx << 21) | (pd_idx << 12)) as *mut usize, 511)
+    }
+}
+
+#[inline]
+pub fn pt(pml4t_idx: usize, pd_idx: usize, pt_idx: usize) -> &'static [usize] {
+    unsafe {
+        core::slice::from_raw_parts((PT | (pml4t_idx << 30) | (pd_idx << 21) | (pt_idx << 12)) as *const usize, 511)
+    }
+}
+
+#[inline]
+pub fn pt_mut(pml4t_idx: usize, pd_idx: usize, pt_idx: usize) -> &'static mut [usize] {
+    unsafe {
+        core::slice::from_raw_parts_mut((PT | (pml4t_idx << 30) | (pd_idx << 21) | (pt_idx << 12)) as *mut usize, 511)
+    }
 }
 
 pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: PageFlags) {
-    let (pdi, pti) = vaddr2indices(virtual_address);
-    let pt = page_directory()[pdi];
-
-    if pt == 0 {
-        let new_pt = crate::mem::physical::allocate_one().unwrap();
-
-        page_directory_mut()[pdi] = new_pt | 3;
-
-        let page_table = page_table_mut(pdi);
-        page_table.fill(0);
-    }
-
-    let page_table = page_table_mut(pdi);
-
-    page_table[pti] = physical_address | flags.bits() | 1;
-
-    unsafe { x86::tlb::flush(virtual_address) };
+    todo!()
 }
 
 pub fn unmap_single_page(virtual_address: usize) {
-    let (pdi, pti) = vaddr2indices(virtual_address);
-
-    let pt = page_directory()[pdi];
-
-    if pt == 0 {
-        return;
-    }
-
-    let page_table = page_table_mut(pdi);
-
-    page_table[pti] = 0;
-
-    unsafe { x86::tlb::flush(virtual_address) };
+    todo!()
 }
 
 pub fn map_pages(phys_addr: usize, virt_addr: usize, byte_count: usize, flags: PageFlags) {
@@ -112,25 +113,7 @@ pub fn unmap_pages(virt_addr: usize, byte_count: usize) {
 }
 
 pub fn virt2phys(virt_addr: usize) -> Option<usize> {
-    let (pdi, pti) = vaddr2indices(virt_addr & !0xfff);
-
-    // If no page table in page directory, exit.
-    if (page_directory()[pdi] & 1) == 0 {
-        return None;
-    }
-
-    // If page directory entry is an extended page, return it.
-    if (page_directory()[pdi] & (1 << 7)) != 0 {
-        return Some(page_directory()[pdi] & !0xfff);
-    }
-
-    // If page is not mapped in page table, exit.
-    if (page_table(pdi)[pti] & 1) == 0 {
-        return None;
-    }
-
-    // Otherwise, get the page table entry and clear service bits.
-    Some(page_table(pdi)[pti] & !0x3ff)
+    todo!()
 }
 
 #[inline]
@@ -177,11 +160,11 @@ pub fn preinit(available_memory_size: usize) {
 
     qemu_log!("Total page count: {}", total_needed_pages);
 
-    if total_needed_pages > 1024 {
+    if total_needed_pages > 512 {
         // I would allocate a second page table or even recreate a page directory from scratch,
         // but in this stage we can't have an allocator.
 
-        // TODO: Use extended 4MB pages instead? They don't have to allocate.
+        // TODO: Use extended pages instead? They don't have to allocate.
         panic!(
             "Needed more than one page table for kernel initialization! (Total pages needed: {})",
             total_needed_pages
@@ -190,12 +173,28 @@ pub fn preinit(available_memory_size: usize) {
 
     // We did all checks, let's list the entries.
 
-    for (n, i) in page_directory().iter().enumerate() {
-        if *i == 0 {
+    for (n, i) in pml4t().iter().enumerate() {
+        if *i == 0 || n == 510 {
             continue;
         }
 
-        qemu_log!("PD[{n}] = {i:#x}");
+        qemu_log!("PML4T[{n}] = {i:#x}");
+
+        for (n2, i2) in pdpt(n).iter().enumerate() {
+            if *i2 == 0 {
+                continue;
+            }
+
+            qemu_log!("  PDPT[{n2}] = {i2:#x}");
+
+            for (n3, i3) in pd(n, n2).iter().enumerate() {
+                if *i3 == 0 {
+                    continue;
+                }
+    
+                qemu_log!("    PD[{n3}] = {i3:#x}");
+            }    
+        }
     }
 
     qemu_log!("Finished");

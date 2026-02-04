@@ -56,6 +56,8 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     interrupts::exceptions::register_exceptions();
     interrupts::pic::init();
 
+    mem::paging::preinit(mb.memory().total());
+
     timer::pit::init(1000);
 
     unsafe { x86::irq::enable() };
