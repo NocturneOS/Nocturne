@@ -1,4 +1,4 @@
-use crate::{arch::get_page_size, qemu_log, tools};
+use crate::{arch::get_page_size, mem::physical, qemu_log, tools};
 use bitflags::bitflags;
 
 pub const PAGE_SIZE: usize = 0x1000;
@@ -58,7 +58,7 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
     let pt = page_directory()[pdi];
 
     if pt == 0 {
-        let new_pt = crate::mem::physical::allocate_one().unwrap();
+        let new_pt = physical::allocate_one().unwrap();
 
         page_directory_mut()[pdi] = new_pt | 3;
 
