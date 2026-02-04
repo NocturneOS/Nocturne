@@ -1,4 +1,4 @@
-use crate::{arch::get_page_size, qemu_log, tools};
+use crate::{arch::get_page_size, mem::physical, qemu_log, tools};
 use bitflags::bitflags;
 use cfg_if::cfg_if;
 
@@ -25,11 +25,11 @@ unsafe extern "C" {
 
 }
 
-const fn indices_to_addr(pml4: u64, pdpt: u64, pd: u64, pt: u64) -> u64 {
+const fn indices2vaddr(pml4: u64, pdpt: u64, pd: u64, pt: u64) -> u64 {
     (pml4 << 39) | (pdpt << 30) | (pd << 21) | (pt << 12)
 }
 
-const fn addr_to_indices(addr: u64) -> (u64, u64, u64, u64) {
+const fn vaddr2indices(addr: usize) -> (usize, usize, usize, usize) {
     let pml4 = (addr >> 39) & 0x1FF;
     let pdpt = (addr >> 30) & 0x1FF;
     let pd = (addr >> 21) & 0x1FF;
@@ -64,51 +64,112 @@ pub fn pdpt_mut(pml4t_idx: usize) -> &'static mut [usize] {
 }
 
 #[inline]
-pub fn pd(pml4t_idx: usize, pd_idx: usize) -> &'static [usize] {
+pub fn pd(pml4t_idx: usize, pdpt_idx: usize) -> &'static [usize] {
     unsafe {
         core::slice::from_raw_parts(
-            (PDT | (pml4t_idx << 21) | (pd_idx << 12)) as *const usize,
+            (PDT | (pml4t_idx << 21) | (pdpt_idx << 12)) as *const usize,
             512,
         )
     }
 }
 
 #[inline]
-pub fn pd_mut(pml4t_idx: usize, pd_idx: usize) -> &'static mut [usize] {
+pub fn pd_mut(pml4t_idx: usize, pdpt_idx: usize) -> &'static mut [usize] {
     unsafe {
         core::slice::from_raw_parts_mut(
-            (PDT | (pml4t_idx << 21) | (pd_idx << 12)) as *mut usize,
+            (PDT | (pml4t_idx << 21) | (pdpt_idx << 12)) as *mut usize,
             512,
         )
     }
 }
 
 #[inline]
-pub fn pt(pml4t_idx: usize, pd_idx: usize, pt_idx: usize) -> &'static [usize] {
+pub fn pt(pml4t_idx: usize, pdpt_idx: usize, pd_idx: usize) -> &'static [usize] {
     unsafe {
         core::slice::from_raw_parts(
-            (PT | (pml4t_idx << 30) | (pd_idx << 21) | (pt_idx << 12)) as *const usize,
+            (PT | (pml4t_idx << 30) | (pdpt_idx << 21) | (pd_idx << 12)) as *const usize,
             512,
         )
     }
 }
 
 #[inline]
-pub fn pt_mut(pml4t_idx: usize, pd_idx: usize, pt_idx: usize) -> &'static mut [usize] {
+pub fn pt_mut(pml4t_idx: usize, pdpt_idx: usize, pd_idx: usize) -> &'static mut [usize] {
     unsafe {
         core::slice::from_raw_parts_mut(
-            (PT | (pml4t_idx << 30) | (pd_idx << 21) | (pt_idx << 12)) as *mut usize,
+            (PT | (pml4t_idx << 30) | (pdpt_idx << 21) | (pd_idx << 12)) as *mut usize,
             512,
         )
     }
 }
 
 pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: PageFlags) {
-    todo!()
+    let (i_pml4t, i_pdpt, i_pdt, i_pt) = vaddr2indices(virtual_address);
+    let v_pdpt = pml4t()[i_pml4t];
+
+    if v_pdpt == 0 {
+        let new_pdpt = physical::allocate_one().unwrap();
+
+        pml4t_mut()[i_pml4t] = new_pdpt | 3;
+
+        let pdpt_ = pdpt_mut(i_pml4t);
+        pdpt_.fill(0);
+    }
+
+    let v_pdt = pdpt(i_pml4t)[i_pdpt];
+
+    if v_pdt == 0 {
+        let new_pdt = physical::allocate_one().unwrap();
+
+        pdpt_mut(i_pml4t)[i_pdpt] = new_pdt | 3;
+
+        let pdt_ = pd_mut(i_pml4t, i_pdpt);
+        pdt_.fill(0);
+    }
+
+    let v_pd = pd(i_pml4t, i_pdpt)[i_pdt];
+
+    if v_pd == 0 {
+        let new_pd = physical::allocate_one().unwrap();
+
+        pd_mut(i_pml4t, i_pdpt)[i_pdt] = new_pd | 3;
+
+        let pt_ = pt_mut(i_pml4t, i_pdpt, i_pdt);
+        pt_.fill(0);
+    }
+
+    let page_table = pt_mut(i_pml4t, i_pdpt, i_pdt);
+
+    page_table[i_pt] = physical_address | flags.bits() | 1;
+
+    unsafe { x86::tlb::flush(virtual_address) };
 }
 
 pub fn unmap_single_page(virtual_address: usize) {
-    todo!()
+    let (i_pml4t, i_pdpt, i_pdt, i_pt) = vaddr2indices(virtual_address);
+    let v_pdpt = pml4t()[i_pml4t];
+
+    if v_pdpt == 0 {
+        return;
+    }
+
+    let v_pdt = pdpt(i_pml4t)[i_pdpt];
+
+    if v_pdt == 0 {
+        return;
+    }
+
+    let v_pd = pd(i_pml4t, i_pdpt)[i_pdt];
+
+    if v_pd == 0 {
+        return;
+    }
+
+    let page_table = pt_mut(i_pml4t, i_pdpt, i_pdt);
+
+    page_table[i_pt] = 0;
+
+    unsafe { x86::tlb::flush(virtual_address) };
 }
 
 pub fn map_pages(phys_addr: usize, virt_addr: usize, byte_count: usize, flags: PageFlags) {

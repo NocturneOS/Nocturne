@@ -33,10 +33,11 @@ extern "C" fn kmain() -> ! {
     // To make kernel fully initialized we should initialize heap.
 
     mem::heap::init();
-
-    sched::init();
-
+    
+    #[cfg(target_arch = "x86")]
     {
+        sched::init();
+    
         for _ in 0..128 {
             sched::create_thread(
                 test_task,

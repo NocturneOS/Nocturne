@@ -1,10 +1,11 @@
 pub mod mem;
 pub mod regs;
 
-use crate::spec::KERNEL_BASE;
-use crate::arch::x86::multiboot::MultibootHeader;
+use crate::arch::mem::paging::{PageFlags, map_single_page};
+use crate::arch::x86::multiboot::{MultibootHeader, MultibootMMapType};
 use crate::arch::x86::{gdt, idt, interrupts, sys, timer};
-use crate::qemu_log;
+use crate::spec::KERNEL_BASE;
+use crate::{arch, kmain, qemu_log, tools};
 
 #[unsafe(no_mangle)]
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
@@ -47,7 +48,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     }
 
     // Fill system info
-    
+
     sys::init();
 
     gdt::init();
@@ -58,11 +59,87 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     mem::paging::preinit(mb.memory().total());
 
+    crate::mem::physical::init();
+
+    for i in mb
+        .mmap()
+        .iter()
+        .filter(|x| x.ty() != MultibootMMapType::Available)
+        .map(|x| (x.addr(), x.length()))
+    {
+        let addr_start = tools::align_value(i.0.try_into().unwrap(), arch::get_page_size());
+
+        if i.0 + i.1 - 1 >= usize::MAX as _ {
+            break;
+        }
+
+        let addr_end =
+            tools::align_value((i.0 + i.1 - 1).try_into().unwrap(), arch::get_page_size());
+
+        if addr_start > mb.memory().total() {
+            continue;
+        }
+
+        for addr in (addr_start..addr_end).step_by(arch::get_page_size()) {
+            crate::mem::physical::mark_page(addr.try_into().unwrap(), true);
+        }
+
+        qemu_log!("Marked {:#x?} - {:#x?} as reserved.", addr_start, addr_end);
+    }
+
+    // Mark all the memory past the kernel (and the kernel region) as used
+
+    {
+        let start = crate::sys::info::info().kernel_end - crate::spec::KERNEL_BASE;
+
+        for addr in (0..start).step_by(arch::get_page_size()) {
+            crate::mem::physical::mark_page(addr, true);
+        }
+
+        qemu_log!("Marked {:#x?} - {:#x?} as used.", 0, start);
+    }
+
+    // Reserve memory for modules we load.
+
+    {
+        for (n, i) in mb.modules().iter().enumerate() {
+            let start_addr = i.mod_start as usize;
+            let end_addr = tools::align_value(i.mod_end as usize, arch::get_page_size());
+
+            for addr in (start_addr..end_addr).step_by(arch::get_page_size()) {
+                crate::mem::physical::mark_page(addr, true);
+            }
+
+            qemu_log!(
+                "Marked module #{} {:#?} ({:x} - {:x}) as reserved.",
+                n,
+                i.cmdline(),
+                start_addr,
+                end_addr
+            );
+        }
+    }
+
+    // Update info for `kmain`
+    {
+        let kernel_end = crate::sys::info::info().kernel_end;
+        let mut info = crate::sys::info::info_mut();
+
+        info.installed_memory = Some(mb.memory().total());
+
+        // Set the start of `free memory zone` to the end of last module.
+        // If no modules specified, use kernel end address.
+        info.available_memory_start = Some(
+            mb.modules()
+                .last()
+                .map(|x| x.mod_end as usize)
+                .unwrap_or(kernel_end - KERNEL_BASE),
+        );
+    }
+
     timer::pit::init(1000);
 
     unsafe { x86::irq::enable() };
 
-    qemu_log!("OK!");
-
-    loop {}
+    kmain()
 }
