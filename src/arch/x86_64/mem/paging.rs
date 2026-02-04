@@ -25,10 +25,23 @@ unsafe extern "C" {
 
 }
 
-const PML4T: usize = 0xFFFF_FF7F_BFDF_E000;
-const PDPT: usize = 0xFFFF_FF7F_BFC0_0000;
-const PDT: usize = 0xFFFF_FF7F_8000_0000;
-const PT: usize = 0xFFFF_FF00_0000_0000;
+const fn indices_to_addr(pml4: u64, pdpt: u64, pd: u64, pt: u64) -> u64 {
+    (pml4 << 39) | (pdpt << 30) | (pd << 21) | (pt << 12)
+}
+
+const fn addr_to_indices(addr: u64) -> (u64, u64, u64, u64) {
+    let pml4 = (addr >> 39) & 0x1FF;
+    let pdpt = (addr >> 30) & 0x1FF;
+    let pd = (addr >> 21) & 0x1FF;
+    let pt = (addr >> 12) & 0x1FF;
+
+    (pml4, pdpt, pd, pt)
+}
+
+const PML4T: usize = 0xFFFF_FF7F_BFDF_E000;  // (510, 510, 510, 510)
+const PDPT: usize = 0xFFFF_FF7F_BFC0_0000;   // (510, 510, 510, 0)
+const PDT: usize = 0xFFFF_FF7F_8000_0000;    // (510, 510, 0, 0)
+const PT: usize = 0xFFFF_FF00_0000_0000;     // (510, 0, 0, 0)
 
 #[inline]
 pub fn pml4t() -> &'static [usize] {
@@ -42,43 +55,51 @@ pub fn pml4t_mut() -> &'static mut [usize] {
 
 #[inline]
 pub fn pdpt(pml4t_idx: usize) -> &'static [usize] {
-    unsafe {
-        core::slice::from_raw_parts((PDPT | (pml4t_idx << 12)) as *const usize, 512)
-    }
+    unsafe { core::slice::from_raw_parts((PDPT | (pml4t_idx << 12)) as *const usize, 512) }
 }
 
 #[inline]
 pub fn pdpt_mut(pml4t_idx: usize) -> &'static mut [usize] {
-    unsafe {
-        core::slice::from_raw_parts_mut((PDPT | (pml4t_idx << 12)) as *mut usize, 512)
-    }
+    unsafe { core::slice::from_raw_parts_mut((PDPT | (pml4t_idx << 12)) as *mut usize, 512) }
 }
 
 #[inline]
 pub fn pd(pml4t_idx: usize, pd_idx: usize) -> &'static [usize] {
     unsafe {
-        core::slice::from_raw_parts((PDT | (pml4t_idx << 21) | (pd_idx << 12)) as *const usize, 511)
+        core::slice::from_raw_parts(
+            (PDT | (pml4t_idx << 21) | (pd_idx << 12)) as *const usize,
+            512,
+        )
     }
 }
 
 #[inline]
 pub fn pd_mut(pml4t_idx: usize, pd_idx: usize) -> &'static mut [usize] {
     unsafe {
-        core::slice::from_raw_parts_mut((PDT | (pml4t_idx << 21) | (pd_idx << 12)) as *mut usize, 511)
+        core::slice::from_raw_parts_mut(
+            (PDT | (pml4t_idx << 21) | (pd_idx << 12)) as *mut usize,
+            512,
+        )
     }
 }
 
 #[inline]
 pub fn pt(pml4t_idx: usize, pd_idx: usize, pt_idx: usize) -> &'static [usize] {
     unsafe {
-        core::slice::from_raw_parts((PT | (pml4t_idx << 30) | (pd_idx << 21) | (pt_idx << 12)) as *const usize, 511)
+        core::slice::from_raw_parts(
+            (PT | (pml4t_idx << 30) | (pd_idx << 21) | (pt_idx << 12)) as *const usize,
+            512,
+        )
     }
 }
 
 #[inline]
 pub fn pt_mut(pml4t_idx: usize, pd_idx: usize, pt_idx: usize) -> &'static mut [usize] {
     unsafe {
-        core::slice::from_raw_parts_mut((PT | (pml4t_idx << 30) | (pd_idx << 21) | (pt_idx << 12)) as *mut usize, 511)
+        core::slice::from_raw_parts_mut(
+            (PT | (pml4t_idx << 30) | (pd_idx << 21) | (pt_idx << 12)) as *mut usize,
+            512,
+        )
     }
 }
 
@@ -191,9 +212,9 @@ pub fn preinit(available_memory_size: usize) {
                 if *i3 == 0 {
                     continue;
                 }
-    
+
                 qemu_log!("    PD[{n3}] = {i3:#x}");
-            }    
+            }
         }
     }
 
