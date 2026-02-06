@@ -195,7 +195,43 @@ pub fn unmap_pages(virt_addr: usize, byte_count: usize) {
 }
 
 pub fn virt2phys(virt_addr: usize) -> Option<usize> {
-    todo!()
+    let (pml4t_i, pdpt_i, pd_i, pt_i) = vaddr2indices(virt_addr & !0xfff);
+
+    if (pml4t()[pml4t_i] & 1) == 0 {
+        return None;
+    }
+
+    if (pml4t()[pml4t_i] & (1 << 7)) != 0 {
+        return Some(pml4t()[pml4t_i] & !0xfff);
+    }
+
+    //
+
+    if (pdpt(pml4t_i)[pdpt_i] & 1) == 0 {
+        return None;
+    }
+
+    if (pdpt(pml4t_i)[pdpt_i] & (1 << 7)) != 0 {
+        return Some(pdpt(pml4t_i)[pdpt_i] & !0xfff);
+    }
+
+    //
+
+    if (pd(pml4t_i, pdpt_i)[pd_i] & 1) == 0 {
+        return None;
+    }
+
+    if (pd(pml4t_i, pdpt_i)[pd_i] & (1 << 7)) != 0 {
+        return Some(pd(pml4t_i, pdpt_i)[pd_i] & !0xfff);
+    }
+
+    //
+
+    if (pt(pml4t_i, pdpt_i, pd_i)[pt_i] & 1) == 0 {
+        return None;
+    }
+
+    Some(pt(pml4t_i, pdpt_i, pd_i)[pt_i] & !0x1ff)
 }
 
 #[inline]

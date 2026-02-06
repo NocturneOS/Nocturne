@@ -48,10 +48,10 @@ set(KERNEL nocturne.elf)
 
 if(NOCTURNE_ARCH STREQUAL "x86")
 	set(LINKER_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/src/arch/x86/link.ld")
-    set(CMAKE_EXE_LINKER_FLAGS "-Wl,-T ${LINKER_SCRIPT_FILE} -nostdlib -static -Wl,-znoexecstack -Wl,--stats")
+    set(CMAKE_EXE_LINKER_FLAGS "-Wl,-T ${LINKER_SCRIPT_FILE} -nostdlib -fno-pic -static -Wl,-znoexecstack -Wl,--stats")
 elseif(NOCTURNE_ARCH STREQUAL "x86_64")
 	set(LINKER_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/src/arch/x86_64/link.ld")
-    set(CMAKE_EXE_LINKER_FLAGS "-Wl,-T ${LINKER_SCRIPT_FILE} -nostdlib -static -Wl,-znoexecstack -Wl,--stats")
+    set(CMAKE_EXE_LINKER_FLAGS "-Wl,-T ${LINKER_SCRIPT_FILE} -nostdlib -fno-pic -static -Wl,-znoexecstack -Wl,--stats")
 endif()
 
 set(ISO_FILE "NocturneOS_${NOCTURNE_ARCH}_${CMAKE_BUILD_TYPE}.iso")

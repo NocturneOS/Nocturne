@@ -174,7 +174,7 @@ impl InnerArenaAllocator {
 
                 map_single_page(page, i, PAGE_FLAGS);
 
-                // qemu_log!("Page {page:08x} allocated and mapped to {i:08x}!");
+                // qemu_log!("Page {page:x} allocated and mapped to {i:x}!");
             }
         }
     }

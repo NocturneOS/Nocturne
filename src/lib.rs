@@ -34,10 +34,9 @@ extern "C" fn kmain() -> ! {
 
     mem::heap::init();
     
-    #[cfg(target_arch = "x86")]
-    {
-        sched::init();
+    sched::init();
     
+    {
         for _ in 0..128 {
             sched::create_thread(
                 test_task,

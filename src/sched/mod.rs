@@ -142,32 +142,73 @@ impl Scheduler {
 
         let id = next_tid();
 
-        let mut writeable_esp = unsafe { stack.addr() + stack_size } as *mut usize;
+        let mut writeable_sp = unsafe { stack.addr() + stack_size } as *mut usize;
 
+        #[cfg(target_arch = "x86")]
         unsafe {
-            writeable_esp = writeable_esp.sub(1);
-            writeable_esp.write(entry as *const () as usize);
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(entry as *const () as usize);
             
-            writeable_esp = writeable_esp.sub(1);
-            writeable_esp.write(0x00000202);  // IF=1, IOPL=0
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0x202);  // IF=1, IOPL=0
            
-            writeable_esp = writeable_esp.sub(1);
-            writeable_esp.write(0x00000000);  // EAX
-            writeable_esp = writeable_esp.sub(1);
-            writeable_esp.write(0x00000000);  // EBX
-            writeable_esp = writeable_esp.sub(1);
-            writeable_esp.write(0x00000000);  // ECX
-            writeable_esp = writeable_esp.sub(1);
-            writeable_esp.write(0x00000000);  // EDX
-            writeable_esp = writeable_esp.sub(1);
-            writeable_esp.write(0x00000000);  // ESI
-            writeable_esp = writeable_esp.sub(1);
-            writeable_esp.write(0x00000000);  // EDI
-            writeable_esp = writeable_esp.sub(1);
-            writeable_esp.write(0x00000000);  // EBP
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RAX/EAX
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RBX/EBX
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RCX/ECX
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RDX/EDX
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RSI/ESI
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RDI/EDI
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RBP/EBP
         }
 
-        qemu_log!("ESP: {:08x?}", writeable_esp.addr());
+        #[cfg(target_arch = "x86_64")]
+        unsafe {
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(entry as *const () as usize);
+            
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0x202);  // IF=1, IOPL=0
+           
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RAX
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RBX
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RCX
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RDX
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RSI
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RDI
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // RBP
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // R8
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // R9
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // R10
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // R11
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // R12
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // R13
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // R14
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(0);  // R15
+        }
+
+        qemu_log!("ESP: {:08x?}", writeable_sp.addr());
 
         let tcb = Thread {
             id,
@@ -176,7 +217,7 @@ impl Scheduler {
             state: thread::ThreadState::Ready,
             stack_addr: stack.addr(),
             stack_size,
-            stack_pointer: writeable_esp.addr(),
+            stack_pointer: writeable_sp.addr(),
             entry_point: entry as *const () as usize,
             arch_specific_region: ArchitectureSpecificRegion::new(),
             last_error: 0,
@@ -216,18 +257,14 @@ impl Scheduler {
 
         let this = self.this_task();
 
+        // If it's not an idle task, push it to the queue.
         if !Arc::ptr_eq(&this, self.idle_task.as_ref().unwrap()) {
             self.working_queue.push_back(Arc::clone(&this));
         }
 
-        // qemu_log!("Deque len: {}", self.working_queue.len());
-
-        // for i in self.working_queue.iter().map(|x| x.id) {
-        //     qemu_log!("- {i}");
-        // }
-
         let next = self.next_task();
 
+        // If next task is a current task, do not switch contexts.
         if this.id == next.id {
             return;
         }

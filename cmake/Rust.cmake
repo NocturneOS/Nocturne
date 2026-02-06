@@ -4,7 +4,7 @@ set(RUST_FLAGS
 	-Zbuild-std=core,compiler_builtins,alloc
 	-Znext-lockfile-bump
 	--
-	-C code-model=large
+	-C code-model=kernel
 	-C relocation-model=static
 )
 set(RUST_TOOLCHAIN_FULLNAME "${RUST_COMPILER_TOOLCHAIN}-x86_64-unknown-linux-gnu")  
