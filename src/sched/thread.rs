@@ -1,3 +1,5 @@
+use core::cell::Cell;
+
 use alloc::sync::Arc;
 use bitflags::bitflags;
 
@@ -29,7 +31,7 @@ pub struct Thread {
 
     pub(crate) process: super::SharedProcess,
     pub flags: ThreadFlags,
-    pub state: ThreadState,
+    pub state: Cell<ThreadState>,
 
     pub stack_addr: usize,
     pub stack_size: usize,
@@ -42,6 +44,9 @@ pub struct Thread {
 
     pub last_error: usize
 }
+
+unsafe impl Sync for Thread {}
+unsafe impl Send for Thread {}
 
 // impl Drop for Thread {
 //     fn drop(&mut self) {

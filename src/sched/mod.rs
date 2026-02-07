@@ -1,6 +1,6 @@
 use core::{
     alloc::Layout,
-    cell::{RefCell, UnsafeCell},
+    cell::{Cell, RefCell, UnsafeCell},
     sync::atomic::{AtomicUsize, Ordering},
 };
 
@@ -106,7 +106,7 @@ impl Scheduler {
 
             process: Arc::clone(&kernel_process),
             flags: ThreadFlags::empty(),
-            state: thread::ThreadState::Running,
+            state: Cell::new(thread::ThreadState::Running),
             stack_size: 32 << 10, // 32 KB
             arch_specific_region: ArchitectureSpecificRegion::new(),
             last_error: 0,
@@ -155,8 +155,8 @@ impl Scheduler {
 
         #[cfg(target_arch = "x86")]
         unsafe {
-            // writeable_sp = writeable_sp.sub(1);
-            // writeable_sp.write(thread_exit as *const () as usize);
+            writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(thread_exit as *const () as usize);
 
             writeable_sp = writeable_sp.sub(1);
             writeable_sp.write(entry as *const () as usize);
@@ -229,7 +229,7 @@ impl Scheduler {
             id,
             process,
             flags,
-            state: thread::ThreadState::Ready,
+            state: Cell::new(thread::ThreadState::Ready),
             stack_addr: stack.addr(),
             stack_size,
             stack_pointer: writeable_sp.addr(),
@@ -282,18 +282,17 @@ impl Scheduler {
     fn next_task(&mut self) -> SharedThread {
         let mut task: Option<SharedThread> = None;
 
-        // let current_id = self.current_thread.as_ref().unwrap().id;
+        let current_id = self.current_thread.as_ref().unwrap().id;
 
         while let Some(t) = self.working_queue.pop_front() {
-            // if t.state == ThreadState::Dead {
-            //     // If we are scheduling from a kernel task, do all dirty work to prevent use-after-free.
-            //     if current_id == 0 {
-            //         qemu_log!("Dead");
-            //         // self.remove_task(t);
-            //     }
+            if t.state.get() == ThreadState::Dead {
+                // If we are scheduling from a kernel task, do all dirty work to prevent use-after-free.
+                if current_id == 0 {
+                    self.remove_task(t);
+                }
 
-            //     continue;
-            // }
+                continue;
+            }
 
             task = Some(t);
             break;
@@ -506,22 +505,19 @@ pub fn sleep(dur: core::time::Duration) {
 pub extern "C" fn thread_exit() -> ! {
     arch::disable_interrupts();
 
-    // {
-    //     let thread = this_thread();
+    {
+        let thread = this_thread();
 
-    //     // unsafe { thread.get_mut() }.state = thread::ThreadState::Dead;
-    // }
+        thread.state.set(thread::ThreadState::Dead);
+    }
 
-    // schedule();
+    schedule();
 
-    unreachable!()
+    loop {}
 }
 
 fn idle_task() {
-    // let mut a = 0usize;
-
     loop {
         arch::halt();
-        // a = a.wrapping_add(1);
     }
 }

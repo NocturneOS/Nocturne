@@ -27,9 +27,9 @@ fn test_task() {
 
         sched::sleep(Duration::from_millis(id as u64 * 200));
 
-        // qemu_log!("Exiting");
+        qemu_log!("Exiting");
 
-        // break;
+        break;
     }
 }
 
@@ -46,11 +46,9 @@ extern "C" fn kmain() -> ! {
         for _ in 0..128 {
             sched::create_thread(
                 test_task,
-                0x1000,
+                0x4000,
                 ThreadFlags::empty(),
             );
-            
-            sched::sleep(Duration::from_millis(50));
         }
 
         loop {
