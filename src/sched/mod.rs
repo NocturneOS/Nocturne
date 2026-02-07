@@ -1,5 +1,6 @@
 use core::{
     alloc::Layout,
+    cell::{RefCell, UnsafeCell},
     sync::atomic::{AtomicUsize, Ordering},
 };
 
@@ -12,13 +13,13 @@ use lazy_static::lazy_static;
 use spin::{Mutex, MutexGuard};
 
 use crate::{
-    arch,
-    qemu_log,
+    arch, qemu_log,
     sched::{
         archspec::ArchitectureSpecificRegion,
         process::Process,
-        thread::{Thread, ThreadFlags},
+        thread::{Thread, ThreadFlags, ThreadState},
     },
+    tools::pseudosync::PseudoSync,
 };
 
 mod archspec;
@@ -31,18 +32,23 @@ lazy_static! {
     static ref GLOBAL_TID: AtomicUsize = AtomicUsize::new(0);
 }
 
+// pub type SharedProcess = Arc<PseudoSync<Process>>;
+pub type SharedProcess = Arc<Process>;
+// pub type SharedThread = Arc<PseudoSync<Thread>>;
+pub type SharedThread = Arc<Thread>;
+
 pub struct Scheduler {
     pub is_initialized: bool,
 
-    process_list: LinkedList<Arc<Process>>,
-    thread_list: LinkedList<Arc<Thread>>,
+    process_list: LinkedList<SharedProcess>,
+    thread_list: LinkedList<SharedThread>,
 
-    working_queue: VecDeque<Arc<Thread>>,
+    working_queue: VecDeque<SharedThread>,
 
-    idle_task: Option<Arc<Thread>>,
+    idle_task: Option<SharedThread>,
 
-    current_process: Option<Arc<Process>>,
-    current_thread: Option<Arc<Thread>>,
+    current_process: Option<SharedProcess>,
+    current_thread: Option<SharedThread>,
 }
 
 unsafe extern "C" {
@@ -92,6 +98,7 @@ impl Scheduler {
             cwd: String::from("<unknown>"),
         };
 
+        // let kernel_process = Arc::new(PseudoSync::new(kernel_process));
         let kernel_process = Arc::new(kernel_process);
 
         let kernel_thread = Thread {
@@ -110,6 +117,7 @@ impl Scheduler {
             entry_point: 0,
         };
 
+        // let kernel_thread = Arc::new(PseudoSync::new(kernel_thread));
         let kernel_thread = Arc::new(kernel_thread);
 
         self.current_process = Some(Arc::clone(&kernel_process));
@@ -132,13 +140,14 @@ impl Scheduler {
 
     pub fn create_thread(
         &mut self,
-        process: Arc<Process>,
+        process: SharedProcess,
         entry: fn() -> (),
         stack_size: usize,
         flags: ThreadFlags,
-    ) -> Option<Arc<Thread>> {
-        let stack: *mut u8 =
-            unsafe { alloc::alloc::alloc_zeroed(Layout::from_size_align(stack_size, 0x1000).ok()?) };
+    ) -> Option<SharedThread> {
+        let stack: *mut u8 = unsafe {
+            alloc::alloc::alloc_zeroed(Layout::from_size_align(stack_size, 0x1000).ok()?)
+        };
 
         let id = next_tid();
 
@@ -146,66 +155,72 @@ impl Scheduler {
 
         #[cfg(target_arch = "x86")]
         unsafe {
+            // writeable_sp = writeable_sp.sub(1);
+            // writeable_sp.write(thread_exit as *const () as usize);
+
             writeable_sp = writeable_sp.sub(1);
             writeable_sp.write(entry as *const () as usize);
-            
+
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0x202);  // IF=1, IOPL=0
-           
+            writeable_sp.write(0x202); // IF=1, IOPL=0
+
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RAX/EAX
+            writeable_sp.write(0); // RAX/EAX
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RBX/EBX
+            writeable_sp.write(0); // RBX/EBX
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RCX/ECX
+            writeable_sp.write(0); // RCX/ECX
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RDX/EDX
+            writeable_sp.write(0); // RDX/EDX
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RSI/ESI
+            writeable_sp.write(0); // RSI/ESI
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RDI/EDI
+            writeable_sp.write(0); // RDI/EDI
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RBP/EBP
+            writeable_sp.write(0); // RBP/EBP
         }
 
         #[cfg(target_arch = "x86_64")]
         unsafe {
             writeable_sp = writeable_sp.sub(1);
+            writeable_sp.write(thread_exit as *const () as usize);
+
+            writeable_sp = writeable_sp.sub(1);
             writeable_sp.write(entry as *const () as usize);
-            
+
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0x202);  // IF=1, IOPL=0
-           
+            writeable_sp.write(0x202); // IF=1, IOPL=0
+
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RAX
+            writeable_sp.write(0); // RAX
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RBX
+            writeable_sp.write(0); // RBX
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RCX
+            writeable_sp.write(0); // RCX
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RDX
+            writeable_sp.write(0); // RDX
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RSI
+            writeable_sp.write(0); // RSI
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RDI
+            writeable_sp.write(0); // RDI
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // RBP
+            writeable_sp.write(0); // RBP
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // R8
+            writeable_sp.write(0); // R8
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // R9
+            writeable_sp.write(0); // R9
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // R10
+            writeable_sp.write(0); // R10
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // R11
+            writeable_sp.write(0); // R11
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // R12
+            writeable_sp.write(0); // R12
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // R13
+            writeable_sp.write(0); // R13
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // R14
+            writeable_sp.write(0); // R14
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0);  // R15
+            writeable_sp.write(0); // R15
         }
 
         qemu_log!("ESP: {:08x?}", writeable_sp.addr());
@@ -223,7 +238,9 @@ impl Scheduler {
             last_error: 0,
         };
 
+        // let tcb = Arc::new(PseudoSync::new(tcb));
         let tcb = Arc::new(tcb);
+
         self.thread_list.push_back(Arc::clone(&tcb));
 
         if !flags.contains(ThreadFlags::Raw) {
@@ -234,14 +251,53 @@ impl Scheduler {
         Some(tcb)
     }
 
-    fn this_task(&self) -> Arc<Thread> {
+    fn remove_task(&mut self, thread: SharedThread) {
+        // Remove the thread from the thread list.
+        self.thread_list
+            .extract_if(|x| x.id == thread.id)
+            .for_each(drop);
+
+        // The most important thing - when we are creating an Arc, its `strong_count` is 1.
+        // When we call `Arc::clone` it increments.
+        // In most places in the scheduler we call that method to clone the reference to threads.
+        // So when we're cleaning up the thread, we have to verify that no redundant references remain
+        // to avoid UB (because we free the thread's stack).
+        assert_eq!(Arc::strong_count(&thread), 1);
+
+        qemu_log!("Strong count: {:?}", Arc::strong_count(&thread));
+
+
+        let layout = Layout::from_size_align(thread.stack_size, 0x1000).unwrap();
+        let stack = thread.stack_addr as *mut u8;
+
+        unsafe { alloc::alloc::dealloc(stack, layout) };
+
+        // unsafe { thread.process.get_mut().thread_count -= 1 };
+    }
+
+    fn this_task(&self) -> SharedThread {
         self.current_thread.as_ref().unwrap().clone()
     }
 
-    fn next_task(&mut self) -> Arc<Thread> {
-        let task = self
-            .working_queue
-            .pop_front();
+    fn next_task(&mut self) -> SharedThread {
+        let mut task: Option<SharedThread> = None;
+
+        // let current_id = self.current_thread.as_ref().unwrap().id;
+
+        while let Some(t) = self.working_queue.pop_front() {
+            // if t.state == ThreadState::Dead {
+            //     // If we are scheduling from a kernel task, do all dirty work to prevent use-after-free.
+            //     if current_id == 0 {
+            //         qemu_log!("Dead");
+            //         // self.remove_task(t);
+            //     }
+
+            //     continue;
+            // }
+
+            task = Some(t);
+            break;
+        }
 
         if let Some(task) = task {
             return task;
@@ -252,7 +308,7 @@ impl Scheduler {
         Arc::clone(self.idle_task.as_ref().unwrap())
     }
 
-    pub unsafe extern "C" fn schedule(&mut self) {
+    pub extern "C" fn schedule(&mut self) {
         // qemu_log!("Entered scheduler");
 
         let this = self.this_task();
@@ -285,6 +341,9 @@ impl Scheduler {
                 let np_ptr = next_proc as *const Process;
                 let nt_ptr = next_ref as *const Thread;
 
+                drop(this);
+                drop(next);
+
                 __context_switch(tp_ptr, tt_ptr as *mut Thread, np_ptr, nt_ptr);
             }
         }
@@ -314,7 +373,7 @@ pub fn init() {
     qemu_log!("-- finished");
 }
 
-fn this_process_unlocked() -> Arc<Process> {
+fn this_process_unlocked() -> SharedProcess {
     let lock = this();
 
     let proc = lock.current_process.as_ref().unwrap();
@@ -322,7 +381,7 @@ fn this_process_unlocked() -> Arc<Process> {
     Arc::clone(proc)
 }
 
-fn this_process() -> Arc<Process> {
+fn this_process() -> SharedProcess {
     let is_ena = arch::are_interrupts_enabled();
 
     arch::disable_interrupts();
@@ -365,12 +424,16 @@ pub extern "C" fn schedule() {
     //
 
     {
+        // SAFETY: After `__context_switch` we can't get back to the scheduler handler.
+        // After `ret` in `__context_switch` we will immediately jump to the entry point,
+        // so `SCHEDULER` remains locked forever.
+        // Our real guard are interrupt enabling and disabling, so we can safely unlock this mutex.
         unsafe { SCHEDULER.force_unlock() };
 
         let mut binding = this();
 
         if binding.is_initialized {
-            unsafe { binding.schedule() };
+            binding.schedule();
         }
     }
 
@@ -386,12 +449,72 @@ pub fn yield_now() {
     schedule();
 }
 
+pub fn this_thread() -> SharedThread {
+    let thread: SharedThread;
+
+    let is_ena = arch::are_interrupts_enabled();
+
+    arch::disable_interrupts();
+
+    {
+        // SAFETY: After `__context_switch` we can't get back to the scheduler handler.
+        // After `ret` in `__context_switch` we will immediately jump to the entry point,
+        // so `SCHEDULER` remains locked forever.
+        // Our real guard are interrupt enabling and disabling, so we can safely unlock this mutex.
+        unsafe { SCHEDULER.force_unlock() };
+
+        let lock = this();
+
+        thread = lock.current_thread.as_ref().unwrap().clone();
+    }
+
+    if is_ena {
+        arch::enable_interrupts();
+    }
+
+    thread
+}
+
+pub fn this_thread_id() -> usize {
+    let id: usize;
+
+    let is_ena = arch::are_interrupts_enabled();
+
+    arch::disable_interrupts();
+
+    {
+        let thread = this_thread();
+
+        id = thread.id;
+    }
+
+    if is_ena {
+        arch::enable_interrupts();
+    }
+
+    id
+}
+
 pub fn sleep(dur: core::time::Duration) {
     let target = crate::time::get_uptime_nanos() + dur.as_nanos();
 
     while crate::time::get_uptime_nanos() <= target {
         arch::halt();
     }
+}
+
+pub extern "C" fn thread_exit() -> ! {
+    arch::disable_interrupts();
+
+    // {
+    //     let thread = this_thread();
+
+    //     // unsafe { thread.get_mut() }.state = thread::ThreadState::Dead;
+    // }
+
+    // schedule();
+
+    unreachable!()
 }
 
 fn idle_task() {

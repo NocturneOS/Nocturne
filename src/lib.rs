@@ -21,9 +21,15 @@ extern crate alloc;
 
 fn test_task() {
     loop {
-        qemu_log!("Hello, world!");
+        let id = sched::this_thread_id();
 
-        sched::sleep(Duration::from_secs(1));
+        qemu_log!("Hello, my ID is: {id:?}");
+
+        sched::sleep(Duration::from_millis(id as u64 * 200));
+
+        // qemu_log!("Exiting");
+
+        // break;
     }
 }
 
@@ -66,6 +72,8 @@ extern "C" fn kmain() -> ! {
 
 #[panic_handler]
 fn __panic_handler(info: &PanicInfo) -> ! {
+    arch::disable_interrupts();
+    
     if let Some(loc) = info.location() {
         qemu_log!(
             "Kernel panicked at {}:{}:{}: {:#?}",

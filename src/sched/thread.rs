@@ -1,7 +1,7 @@
 use alloc::sync::Arc;
 use bitflags::bitflags;
 
-use crate::{arch::CPURegisters, sched::{archspec::ArchitectureSpecificRegion, process::Process}};
+use crate::{arch::CPURegisters, qemu_log, sched::{archspec::ArchitectureSpecificRegion, process::Process}};
 
 bitflags! {
     #[derive(Copy, Clone, PartialEq, Eq)]
@@ -12,6 +12,7 @@ bitflags! {
 }
 
 #[repr(C)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum ThreadState {
     Ready,
     Running,
@@ -26,7 +27,7 @@ pub enum ThreadState {
 pub struct Thread {
     pub id: usize,
 
-    pub(crate) process: Arc<Process>,
+    pub(crate) process: super::SharedProcess,
     pub flags: ThreadFlags,
     pub state: ThreadState,
 
@@ -41,3 +42,9 @@ pub struct Thread {
 
     pub last_error: usize
 }
+
+// impl Drop for Thread {
+//     fn drop(&mut self) {
+//         qemu_log!("Thread is dropped!");
+//     }
+// }
