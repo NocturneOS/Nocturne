@@ -44,6 +44,7 @@ pub struct Scheduler {
     thread_list: LinkedList<SharedThread>,
 
     working_queue: VecDeque<SharedThread>,
+    sleeping_queue: VecDeque<(SharedThread, u128)>,
 
     idle_task: Option<SharedThread>,
 
@@ -77,6 +78,7 @@ impl Scheduler {
             thread_list: LinkedList::new(),
 
             working_queue: VecDeque::new(),
+            sleeping_queue: VecDeque::new(),
 
             idle_task: None,
 
@@ -117,7 +119,6 @@ impl Scheduler {
             entry_point: 0,
         };
 
-        // let kernel_thread = Arc::new(PseudoSync::new(kernel_thread));
         let kernel_thread = Arc::new(kernel_thread);
 
         self.current_process = Some(Arc::clone(&kernel_process));
@@ -276,14 +277,51 @@ impl Scheduler {
         thread.process.thread_count.fetch_sub(1, Ordering::SeqCst);
     }
 
-    fn this_task(&self) -> SharedThread {
-        self.current_thread.as_ref().unwrap().clone()
+    fn this_task(&self) -> &SharedThread {
+        self.current_thread.as_ref().unwrap()
+    }
+
+    fn sleep_this(&mut self, wakeup_time_ticks: u128) {
+        self.current_thread.as_mut().unwrap().state.set(ThreadState::Sleeping);
+
+        self.sleeping_queue.push_back((self.current_thread.as_ref().cloned().unwrap(), wakeup_time_ticks));
+
+        self.schedule();
+    }
+
+    fn check_sleeping_tasks(&mut self) {
+        if self.sleeping_queue.is_empty() {
+            return;
+        }
+
+        let mut index = 0;
+        let mut len = self.sleeping_queue.len();
+
+        while index < len {
+            let (task, wakeup_time) = &self.sleeping_queue[index];
+
+            if crate::time::get_uptime_ticks() > *wakeup_time {
+                task.state.set(ThreadState::Ready);
+
+                self.working_queue.push_back(Arc::clone(task));
+
+                self.sleeping_queue.remove(index);
+
+                len -= 1;
+
+                continue;
+            }
+
+            index += 1;
+        }
     }
 
     fn next_task(&mut self) -> SharedThread {
+        self.check_sleeping_tasks();
+
         let mut task: Option<SharedThread> = None;
 
-        let current_id = self.current_thread.as_ref().unwrap().id;
+        let current_id = self.this_task().id;
 
         while let Some(t) = self.working_queue.pop_front() {
             if t.state.get() == ThreadState::Dead {
@@ -303,6 +341,10 @@ impl Scheduler {
                 continue;
             }
 
+            if t.state.get() == ThreadState::Sleeping {
+                continue;
+            }
+
             task = Some(t);
             break;
         }
@@ -311,7 +353,7 @@ impl Scheduler {
             return task;
         }
 
-        qemu_log!("No tasks, idling.");
+        // qemu_log!("No tasks, idling.");
 
         Arc::clone(self.idle_task.as_ref().unwrap())
     }
@@ -319,7 +361,7 @@ impl Scheduler {
     pub extern "C" fn schedule(&mut self) {
         // qemu_log!("Entered scheduler");
 
-        let this = self.this_task();
+        let this = Arc::clone(self.this_task());
 
         // If it's not an idle task, push it to the queue.
         if !Arc::ptr_eq(&this, self.idle_task.as_ref().unwrap()) {
@@ -505,10 +547,25 @@ pub fn this_thread_id() -> usize {
 
 pub fn sleep(dur: core::time::Duration) {
     let target = crate::time::get_uptime_nanos() + dur.as_nanos();
+    let ticks = crate::time::nanos_to_ticks(target);
 
-    while crate::time::get_uptime_nanos() <= target {
-        arch::halt();
+    let is_ena = arch::are_interrupts_enabled();
+
+    arch::disable_interrupts();
+
+    {
+        let mut sched = this();
+
+        sched.sleep_this(ticks);
     }
+
+    if is_ena {
+        arch::enable_interrupts();
+    }
+
+    // while crate::time::get_uptime_nanos() <= target {
+    //     arch::halt();
+    // }
 }
 
 pub extern "C" fn thread_exit() -> ! {
