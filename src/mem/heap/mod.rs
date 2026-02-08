@@ -200,8 +200,8 @@ impl InnerArenaAllocator {
                 unmap_single_page(i);
                 physical::free_one(free_addr);
 
-                qemu_log!("Unmapped: V{:08x}", i);
-                qemu_log!("Freed: P{:08x}", free_addr);
+                // qemu_log!("Unmapped: V{:08x}", i);
+                // qemu_log!("Freed: P{:08x}", free_addr);
             }
         }
     }

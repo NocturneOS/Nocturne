@@ -92,7 +92,7 @@ impl Scheduler {
             page_directory_phys: unsafe { x86::controlregs::cr3() as _ },
             page_directory_virt: unsafe { x86::controlregs::cr3() as _ },
 
-            thread_count: 1,
+            thread_count: 1.into(),
 
             name: String::from("krnl"),
             cwd: String::from("<unknown>"),
@@ -151,7 +151,7 @@ impl Scheduler {
 
         let id = next_tid();
 
-        let mut writeable_sp = unsafe { stack.addr() + stack_size } as *mut usize;
+        let mut writeable_sp = (stack.addr() + stack_size ) as *mut usize;
 
         #[cfg(target_arch = "x86")]
         unsafe {
@@ -223,7 +223,9 @@ impl Scheduler {
             writeable_sp.write(0); // R15
         }
 
-        qemu_log!("ESP: {:08x?}", writeable_sp.addr());
+        // qemu_log!("ESP: {:08x?}", writeable_sp.addr());
+
+        process.thread_count.fetch_add(1, Ordering::SeqCst);
 
         let tcb = Thread {
             id,
@@ -238,7 +240,6 @@ impl Scheduler {
             last_error: 0,
         };
 
-        // let tcb = Arc::new(PseudoSync::new(tcb));
         let tcb = Arc::new(tcb);
 
         self.thread_list.push_back(Arc::clone(&tcb));
@@ -272,7 +273,7 @@ impl Scheduler {
 
         unsafe { alloc::alloc::dealloc(stack, layout) };
 
-        // unsafe { thread.process.get_mut().thread_count -= 1 };
+        thread.process.thread_count.fetch_sub(1, Ordering::SeqCst);
     }
 
     fn this_task(&self) -> SharedThread {
@@ -289,7 +290,15 @@ impl Scheduler {
                 // If we are scheduling from a kernel task, do all dirty work to prevent use-after-free.
                 if current_id == 0 {
                     self.remove_task(t);
+                } else {
+                    // Push it back to clean it later
+                    self.working_queue.push_back(t);
                 }
+
+                // Maybe better solution - just if we are not in this thread, then remove it.
+                // if current_id != t.id {
+                //     self.remove_task(t);
+                // }
 
                 continue;
             }

@@ -26,7 +26,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     qemu_log!("Modules count: {}", mb.modules().len());
 
     for i in mb.modules() {
-        qemu_log!("- {:?} <{:08x} - {:08x}>", i.cmdline(), i.start(), i.end());
+        qemu_log!("- {:?} <{:#x?} - {:#x?}>", i.cmdline().as_ptr(), i.start() as *const usize, i.end() as *const usize);
     }
 
     qemu_log!(

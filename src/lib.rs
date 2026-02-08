@@ -23,11 +23,11 @@ fn test_task() {
     loop {
         let id = sched::this_thread_id();
 
-        qemu_log!("Hello, my ID is: {id:?}");
+        //qemu_println!("Hello, my ID is: {id:?}");
 
-        sched::sleep(Duration::from_millis(id as u64 * 200));
+        sched::sleep(Duration::from_millis(id as u64 * 20));
 
-        qemu_log!("Exiting");
+        // qemu_println!("Exiting {id:?}");
 
         break;
     }
@@ -46,17 +46,26 @@ extern "C" fn kmain() -> ! {
         for _ in 0..128 {
             sched::create_thread(
                 test_task,
-                0x4000,
+                0x10000,
                 ThreadFlags::empty(),
             );
         }
 
+        let mut counter = 0;
         loop {
-            qemu_println!("Main!");
+            qemu_println!("Main thread!");
+            counter += 1;
 
             sched::sleep(Duration::from_millis(500));
+
+            // Just wait.
+            if counter > 10 {
+                break;
+            }
         }
     }
+
+    mem::heap::dump();
 
     // clear_screen();
     // test_write();
