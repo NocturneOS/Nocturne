@@ -1,4 +1,4 @@
-use core::cell::Cell;
+use core::{cell::Cell, sync::atomic::AtomicPtr};
 
 use alloc::sync::Arc;
 use bitflags::bitflags;
@@ -7,6 +7,7 @@ use crate::{arch::CPURegisters, qemu_log, sched::{archspec::ArchitectureSpecific
 
 bitflags! {
     #[derive(Copy, Clone, PartialEq, Eq)]
+    #[repr(C)]
     pub struct ThreadFlags : usize {
         const User = 1 << 0;
         const Raw = 1 << 1;
@@ -24,12 +25,11 @@ pub enum ThreadState {
     Dead
 }
 
-#[cfg_attr(target_arch = "x86", repr(C, packed(4)))]
-#[cfg_attr(target_arch = "x86_64", repr(C, packed(8)))]
+#[repr(C)]
 pub struct Thread {
     pub id: usize,
 
-    pub(crate) process: super::SharedProcess,
+    pub(crate) process: super::SharedProcess, //*const Process,
     pub flags: ThreadFlags,
     pub state: Cell<ThreadState>,
 

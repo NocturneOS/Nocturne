@@ -88,25 +88,14 @@ impl Scheduler {
     }
 
     pub fn init(&mut self) {
-        let kernel_process = Process {
-            id: next_pid(),
+        let kernel_process = Process::new(next_pid(), unsafe { x86::controlregs::cr3() as _ }, unsafe { x86::controlregs::cr3() as _ }, "kernel", "");
 
-            page_directory_phys: unsafe { x86::controlregs::cr3() as _ },
-            page_directory_virt: unsafe { x86::controlregs::cr3() as _ },
-
-            thread_count: 1.into(),
-
-            name: String::from("krnl"),
-            cwd: String::from("<unknown>"),
-        };
-
-        // let kernel_process = Arc::new(PseudoSync::new(kernel_process));
         let kernel_process = Arc::new(kernel_process);
 
         let kernel_thread = Thread {
             id: next_tid(),
 
-            process: Arc::clone(&kernel_process),
+            process: Arc::clone(&kernel_process), //Arc::into_raw(Arc::clone(&kernel_process)).into(),
             flags: ThreadFlags::empty(),
             state: Cell::new(thread::ThreadState::Running),
             stack_size: 32 << 10, // 32 KB
@@ -230,7 +219,7 @@ impl Scheduler {
 
         let tcb = Thread {
             id,
-            process,
+            process: process, //Arc::into_raw(process),
             flags,
             state: Cell::new(thread::ThreadState::Ready),
             stack_addr: stack.addr(),
@@ -274,7 +263,9 @@ impl Scheduler {
 
         unsafe { alloc::alloc::dealloc(stack, layout) };
 
-        thread.process.thread_count.fetch_sub(1, Ordering::SeqCst);
+        unsafe {
+            (*thread.process).thread_count.fetch_sub(1, Ordering::SeqCst);
+        }
     }
 
     fn this_task(&self) -> &SharedThread {
@@ -382,7 +373,7 @@ impl Scheduler {
             let next_ref = next.as_ref();
             let next_proc = this.as_ref().process.as_ref();
 
-            self.current_process = Some(Arc::clone(&next.process));
+            self.current_process = Some(Arc::clone(&next.process)); //unsafe { Some(Arc::clone(&Arc::from_raw(next.process))) };
             self.current_thread = Some(Arc::clone(&next));
 
             unsafe {
