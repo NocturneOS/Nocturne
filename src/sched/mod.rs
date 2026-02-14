@@ -219,7 +219,7 @@ impl Scheduler {
 
         let tcb = Thread {
             id,
-            process: process, //Arc::into_raw(process),
+            process, //Arc::into_raw(process),
             flags,
             state: Cell::new(thread::ThreadState::Ready),
             stack_addr: stack.addr(),
@@ -368,13 +368,17 @@ impl Scheduler {
 
         {
             let this_ref = this.as_ref();
-            let this_proc = this.as_ref().process.as_ref();
+            let this_proc = this_ref.process.as_ref();
 
             let next_ref = next.as_ref();
-            let next_proc = this.as_ref().process.as_ref();
+            let next_proc = next_ref.process.as_ref();
 
-            self.current_process = Some(Arc::clone(&next.process)); //unsafe { Some(Arc::clone(&Arc::from_raw(next.process))) };
-            self.current_thread = Some(Arc::clone(&next));
+            {
+                // let next_process = unsafe { Arc::from_raw(next_proc) };
+
+                self.current_process = Some(Arc::clone(&next_ref.process));
+                self.current_thread = Some(Arc::clone(&next));
+            }
 
             unsafe {
                 let tp_ptr = this_proc as *const Process;

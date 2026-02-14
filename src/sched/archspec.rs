@@ -1,12 +1,12 @@
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+use core::sync::atomic::AtomicPtr;
 use core::{alloc::Layout, arch::asm};
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[repr(C)]
 pub struct ArchitectureSpecificRegion {
-    fxsave_region: *mut u8,
+    fxsave_region: AtomicPtr<u8>,
 }
-
-unsafe impl Sync for ArchitectureSpecificRegion {}
-unsafe impl Send for ArchitectureSpecificRegion {}
 
 impl ArchitectureSpecificRegion {
     pub fn new() -> Self {
@@ -17,7 +17,7 @@ impl ArchitectureSpecificRegion {
             asm!("fxsave ({})", in(reg) fxsave_region.addr(), options(att_syntax, nostack));
         }
 
-        Self { fxsave_region }
+        Self { fxsave_region: fxsave_region.into() }
     }
 }
 
@@ -25,7 +25,7 @@ impl Drop for ArchitectureSpecificRegion {
     fn drop(&mut self) {
         unsafe {
             alloc::alloc::dealloc(
-                self.fxsave_region,
+                self.fxsave_region.load(core::sync::atomic::Ordering::SeqCst),
                 Layout::from_size_align_unchecked(512, 16),
             )
         };

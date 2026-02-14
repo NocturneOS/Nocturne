@@ -2,6 +2,8 @@ use core::{cell::Cell, ffi::c_char, sync::atomic::{AtomicPtr, AtomicUsize}};
 
 use alloc::{ffi::CString};
 
+use crate::qemu_log;
+
 #[repr(C)]
 pub struct Process {
     pub id: usize,
@@ -31,6 +33,8 @@ impl Process {
 impl Drop for Process {
     fn drop(&mut self) {
         unsafe {
+            qemu_log!("PROCESS DEALLOCATED!");
+
             drop(CString::from_raw(self.name.load(core::sync::atomic::Ordering::SeqCst)));
             drop(CString::from_raw(self.cwd.load(core::sync::atomic::Ordering::SeqCst)));
         }

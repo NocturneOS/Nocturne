@@ -29,7 +29,7 @@ pub enum ThreadState {
 pub struct Thread {
     pub id: usize,
 
-    pub(crate) process: super::SharedProcess, //*const Process,
+    pub(crate) process: super::SharedProcess,
     pub flags: ThreadFlags,
     pub state: Cell<ThreadState>,
 
