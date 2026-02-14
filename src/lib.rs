@@ -2,6 +2,8 @@
 
 use core::{panic::PanicInfo, time::Duration};
 
+use alloc::{collections::{btree_map::BTreeMap, linked_list::LinkedList, vec_deque::VecDeque}, string::String};
+
 use crate::{
     sched::thread::ThreadFlags,
 };
@@ -44,6 +46,35 @@ extern "C" fn kmain() -> ! {
     // To make kernel fully initialized we should initialize heap.
 
     mem::heap::init();
+
+    // {
+    //     let mut list = VecDeque::new();
+
+    //     for i in 0..490 {
+    //         list.push_back(i);
+    //     }
+        
+    //     let mut bm = BTreeMap::new();
+
+    //     bm.insert("abc", String::from("def"));
+    //     bm.insert("123", String::from("456"));
+    //     bm.insert("???", String::from("!!!"));
+    //     bm.insert("101", String::from("666"));
+
+    //     qemu_println!("{bm:?}");
+
+    //     for i in &list {
+    //         qemu_print!("{i}, ");
+    //     }
+        
+    //     qemu_println!();
+
+    //     qemu_log!("OK!");
+
+    //     // mem::heap::dump();
+
+    //     loop {}
+    // }
     
     sched::init();
     

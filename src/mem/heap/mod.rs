@@ -8,7 +8,7 @@ use core::ptr::{self, NonNull};
 use core::usize;
 use spin::{Mutex, MutexGuard};
 
-use crate::arch::mem::paging::{self, PageFlags, map_single_page, unmap_single_page};
+use crate::arch::mem::paging::{self, PageFlags, map_pages, map_single_page, unmap_single_page};
 use crate::mem::physical;
 use crate::{arch, qemu_log, tools};
 
@@ -127,6 +127,10 @@ impl InnerArenaAllocator {
     fn add_block(&mut self, index: usize, addr: usize, size: usize) {
         let arena = self.arena.as_mut().unwrap();
 
+        if self.alloc_count >= arena.len() - 1 {
+            panic!("Arena overflow!");
+        }
+
         arena.copy_within(index..self.alloc_count + 1, index + 1);
 
         arena[index] = Block {
@@ -183,45 +187,55 @@ impl InnerArenaAllocator {
     // This method unmaps pages inside the region if it finds completely free pages.
     fn delicate_unmap_and_free(&self, addr: usize, size: usize, is_last_block: bool) {
         let page_size = arch::get_page_size();
-
-        let lower_bound = tools::align_value(addr, page_size);
-        let mut upper_bound = (addr + size) & !(page_size - 1);
-
-        // qemu_log!("Aligned region: {:08x?}", lower_bound..upper_bound);
-
-        // If we're checking last block, we do an inclusive free because there's no successor block ahead.
-        // Since Range and RangeInclusive are different types, the other option is to make Range behave like it's inclusive.
-        if is_last_block {
-            upper_bound += page_size;
+        let page_mask = page_size - 1;
+    
+        // Start freeing from the first page boundary at or after addr (if addr is page-aligned)
+        let lower_bound = if addr & page_mask == 0 {
+            addr
+        } else {
+            (addr + page_mask) & !page_mask  // rounding up
+        };
+    
+        // End freeing at the last page boundary before or at addr + size
+        let end_addr = addr + size;
+        let mut upper_bound = if end_addr & page_mask == 0 && !is_last_block {
+            end_addr  // Page-aligned end, but exclude this page (next block might start here)
+        } else {
+            end_addr & !page_mask  // Round down to page boundary
+        };
+    
+        // For last block, we can safely include the final page if end is page-aligned
+        if is_last_block && (end_addr & page_mask == 0) {
+            upper_bound = end_addr;
         }
-
+    
         for i in (lower_bound..upper_bound).step_by(page_size) {
             if let Some(free_addr) = paging::virt2phys(i) {
                 unmap_single_page(i);
                 physical::free_one(free_addr);
-
-                // qemu_log!("Unmapped: V{:08x}", i);
-                // qemu_log!("Freed: P{:08x}", free_addr);
             }
         }
     }
-
+    
     #[inline]
     fn is_last_block(&self, idx: usize) -> bool {
         idx == self.alloc_count - 1
     }
 
+    // Ensures that we have enough space in arena to insert new block.
     fn ensure_arena_available(&mut self) {
         let old_arena_addr = self.arena.as_ref().unwrap().as_ptr().addr();
         let arena_len = self.arena.as_ref().unwrap().len();
 
+        // Why `-2`? Because with `-1` we convert length to index of last element,
+        // and another `-1` ensures that is condition below confirms, we can place a block with new arena there.
         if self.alloc_count == arena_len - 2 {
             qemu_log!("Arena reallocation condition!");
 
             // New arena is two times bigger than old
             let new_arena_len = arena_len * 2;
 
-            // Allocate memory
+            // Allocate memory in old arena.
             let block = self
                 .inner_allocate(Layout::array::<Block>(new_arena_len).unwrap())
                 .unwrap()
@@ -274,12 +288,14 @@ impl InnerArenaAllocator {
         };
 
         self.remove_block(idx);
+        
+        let is_last_block = self.is_last_block(idx);
 
-        if self.is_last_block(idx) {
+        if is_last_block {
             qemu_log!("{:08x} is a last block!", ptr.addr());
         }
 
-        self.delicate_unmap_and_free(ptr.addr().into(), layout.size(), self.is_last_block(idx));
+        self.delicate_unmap_and_free(ptr.addr().into(), layout.size(), is_last_block);
 
         self.alloc_count -= 1;
     }
@@ -287,18 +303,33 @@ impl InnerArenaAllocator {
 
 unsafe impl GlobalAlloc for ArenaAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        self.inner()
+        // let is_ena = arch::are_interrupts_enabled();
+
+        // arch::disable_interrupts();
+
+        let block = self.inner()
             .allocate(layout)
             .map(|ptr| ptr.as_ptr())
-            .unwrap_or(ptr::null_mut())
+            .unwrap_or(ptr::null_mut());
+
+        // if is_ena {
+        //     arch::enable_interrupts();
+        // }
+
+        block
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        // let is_ena = arch::are_interrupts_enabled();
+
+        // arch::disable_interrupts();
+
         if let Some(non_null_ptr) = NonNull::new(ptr) {
             self.inner().deallocate(non_null_ptr, layout);
         }
+
+        // if is_ena {
+        //     arch::enable_interrupts();
+        // }
     }
 }
-
-unsafe impl Send for ArenaAllocator {}
-unsafe impl Sync for ArenaAllocator {}

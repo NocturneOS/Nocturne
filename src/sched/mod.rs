@@ -83,6 +83,8 @@ impl Scheduler {
     }
 
     pub fn init(&mut self) {
+        // self.dead_queue.reserve(64);
+
         let kernel_process = Process::new(
             unsafe { x86::controlregs::cr3() as _ },
             unsafe { x86::controlregs::cr3() as _ },
