@@ -1,7 +1,7 @@
 use crate::{
-    arch::{halt_forever, CPURegisters},
+    arch::{CPURegisters, halt_forever},
     interrupts::handler::register_interrupt_handler,
-    qemu_println,
+    qemu_println, unwind,
 };
 
 fn division_by_zero(regs: &mut CPURegisters) {
@@ -52,6 +52,11 @@ fn sse_fault(regs: &mut CPURegisters) {
 
 fn common_fault_entry(regs: &mut CPURegisters) {
     qemu_println!("{:x?}", regs);
+
+    #[cfg(target_arch = "x86")]
+    unsafe { unwind::backtrace_extern(regs.ebp as _) };
+    #[cfg(target_arch = "x86_64")]
+    unsafe { unwind::backtrace_extern(regs.rbp as _) };
 
     halt_forever();
 }

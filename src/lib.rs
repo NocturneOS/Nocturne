@@ -20,12 +20,21 @@ mod unwind;
 extern crate alloc;
 
 fn test_task() {
+    // let mut inner_counter = 0;
+
     loop {
         let id = sched::this_thread_id();
 
         qemu_println!("Hello, my ID is: {id:?}");
 
-        sched::sleep(Duration::from_millis(id as u64 * 100));
+        sched::sleep(Duration::from_millis(id as u64 * 5));
+
+        // if inner_counter > 5 {
+        qemu_println!("Exiting: {id:?}");
+        break;
+        // }
+        
+        // inner_counter += 1;
     }
 }
 
@@ -42,7 +51,7 @@ extern "C" fn kmain() -> ! {
         for _ in 0..128 {
             sched::create_thread(
                 test_task,
-                0x8000,
+                sched::KERNEL_THREAD_DEFAULT_STACK_SIZE,
                 ThreadFlags::empty(),
             );
         }

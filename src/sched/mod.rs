@@ -24,6 +24,8 @@ mod archspec;
 pub mod process;
 pub mod thread;
 
+pub const KERNEL_THREAD_DEFAULT_STACK_SIZE: usize = 64 << 10;  // 64 KB
+
 lazy_static! {
     static ref SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler::new());
     static ref GLOBAL_TID: AtomicUsize = AtomicUsize::new(0);
@@ -40,6 +42,7 @@ pub struct Scheduler {
 
     working_queue: VecDeque<SharedThread>,
     sleeping_queue: VecDeque<(SharedThread, u128)>,
+    dead_queue: VecDeque<SharedThread>,
 
     idle_task: Option<SharedThread>,
 
@@ -70,6 +73,7 @@ impl Scheduler {
 
             working_queue: VecDeque::new(),
             sleeping_queue: VecDeque::new(),
+            dead_queue: VecDeque::new(),
 
             idle_task: None,
 
@@ -151,19 +155,19 @@ impl Scheduler {
             writeable_sp.write(0x202); // IF=1, IOPL=0
 
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0); // RAX/EAX
+            writeable_sp.write(0); // EAX
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0); // RBX/EBX
+            writeable_sp.write(0); // EBX
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0); // RCX/ECX
+            writeable_sp.write(0); // ECX
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0); // RDX/EDX
+            writeable_sp.write(0); // EDX
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0); // RSI/ESI
+            writeable_sp.write(0); // ESI
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0); // RDI/EDI
+            writeable_sp.write(0); // EDI
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0); // RBP/EBP
+            writeable_sp.write(0); // EBP
         }
 
         #[cfg(target_arch = "x86_64")]
@@ -249,20 +253,18 @@ impl Scheduler {
         // In most places in the scheduler we call that method to clone the reference to threads.
         // So when we're cleaning up the thread, we have to verify that no redundant references remain
         // to avoid UB (because we free the thread's stack).
-        assert_eq!(Arc::strong_count(&thread), 1);
+        debug_assert_eq!(Arc::strong_count(&thread), 1);
 
-        qemu_log!("Strong count: {:?}", Arc::strong_count(&thread));
+        // qemu_log!("Strong count: {:?}", Arc::strong_count(&thread));
 
         let layout = Layout::from_size_align(thread.stack_size, 0x1000).unwrap();
         let stack = thread.stack_addr as *mut u8;
 
         unsafe { alloc::alloc::dealloc(stack, layout) };
 
-        unsafe {
-            (*thread.process)
-                .thread_count
-                .fetch_sub(1, Ordering::SeqCst);
-        }
+        (*thread.process)
+            .thread_count
+            .fetch_sub(1, Ordering::SeqCst);
     }
 
     fn this_task(&self) -> &SharedThread {
@@ -282,6 +284,14 @@ impl Scheduler {
         ));
 
         self.schedule();
+    }
+
+    fn check_dead_tasks(&mut self) {
+        while let Some(task) = self.dead_queue.pop_front() {       
+            qemu_log!("Freeing task {}", task.id);
+            self.remove_task(task);
+            qemu_log!("Freed.");
+        }
     }
 
     fn check_sleeping_tasks(&mut self) {
@@ -312,29 +322,19 @@ impl Scheduler {
     }
 
     fn next_task(&mut self) -> SharedThread {
+        let current_id = self.this_task().id;
+
+        // If we are scheduling from a kernel task, do all dirty work to prevent use-after-free.
+        if current_id == 0 {
+            self.check_dead_tasks();
+        }
+
         self.check_sleeping_tasks();
 
         let mut task: Option<SharedThread> = None;
 
-        let current_id = self.this_task().id;
-
         while let Some(t) = self.working_queue.pop_front() {
-            if t.state.get() == ThreadState::Dead {
-                // If we are scheduling from a kernel task, do all dirty work to prevent use-after-free.
-                if current_id == 0 {
-                    self.remove_task(t);
-                } else {
-                    // Push it back to clean it later
-                    self.working_queue.push_back(t);
-                }
-
-                // Maybe better solution - just if we are not in this thread, then remove it.
-                // if current_id != t.id {
-                //     self.remove_task(t);
-                // }
-
-                continue;
-            }
+            debug_assert!(t.state.get() != ThreadState::Dead, "Found a dead task in the working queue!");
 
             if t.state.get() == ThreadState::Sleeping {
                 continue;
@@ -360,7 +360,11 @@ impl Scheduler {
 
         // If it's not an idle task, push it to the queue.
         if !Arc::ptr_eq(&this, self.idle_task.as_ref().unwrap()) {
-            self.working_queue.push_back(Arc::clone(&this));
+            let state = this.state.get();
+
+            if state == ThreadState::Ready || state == ThreadState::Running {
+                self.working_queue.push_back(Arc::clone(&this));
+            }
         }
 
         let next = self.next_task();
@@ -574,6 +578,14 @@ pub extern "C" fn thread_exit() -> ! {
         let thread = this_thread();
 
         thread.state.set(thread::ThreadState::Dead);
+
+        {
+            let mut lock = this();
+
+            lock.working_queue.retain(|x| x.id != thread.id);
+            
+            lock.dead_queue.push_back(thread);
+        }
     }
 
     schedule();

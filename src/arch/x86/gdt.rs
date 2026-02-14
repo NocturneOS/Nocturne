@@ -1,3 +1,6 @@
+use core::ptr::addr_of_mut;
+
+use lazy_static::lazy_static;
 use spin::mutex::Mutex;
 
 const ACCESS_PRESENT: u8 = 1 << 7;
@@ -36,7 +39,27 @@ impl GDTEntry {
     }
 }
 
-static GDT_ENTRIES: Mutex<[GDTEntry; 6]> = unsafe { core::mem::zeroed() };
+#[repr(align(16))]
+struct GDT <const N: usize> {
+    entries: [GDTEntry; N]
+}
+
+impl<const N: usize> GDT<N> {
+    pub fn nth(&self, index: usize) -> &mut GDTEntry {
+        if index >= N {
+            panic!("GDT out of range");
+        }
+
+        unsafe { &mut *(self.entries.as_ptr() as *mut GDTEntry).add(index) }
+    }
+}
+
+unsafe impl<const N: usize> Sync for GDT<N> {}
+unsafe impl<const N: usize> Send for GDT<N> {}
+
+lazy_static! {
+    static ref GDT_ENTRIES: GDT<6> = unsafe { core::mem::zeroed() };
+}
 
 unsafe extern "C" {
     fn gdt_flush(gdt_ptr: &x86::dtables::DescriptorTablePointer<GDTEntry>);
@@ -53,23 +76,21 @@ pub fn init() {
 
 	let data_flags = FLAG_GRANULARITY | FLAG_SIZE;
 
-    let mut binding = unsafe { GDT_ENTRIES.lock() };
-
-    binding[0] = unsafe { core::mem::zeroed() };
+    *GDT_ENTRIES.nth(0) = unsafe { core::mem::zeroed() };
 
     // 0x08: Ring 0 / Code
-    binding[1] = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_0 | ACCESS_CODE_OR_DATA | ACCESS_EXECUTABLE | ACCESS_RW, code_flags);
+    *GDT_ENTRIES.nth(1) = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_0 | ACCESS_CODE_OR_DATA | ACCESS_EXECUTABLE | ACCESS_RW, code_flags);
     
     // 0x10: Ring 0 / Data
-    binding[2] = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_0 | ACCESS_CODE_OR_DATA | ACCESS_RW, data_flags);
+    *GDT_ENTRIES.nth(2) = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_0 | ACCESS_CODE_OR_DATA | ACCESS_RW, data_flags);
     
     // 0x18: Ring 3 / Code
-    binding[3] = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_EXECUTABLE | ACCESS_RW , code_flags);
+    *GDT_ENTRIES.nth(3) = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_EXECUTABLE | ACCESS_RW , code_flags);
     
     // 0x20: Ring 3 / Data
-    binding[4] = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_RW, data_flags);
+    *GDT_ENTRIES.nth(4) = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_RW, data_flags);
 
-    let entries = binding;
+    let entries = &GDT_ENTRIES.entries;
 
     unsafe {
         gdt_flush(&x86::dtables::DescriptorTablePointer {
