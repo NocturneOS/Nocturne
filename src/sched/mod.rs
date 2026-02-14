@@ -17,7 +17,7 @@ use crate::{
         archspec::ArchitectureSpecificRegion,
         process::Process,
         thread::{Thread, ThreadFlags, ThreadState},
-    },
+    }, tools::interrupt_locker::InterruptLocker,
 };
 
 mod archspec;
@@ -438,23 +438,17 @@ fn this_process_unlocked() -> SharedProcess {
 }
 
 fn this_process() -> SharedProcess {
-    let is_ena = arch::are_interrupts_enabled();
-
-    arch::disable_interrupts();
+    let il = InterruptLocker::lock();
 
     let value = this_process_unlocked();
 
-    if is_ena {
-        arch::enable_interrupts();
-    }
+    drop(il);
 
     value
 }
 
 pub fn create_thread(entry: fn() -> (), stack_size: usize, flags: ThreadFlags) {
-    let is_ena = arch::are_interrupts_enabled();
-
-    arch::disable_interrupts();
+    let il = InterruptLocker::lock();
 
     //
 
@@ -467,15 +461,11 @@ pub fn create_thread(entry: fn() -> (), stack_size: usize, flags: ThreadFlags) {
 
     //
 
-    if is_ena {
-        arch::enable_interrupts();
-    }
+    drop(il);
 }
 
 pub extern "C" fn schedule() {
-    let is_ena = arch::are_interrupts_enabled();
-
-    arch::disable_interrupts();
+    let il = InterruptLocker::lock();
 
     //
 
@@ -495,9 +485,7 @@ pub extern "C" fn schedule() {
 
     //
 
-    if is_ena {
-        arch::enable_interrupts();
-    }
+    drop(il);
 }
 
 #[inline]
@@ -508,9 +496,7 @@ pub fn yield_now() {
 pub fn this_thread() -> SharedThread {
     let thread: SharedThread;
 
-    let is_ena = arch::are_interrupts_enabled();
-
-    arch::disable_interrupts();
+    let il = InterruptLocker::lock();
 
     {
         // SAFETY: After `__context_switch` we can't get back to the scheduler handler.
@@ -524,9 +510,7 @@ pub fn this_thread() -> SharedThread {
         thread = lock.current_thread.as_ref().unwrap().clone();
     }
 
-    if is_ena {
-        arch::enable_interrupts();
-    }
+    drop(il);
 
     thread
 }
@@ -534,9 +518,7 @@ pub fn this_thread() -> SharedThread {
 pub fn this_thread_id() -> usize {
     let id: usize;
 
-    let is_ena = arch::are_interrupts_enabled();
-
-    arch::disable_interrupts();
+    let il = InterruptLocker::lock();
 
     {
         let thread = this_thread();
@@ -544,9 +526,7 @@ pub fn this_thread_id() -> usize {
         id = thread.id;
     }
 
-    if is_ena {
-        arch::enable_interrupts();
-    }
+    drop(il);
 
     id
 }
@@ -555,9 +535,7 @@ pub fn sleep(dur: core::time::Duration) {
     let target = crate::time::get_uptime_nanos() + dur.as_nanos();
     let ticks = crate::time::nanos_to_ticks(target);
 
-    let is_ena = arch::are_interrupts_enabled();
-
-    arch::disable_interrupts();
+    let il = InterruptLocker::lock();
 
     {
         let mut sched = this();
@@ -565,9 +543,7 @@ pub fn sleep(dur: core::time::Duration) {
         sched.sleep_this(ticks);
     }
 
-    if is_ena {
-        arch::enable_interrupts();
-    }
+    drop(il);
 
     // while crate::time::get_uptime_nanos() <= target {
     //     arch::halt();

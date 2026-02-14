@@ -1,4 +1,5 @@
 pub mod pseudosync;
+pub mod interrupt_locker;
 
 #[inline]
 pub fn align_value(value: usize, alignment: usize) -> usize {

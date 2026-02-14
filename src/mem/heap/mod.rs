@@ -10,6 +10,7 @@ use spin::{Mutex, MutexGuard};
 
 use crate::arch::mem::paging::{self, PageFlags, map_pages, map_single_page, unmap_single_page};
 use crate::mem::physical;
+use crate::tools::interrupt_locker::InterruptLocker;
 use crate::{arch, qemu_log, tools};
 
 /// Page flags for kernel heap: Present + Writable
@@ -303,33 +304,25 @@ impl InnerArenaAllocator {
 
 unsafe impl GlobalAlloc for ArenaAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // let is_ena = arch::are_interrupts_enabled();
-
-        // arch::disable_interrupts();
+        let il = InterruptLocker::lock();
 
         let block = self.inner()
             .allocate(layout)
             .map(|ptr| ptr.as_ptr())
             .unwrap_or(ptr::null_mut());
 
-        // if is_ena {
-        //     arch::enable_interrupts();
-        // }
+        drop(il);
 
         block
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // let is_ena = arch::are_interrupts_enabled();
-
-        // arch::disable_interrupts();
+        let il = InterruptLocker::lock();
 
         if let Some(non_null_ptr) = NonNull::new(ptr) {
             self.inner().deallocate(non_null_ptr, layout);
         }
 
-        // if is_ena {
-        //     arch::enable_interrupts();
-        // }
+        drop(il);
     }
 }
