@@ -267,7 +267,7 @@ impl InnerArenaAllocator {
     pub fn deallocate(&mut self, ptr: NonNull<u8>, layout: Layout) {
         let Some(idx) = self.find_block_by_address(ptr.addr().into()) else {
             panic!(
-                "BUG: Deallocating a non-existent block! ({} of size {})",
+                "BUG: Deallocating a non-existent block! ({:#x?} of size {})",
                 ptr.addr(),
                 layout.size()
             );

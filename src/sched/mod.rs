@@ -273,13 +273,15 @@ impl Scheduler {
 
     fn sleep_this(&mut self, wakeup_time_ticks: u128) {
         self.current_thread
-            .as_mut()
+            .as_ref()
             .unwrap()
             .state
             .set(ThreadState::Sleeping);
 
+        self.working_queue.retain(|x| x.id != self.current_thread.as_ref().unwrap().id);
+
         self.sleeping_queue.push_back((
-            self.current_thread.as_ref().cloned().unwrap(),
+            Arc::clone(self.this_task()),
             wakeup_time_ticks,
         ));
 
@@ -335,6 +337,7 @@ impl Scheduler {
 
         while let Some(t) = self.working_queue.pop_front() {
             debug_assert!(t.state.get() != ThreadState::Dead, "Found a dead task in the working queue!");
+            debug_assert!(t.state.get() != ThreadState::Sleeping, "Found a sleeping task in the working queue!");
 
             if t.state.get() == ThreadState::Sleeping {
                 continue;
@@ -382,8 +385,6 @@ impl Scheduler {
             let next_proc = next_ref.process.as_ref();
 
             {
-                // let next_process = unsafe { Arc::from_raw(next_proc) };
-
                 self.current_process = Some(Arc::clone(&next_ref.process));
                 self.current_thread = Some(Arc::clone(&next));
             }
@@ -582,6 +583,7 @@ pub extern "C" fn thread_exit() -> ! {
         {
             let mut lock = this();
 
+            lock.sleeping_queue.retain(|(x, _)| x.id != thread.id);
             lock.working_queue.retain(|x| x.id != thread.id);
             
             lock.dead_queue.push_back(thread);
