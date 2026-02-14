@@ -1,12 +1,11 @@
 use core::{
     alloc::Layout,
-    cell::{Cell, RefCell, UnsafeCell},
+    cell::{Cell},
     sync::atomic::{AtomicUsize, Ordering},
 };
 
 use alloc::{
     collections::{linked_list::LinkedList, vec_deque::VecDeque},
-    string::String,
     sync::Arc,
 };
 use lazy_static::lazy_static;
@@ -19,7 +18,6 @@ use crate::{
         process::Process,
         thread::{Thread, ThreadFlags, ThreadState},
     },
-    tools::pseudosync::PseudoSync,
 };
 
 mod archspec;
@@ -28,13 +26,10 @@ pub mod thread;
 
 lazy_static! {
     static ref SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler::new());
-    static ref GLOBAL_PID: AtomicUsize = AtomicUsize::new(0);
     static ref GLOBAL_TID: AtomicUsize = AtomicUsize::new(0);
 }
 
-// pub type SharedProcess = Arc<PseudoSync<Process>>;
 pub type SharedProcess = Arc<Process>;
-// pub type SharedThread = Arc<PseudoSync<Thread>>;
 pub type SharedThread = Arc<Thread>;
 
 pub struct Scheduler {
@@ -61,10 +56,6 @@ unsafe extern "C" {
     );
 }
 
-fn next_pid() -> usize {
-    GLOBAL_PID.fetch_add(1, Ordering::SeqCst)
-}
-
 fn next_tid() -> usize {
     GLOBAL_TID.fetch_add(1, Ordering::SeqCst)
 }
@@ -88,7 +79,12 @@ impl Scheduler {
     }
 
     pub fn init(&mut self) {
-        let kernel_process = Process::new(next_pid(), unsafe { x86::controlregs::cr3() as _ }, unsafe { x86::controlregs::cr3() as _ }, "kernel", "");
+        let kernel_process = Process::new(
+            unsafe { x86::controlregs::cr3() as _ },
+            unsafe { x86::controlregs::cr3() as _ },
+            "kernel",
+            "",
+        );
 
         let kernel_process = Arc::new(kernel_process);
 
@@ -141,7 +137,7 @@ impl Scheduler {
 
         let id = next_tid();
 
-        let mut writeable_sp = (stack.addr() + stack_size ) as *mut usize;
+        let mut writeable_sp = (stack.addr() + stack_size) as *mut usize;
 
         #[cfg(target_arch = "x86")]
         unsafe {
@@ -257,14 +253,15 @@ impl Scheduler {
 
         qemu_log!("Strong count: {:?}", Arc::strong_count(&thread));
 
-
         let layout = Layout::from_size_align(thread.stack_size, 0x1000).unwrap();
         let stack = thread.stack_addr as *mut u8;
 
         unsafe { alloc::alloc::dealloc(stack, layout) };
 
         unsafe {
-            (*thread.process).thread_count.fetch_sub(1, Ordering::SeqCst);
+            (*thread.process)
+                .thread_count
+                .fetch_sub(1, Ordering::SeqCst);
         }
     }
 
@@ -273,9 +270,16 @@ impl Scheduler {
     }
 
     fn sleep_this(&mut self, wakeup_time_ticks: u128) {
-        self.current_thread.as_mut().unwrap().state.set(ThreadState::Sleeping);
+        self.current_thread
+            .as_mut()
+            .unwrap()
+            .state
+            .set(ThreadState::Sleeping);
 
-        self.sleeping_queue.push_back((self.current_thread.as_ref().cloned().unwrap(), wakeup_time_ticks));
+        self.sleeping_queue.push_back((
+            self.current_thread.as_ref().cloned().unwrap(),
+            wakeup_time_ticks,
+        ));
 
         self.schedule();
     }
