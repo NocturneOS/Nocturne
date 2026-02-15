@@ -57,10 +57,13 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
     let (pdi, pti) = vaddr2indices(virtual_address);
     let pt = page_directory()[pdi];
 
+    let table_flags = PageFlags::Present | PageFlags::Writeable | 
+                  (flags & PageFlags::Userspace);
+
     if pt == 0 {
         let new_pt = physical::allocate_one().unwrap();
 
-        page_directory_mut()[pdi] = new_pt | 3;
+        page_directory_mut()[pdi] = new_pt | table_flags.bits();
 
         let page_table = page_table_mut(pdi);
         page_table.fill(0);
@@ -71,6 +74,8 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
     page_table[pti] = physical_address | flags.bits() | 1;
 
     unsafe { x86::tlb::flush(virtual_address) };
+
+    core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
 }
 
 pub fn unmap_single_page(virtual_address: usize) {
@@ -87,6 +92,8 @@ pub fn unmap_single_page(virtual_address: usize) {
     page_table[pti] = 0;
 
     unsafe { x86::tlb::flush(virtual_address) };
+
+    core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
 }
 
 pub fn map_pages(phys_addr: usize, virt_addr: usize, byte_count: usize, flags: PageFlags) {

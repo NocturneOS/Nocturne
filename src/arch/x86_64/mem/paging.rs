@@ -19,17 +19,13 @@ bitflags! {
     }
 }
 
-unsafe extern "C" {
-    // Defined in src/arch/x86/asm/init.s
-    static mut boot_page_directory: [u32; 1024];
-
-}
-
 const fn indices2vaddr(pml4: u64, pdpt: u64, pd: u64, pt: u64) -> u64 {
     (pml4 << 39) | (pdpt << 30) | (pd << 21) | (pt << 12)
 }
 
 const fn vaddr2indices(addr: usize) -> (usize, usize, usize, usize) {
+    let addr = ((addr << 16) as isize >> 16) as usize;
+
     let pml4 = (addr >> 39) & 0x1FF;
     let pdpt = (addr >> 30) & 0x1FF;
     let pd = (addr >> 21) & 0x1FF;
@@ -37,6 +33,8 @@ const fn vaddr2indices(addr: usize) -> (usize, usize, usize, usize) {
 
     (pml4, pdpt, pd, pt)
 }
+
+// Recursive paging addresses.
 
 const PML4T: usize = 0xFFFF_FF7F_BFDF_E000;  // (510, 510, 510, 510)
 const PDPT: usize = 0xFFFF_FF7F_BFC0_0000;   // (510, 510, 510, 0)
@@ -104,13 +102,19 @@ pub fn pt_mut(pml4t_idx: usize, pdpt_idx: usize, pd_idx: usize) -> &'static mut 
 }
 
 pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: PageFlags) {
+    debug_assert!(physical_address % PAGE_SIZE == 0, "Physical address not page-aligned");
+    debug_assert!(virtual_address % PAGE_SIZE == 0, "Virtual address not page-aligned");
+
     let (i_pml4t, i_pdpt, i_pdt, i_pt) = vaddr2indices(virtual_address);
     let v_pdpt = pml4t()[i_pml4t];
+
+    let table_flags = PageFlags::Present | PageFlags::Writeable | 
+                  (flags & PageFlags::Userspace);
 
     if v_pdpt == 0 {
         let new_pdpt = physical::allocate_one().unwrap();
 
-        pml4t_mut()[i_pml4t] = new_pdpt | 3;
+        pml4t_mut()[i_pml4t] = new_pdpt | table_flags.bits();
 
         let pdpt_ = pdpt_mut(i_pml4t);
         pdpt_.fill(0);
@@ -121,7 +125,7 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
     if v_pdt == 0 {
         let new_pdt = physical::allocate_one().unwrap();
 
-        pdpt_mut(i_pml4t)[i_pdpt] = new_pdt | 3;
+        pdpt_mut(i_pml4t)[i_pdpt] = new_pdt | table_flags.bits();
 
         let pdt_ = pd_mut(i_pml4t, i_pdpt);
         pdt_.fill(0);
@@ -132,7 +136,7 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
     if v_pd == 0 {
         let new_pd = physical::allocate_one().unwrap();
 
-        pd_mut(i_pml4t, i_pdpt)[i_pdt] = new_pd | 3;
+        pd_mut(i_pml4t, i_pdpt)[i_pdt] = new_pd | table_flags.bits();
 
         let pt_ = pt_mut(i_pml4t, i_pdpt, i_pdt);
         pt_.fill(0);
@@ -143,6 +147,8 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
     page_table[i_pt] = physical_address | flags.bits() | 1;
 
     unsafe { x86::tlb::flush(virtual_address) };
+
+    core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
 }
 
 pub fn unmap_single_page(virtual_address: usize) {
@@ -170,6 +176,8 @@ pub fn unmap_single_page(virtual_address: usize) {
     page_table[i_pt] = 0;
 
     unsafe { x86::tlb::flush(virtual_address) };
+    
+    core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
 }
 
 pub fn map_pages(phys_addr: usize, virt_addr: usize, byte_count: usize, flags: PageFlags) {
@@ -202,7 +210,9 @@ pub fn virt2phys(virt_addr: usize) -> Option<usize> {
     }
 
     if (pml4t()[pml4t_i] & (1 << 7)) != 0 {
-        return Some(pml4t()[pml4t_i] & !0xfff);
+        let page_base = pml4t()[pml4t_i] & !0x3fff_ffff;
+
+        return Some(page_base | (virt_addr & 0x3fff_ffff));
     }
 
     //
@@ -212,7 +222,9 @@ pub fn virt2phys(virt_addr: usize) -> Option<usize> {
     }
 
     if (pdpt(pml4t_i)[pdpt_i] & (1 << 7)) != 0 {
-        return Some(pdpt(pml4t_i)[pdpt_i] & !0xfff);
+        let page_base = pdpt(pml4t_i)[pdpt_i] & !0x1f_ffff;
+
+        return Some(page_base | (virt_addr & 0x1f_ffff));
     }
 
     //
@@ -231,7 +243,7 @@ pub fn virt2phys(virt_addr: usize) -> Option<usize> {
         return None;
     }
 
-    Some(pt(pml4t_i, pdpt_i, pd_i)[pt_i] & !0x1ff)
+    Some(pt(pml4t_i, pdpt_i, pd_i)[pt_i] & !0xfff)
 }
 
 #[inline]
@@ -239,10 +251,6 @@ pub fn is_memory_accessible(addr: usize) -> bool {
     virt2phys(addr).is_some()
 }
 
-// Kernel memory layout:
-// C000_0000: BIOS zone
-// C010_0000: Kernel itself
-// C010_0000 + KERNEL_SIZE: Physical memory bitmap
 
 pub fn preinit(available_memory_size: usize) {
     let kernel_start = crate::sys::info::info_mut().kernel_start;
@@ -250,7 +258,7 @@ pub fn preinit(available_memory_size: usize) {
 
     let kernel_size = kernel_end - kernel_start;
 
-    qemu_log!("Kernel: <{:08x} - {:08x}>", kernel_start, kernel_end);
+    qemu_log!("Kernel: <{:016x} - {:016x}>", kernel_start, kernel_end);
     qemu_log!("Kernel size is: {kernel_size:x}");
 
     qemu_log!("Available memory: {:#?}", available_memory_size);
