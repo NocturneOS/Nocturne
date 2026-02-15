@@ -1,3 +1,4 @@
+
 use core::{
     alloc::Layout,
     cell::{Cell},
@@ -40,9 +41,9 @@ pub struct Scheduler {
     process_list: LinkedList<SharedProcess>,
     thread_list: LinkedList<SharedThread>,
 
-    working_queue: VecDeque<SharedThread>,
+    working_queue: LinkedList<SharedThread>,
     sleeping_queue: VecDeque<(SharedThread, u128)>,
-    dead_queue: VecDeque<SharedThread>,
+    dead_queue: LinkedList<SharedThread>,
 
     idle_task: Option<SharedThread>,
 
@@ -71,9 +72,9 @@ impl Scheduler {
             process_list: LinkedList::new(),
             thread_list: LinkedList::new(),
 
-            working_queue: VecDeque::new(),
+            working_queue: LinkedList::new(),
             sleeping_queue: VecDeque::new(),
-            dead_queue: VecDeque::new(),
+            dead_queue: LinkedList::new(),
 
             idle_task: None,
 
