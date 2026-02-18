@@ -84,8 +84,6 @@ impl Scheduler {
     }
 
     pub fn init(&mut self) {
-        // self.dead_queue.reserve(64);
-
         let kernel_process = Process::new(
             unsafe { x86::controlregs::cr3() as _ },
             unsafe { x86::controlregs::cr3() as _ },
@@ -293,9 +291,7 @@ impl Scheduler {
 
     fn check_dead_tasks(&mut self) {
         while let Some(task) = self.dead_queue.pop_front() {       
-            qemu_log!("Freeing task {}", task.id);
             self.remove_task(task);
-            qemu_log!("Freed.");
         }
     }
 
@@ -377,7 +373,7 @@ impl Scheduler {
 
         // If next task is a current task, do not switch contexts.
         if this.id == next.id {
-            return;
+           return;
         }
 
         {

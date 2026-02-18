@@ -293,7 +293,7 @@ impl InnerArenaAllocator {
         let is_last_block = self.is_last_block(idx);
 
         if is_last_block {
-            qemu_log!("{:08x} is a last block!", ptr.addr());
+            qemu_log!("{:p} is a last block!", ptr);
         }
 
         self.delicate_unmap_and_free(ptr.addr().into(), layout.size(), is_last_block);

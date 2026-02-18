@@ -24,13 +24,13 @@ impl Debug for CPURegisters {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str("Registers (x86):\n")?;
 
-        write!(f, "EAX: {:08x}; EBX: {:08x}\n", self.eax, self.ebx)?;
-        write!(f, "ECX: {:08x}; EDX: {:08x}\n", self.ecx, self.edx)?;
-        write!(f, "ESI: {:08x}; EDI: {:08x}\n", self.esi, self.edi)?;
-        write!(f, "ESP: {:08x}; EBP: {:08x}\n", self.esp, self.ebp)?;
-        write!(f, "EIP: {:08x}\n", self.eip)?;
-        write!(f, "CS:  {:04x}; DS: {:04x}\n", self.cs, self.ds)?;
-        write!(f, "EFLAGS: {:08x}\n", self.eflags)?;
+        writeln!(f, "EAX: {:08x}; EBX: {:08x}", self.eax, self.ebx)?;
+        writeln!(f, "ECX: {:08x}; EDX: {:08x}", self.ecx, self.edx)?;
+        writeln!(f, "ESI: {:08x}; EDI: {:08x}", self.esi, self.edi)?;
+        writeln!(f, "ESP: {:08x}; EBP: {:08x}", self.esp, self.ebp)?;
+        writeln!(f, "EIP: {:08x}", self.eip)?;
+        writeln!(f, "CS:  {:04x}; DS: {:04x}", self.cs, self.ds)?;
+        writeln!(f, "EFLAGS: {:08x}", self.eflags)?;
         write!(f, "INTERRUPT: {:02x}; ERROR: {:08x}", self.int_num, self.err_code)?;
 
         Ok(())

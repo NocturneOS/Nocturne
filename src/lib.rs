@@ -3,7 +3,7 @@
 
 use core::{panic::PanicInfo, time::Duration};
 
-use alloc::{collections::{btree_map::BTreeMap, linked_list::LinkedList, vec_deque::VecDeque}, string::String};
+use alloc::{collections::{btree_map::BTreeMap, linked_list::LinkedList, vec_deque::VecDeque}, format, string::String, vec::Vec};
 
 use crate::{
     sched::thread::ThreadFlags,
@@ -49,25 +49,28 @@ extern "C" fn kmain() -> ! {
     mem::heap::init();
 
     // {
-    //     let mut list = VecDeque::new();
-
-    //     for i in 0..490 {
-    //         list.push_back(i);
+    //     #[derive(Debug)]
+    //     struct Local {
+    //         name: String,
+    //         data: Vec<LinkedList<u32>>
     //     }
-        
-    //     let mut bm = BTreeMap::new();
 
-    //     bm.insert("abc", String::from("def"));
-    //     bm.insert("123", String::from("456"));
-    //     bm.insert("???", String::from("!!!"));
-    //     bm.insert("101", String::from("666"));
+    //     let mut list = VecDeque::<Local>::new();
 
-    //     qemu_println!("{bm:?}");
-
-    //     for i in &list {
-    //         qemu_print!("{i}, ");
+    //     for i in 0..128 {
+    //         list.push_back(Local {
+    //             name: format!("Simple dimple: {:?} {:x}", i, i),
+    //             data: Vec::from([LinkedList::from_iter(0..i)])
+    //         });
     //     }
-        
+
+    //     for i in &mut list {
+    //         i.data[0].pop_front();
+    //         i.data[0].pop_front();
+    //         i.data[0].pop_front();
+    //         qemu_print!("{i:?}, ");
+    //     }
+    //  
     //     qemu_println!();
 
     //     qemu_log!("OK!");
@@ -80,7 +83,7 @@ extern "C" fn kmain() -> ! {
     sched::init();
     
     {
-        for _ in 0..128 {
+        for _ in 0..256 {
             sched::create_thread(
                 test_task,
                 sched::KERNEL_THREAD_DEFAULT_STACK_SIZE,

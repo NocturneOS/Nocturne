@@ -17,7 +17,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     qemu_log!("Modules count: {}", mb.modules().len());
 
     for i in mb.modules() {
-        qemu_log!("- {:?} <{:08x} - {:08x}>", i.cmdline(), i.start(), i.end());
+        qemu_log!("- {:?} <{:#x} - {:#x}>", i.cmdline(), i.start(), i.end());
     }
 
     qemu_log!(
@@ -28,7 +28,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     for i in mb.mmap() {
         qemu_log!(
-            "- {:?} <{:08x} - {:08x}>",
+            "- {:?} <{:#x} - {:#x}>",
             i.ty(),
             i.addr(),
             i.addr() + i.length()
@@ -41,10 +41,10 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
         let addr = mb.addr;
         let shndx = mb.shndx;
 
-        qemu_log!("NUM: {:08x}", num);
-        qemu_log!("SIZE: {:08x}", size);
-        qemu_log!("ADDR: {:08x}", addr);
-        qemu_log!("SHNDX: {:08x}", shndx);
+        qemu_log!("NUM: {:#x}", num);
+        qemu_log!("SIZE: {:#x}", size);
+        qemu_log!("ADDR: {:#x}", addr);
+        qemu_log!("SHNDX: {:#x}", shndx);
     }
 
     // Fill system info
@@ -111,7 +111,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
             }
 
             qemu_log!(
-                "Marked module #{} {:#?} ({:x} - {:x}) as reserved.",
+                "Marked module #{} {:#?} ({:#x} - {:#x}) as reserved.",
                 n,
                 i.cmdline(),
                 start_addr,

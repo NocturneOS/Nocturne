@@ -32,17 +32,17 @@ impl Debug for CPURegisters {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str("Registers (x86_64):\n")?;
 
-        write!(f, "RAX: {:016x}; RBX: {:016x}\n", self.rax, self.rbx)?;
-        write!(f, "RCX: {:016x}; RDX: {:016x}\n", self.rcx, self.rdx)?;
-        write!(f, "RSI: {:016x}; RDI: {:016x}\n", self.rsi, self.rdi)?;
-        write!(f, "RSP: {:016x}; RBP: {:016x}\n", self.rsp, self.rbp)?;
-        write!(f, "R8:  {:016x}; R9:  {:016x}\n", self.r8, self.r9)?;
-        write!(f, "R10: {:016x}; R11: {:016x}\n", self.r10, self.r11)?;
-        write!(f, "R12: {:016x}; R13: {:016x}\n", self.r12, self.r13)?;
-        write!(f, "R14: {:016x}; R15: {:016x}\n", self.r14, self.r15)?;
-        write!(f, "EIP: {:08x}\n", self.rip)?;
-        write!(f, "CS:  {:04x}; DS: {:04x}\n", self.cs, self.ds)?;
-        write!(f, "EFLAGS: {:08x}\n", self.rflags)?;
+        writeln!(f, "RAX: {:016x}; RBX: {:016x}", self.rax, self.rbx)?;
+        writeln!(f, "RCX: {:016x}; RDX: {:016x}", self.rcx, self.rdx)?;
+        writeln!(f, "RSI: {:016x}; RDI: {:016x}", self.rsi, self.rdi)?;
+        writeln!(f, "RSP: {:016x}; RBP: {:016x}", self.rsp, self.rbp)?;
+        writeln!(f, "R8:  {:016x}; R9:  {:016x}", self.r8, self.r9)?;
+        writeln!(f, "R10: {:016x}; R11: {:016x}", self.r10, self.r11)?;
+        writeln!(f, "R12: {:016x}; R13: {:016x}", self.r12, self.r13)?;
+        writeln!(f, "R14: {:016x}; R15: {:016x}", self.r14, self.r15)?;
+        writeln!(f, "EIP: {:08x}", self.rip)?;
+        writeln!(f, "CS:  {:04x}; DS: {:04x}", self.cs, self.ds)?;
+        writeln!(f, "EFLAGS: {:08x}", self.rflags)?;
         write!(f, "INTERRUPT: {:02x}; ERROR: {:08x}", self.int_num, self.err_code)?;
 
         Ok(())
