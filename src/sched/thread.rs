@@ -48,6 +48,28 @@ pub struct Thread {
 unsafe impl Sync for Thread {}
 unsafe impl Send for Thread {}
 
+#[cfg(target_arch = "x86")]
+const _: &[()] = &[
+    assert!(core::mem::offset_of!(Thread, id) == 0),
+    assert!(core::mem::offset_of!(Thread, process) == 4),
+    assert!(core::mem::offset_of!(Thread, flags) == 8),
+    assert!(core::mem::offset_of!(Thread, state) == 12),
+    assert!(core::mem::offset_of!(Thread, stack_addr) == 16),
+    assert!(core::mem::offset_of!(Thread, stack_size) == 20),
+    assert!(core::mem::offset_of!(Thread, stack_pointer) == 24),
+];
+
+#[cfg(target_arch = "x86_64")]
+const _: &[()] = &[
+    assert!(core::mem::offset_of!(Thread, id) == 0),
+    assert!(core::mem::offset_of!(Thread, process) == 8),
+    assert!(core::mem::offset_of!(Thread, flags) == 16),
+    assert!(core::mem::offset_of!(Thread, state) == 24),
+    assert!(core::mem::offset_of!(Thread, stack_addr) == 32),
+    assert!(core::mem::offset_of!(Thread, stack_size) == 40),
+    assert!(core::mem::offset_of!(Thread, stack_pointer) == 48),
+];
+
 // impl Drop for Thread {
 //     fn drop(&mut self) {
 //         qemu_log!("Thread is dropped!");
