@@ -268,6 +268,7 @@ impl Scheduler {
             .fetch_sub(1, Ordering::SeqCst);
     }
 
+    #[inline(always)]
     fn this_task(&self) -> &SharedThread {
         self.current_thread.as_ref().unwrap()
     }
@@ -289,6 +290,7 @@ impl Scheduler {
         self.schedule();
     }
 
+    #[inline(always)]
     fn check_dead_tasks(&mut self) {
         while let Some(task) = self.dead_queue.pop_front() {       
             self.remove_task(task);
@@ -434,7 +436,7 @@ fn this_process_unlocked() -> SharedProcess {
     Arc::clone(proc)
 }
 
-fn this_process() -> SharedProcess {
+pub fn this_process() -> SharedProcess {
     let il = InterruptLocker::lock();
 
     let value = this_process_unlocked();
@@ -504,7 +506,7 @@ pub fn this_thread() -> SharedThread {
 
         let lock = this();
 
-        thread = lock.current_thread.as_ref().unwrap().clone();
+        thread = Arc::clone(lock.current_thread.as_ref().unwrap());
     }
 
     drop(il);
@@ -554,6 +556,8 @@ pub extern "C" fn thread_exit() -> ! {
         let thread = this_thread();
 
         thread.state.set(thread::ThreadState::Dead);
+
+        qemu_log!("Marked as dead");
 
         {
             let mut lock = this();
