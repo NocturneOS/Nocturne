@@ -39,6 +39,25 @@ impl From<usize> for ThreadState {
 }
 
 #[repr(C)]
+#[derive(Copy, Clone, Default)]
+pub enum ThreadPriority {
+    High,
+    #[default]
+    Medium,
+    Low
+}
+
+impl ThreadPriority {
+    pub fn to_ticks(&self) -> usize {
+        match self {
+            Self::High => 10,
+            Self::Medium => 5,
+            Self::Low => 1,
+        }
+    }
+}
+
+#[repr(C)]
 pub struct Thread {
     pub id: usize,
 
@@ -55,7 +74,12 @@ pub struct Thread {
 
     pub arch_specific_region: ArchitectureSpecificRegion,
 
-    pub last_error: usize
+    // SAFE ZONE: Add or remove fields here, it won't change the scheduler behaviour.
+
+    pub last_error: AtomicUsize,
+
+    pub priority: ThreadPriority,
+    pub time_quantum: AtomicUsize
 }
 
 // Assert that offsets are valid for our assembly code.

@@ -5,9 +5,7 @@ use core::{panic::PanicInfo, time::Duration};
 
 use alloc::{collections::{btree_map::BTreeMap, linked_list::LinkedList, vec_deque::VecDeque}, format, string::String, vec::Vec};
 
-use crate::{
-    sched::thread::ThreadFlags,
-};
+use crate::sched::thread::{ThreadFlags, ThreadPriority::{self, Medium}};
 
 mod arch;
 mod interrupts;
@@ -23,15 +21,20 @@ mod unwind;
 extern crate alloc;
 
 fn test_task() {
-    loop {
-        let id = sched::this_thread_id();
+    let id = sched::this_thread_id();
+    let mut counter: usize = 0;
 
+    loop {
         qemu_println!("Hello, my ID is: {id:?}");
 
-        sched::sleep(Duration::from_millis(id as u64 * 10));
+        // sched::sleep(Duration::from_millis(2));
 
-        qemu_println!("Exiting: {id:?}");
-        break;
+        counter = counter.wrapping_add(1);
+
+        if counter == 0xff {
+            qemu_println!("Exiting: {id:?}");
+            break;
+        }
     }
 }
 
@@ -45,10 +48,11 @@ extern "C" fn kmain() -> ! {
     sched::init();
     
     {
-        for _ in 0..256 {
+        for _ in 0..128 {
             sched::create_thread(
                 test_task,
                 sched::KERNEL_THREAD_DEFAULT_STACK_SIZE,
+                ThreadPriority::Low,
                 ThreadFlags::empty(),
             );
         }

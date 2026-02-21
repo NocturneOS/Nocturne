@@ -17,7 +17,7 @@ use crate::{
     sched::{
         archspec::ArchitectureSpecificRegion,
         process::Process,
-        thread::{Thread, ThreadFlags, ThreadState},
+        thread::{Thread, ThreadFlags, ThreadPriority, ThreadState},
     }, tools::interrupt_locker::InterruptLocker,
 };
 
@@ -99,9 +99,12 @@ impl Scheduler {
             process: Arc::clone(&kernel_process), //Arc::into_raw(Arc::clone(&kernel_process)).into(),
             flags: ThreadFlags::empty(),
             state: (thread::ThreadState::Running as usize).into(),
-            stack_size: 32 << 10, // 32 KB
+            stack_size: 64 << 10, // 64 KB
             arch_specific_region: ArchitectureSpecificRegion::new(),
-            last_error: 0,
+            
+            priority: thread::ThreadPriority::Low,
+            time_quantum: 1.into(),
+            last_error: 0.into(),
 
             // Those fields will be filled automatically on context change
             stack_addr: 0,
@@ -118,6 +121,7 @@ impl Scheduler {
             Arc::clone(&kernel_process),
             idle_task,
             0x1000,
+            ThreadPriority::Low,
             ThreadFlags::Raw,
         );
 
@@ -134,6 +138,7 @@ impl Scheduler {
         process: SharedProcess,
         entry: fn() -> (),
         stack_size: usize,
+        priority: ThreadPriority,
         flags: ThreadFlags,
     ) -> Option<SharedThread> {
         let stack: *mut u8 = unsafe {
@@ -228,7 +233,9 @@ impl Scheduler {
             stack_pointer: writeable_sp.addr(),
             entry_point: entry as *const () as usize,
             arch_specific_region: ArchitectureSpecificRegion::new(),
-            last_error: 0,
+            last_error: 0.into(),
+            time_quantum: priority.to_ticks().into(),
+            priority,
         };
 
         let tcb = Arc::new(tcb);
@@ -364,16 +371,30 @@ impl Scheduler {
 
         let this = Arc::clone(self.this_task());
 
-        // If it's not an idle task, push it to the queue.
+        // If it's not an idle task, check it.
         if !Arc::ptr_eq(&this, self.idle_task.as_ref().unwrap()) {
             let state = thread::ThreadState::from(this.state.load(Ordering::SeqCst));
 
+            // If it's running or ready, push it to the queue.
             if state == ThreadState::Ready || state == ThreadState::Running {
+                // If we DIDN'T ran out of quantum, decrement and continue.
+                if this.time_quantum.load(Ordering::SeqCst) != 0 {
+                    this.time_quantum.fetch_sub(1, Ordering::SeqCst);
+                    return;
+                }
+                
+                // Reload ammo.
+                this.time_quantum.store(this.priority.to_ticks().into(), Ordering::SeqCst);
+
+                this.state.store(ThreadState::Ready as _, Ordering::SeqCst);
+
                 self.working_queue.push_back(Arc::clone(&this));
             }
         }
 
         let next = self.next_task();
+
+        this.state.store(ThreadState::Running as _, Ordering::SeqCst);
 
         // If next task is a current task, do not switch contexts.
         if this.id == next.id {
@@ -448,7 +469,7 @@ pub fn this_process() -> SharedProcess {
     value
 }
 
-pub fn create_thread(entry: fn() -> (), stack_size: usize, flags: ThreadFlags) {
+pub fn create_thread(entry: fn() -> (), stack_size: usize, priority: ThreadPriority, flags: ThreadFlags) {
     let il = InterruptLocker::lock();
 
     //
@@ -457,7 +478,7 @@ pub fn create_thread(entry: fn() -> (), stack_size: usize, flags: ThreadFlags) {
         let proc = this_process_unlocked();
         let mut binding = this();
 
-        binding.create_thread(proc, entry, stack_size, flags);
+        binding.create_thread(proc, entry, stack_size, priority, flags);
     }
 
     //
@@ -572,7 +593,7 @@ pub fn thread_exit() -> ! {
 
     schedule();
 
-    loop {}
+    unreachable!()
 }
 
 #[unsafe(naked)]
