@@ -98,7 +98,7 @@ impl Scheduler {
 
             process: Arc::clone(&kernel_process), //Arc::into_raw(Arc::clone(&kernel_process)).into(),
             flags: ThreadFlags::empty(),
-            state: Cell::new(thread::ThreadState::Running),
+            state: (thread::ThreadState::Running as usize).into(),
             stack_size: 32 << 10, // 32 KB
             arch_specific_region: ArchitectureSpecificRegion::new(),
             last_error: 0,
@@ -174,10 +174,10 @@ impl Scheduler {
         #[cfg(target_arch = "x86_64")]
         unsafe {
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(thread_exit as *const () as usize);
+            writeable_sp.write(0);
 
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(entry as *const () as usize);
+            writeable_sp.write(thread_trampoline as *const () as usize);
 
             writeable_sp = writeable_sp.sub(1);
             writeable_sp.write(0x202); // IF=1, IOPL=0
@@ -185,7 +185,7 @@ impl Scheduler {
             writeable_sp = writeable_sp.sub(1);
             writeable_sp.write(0); // RAX
             writeable_sp = writeable_sp.sub(1);
-            writeable_sp.write(0); // RBX
+            writeable_sp.write(entry as *const() as usize); // RBX = entry
             writeable_sp = writeable_sp.sub(1);
             writeable_sp.write(0); // RCX
             writeable_sp = writeable_sp.sub(1);
@@ -214,7 +214,7 @@ impl Scheduler {
             writeable_sp.write(0); // R15
         }
 
-        // qemu_log!("ESP: {:08x?}", writeable_sp.addr());
+        // qemu_log!("STACK: {:08x?}; ESP: {:08x?}", stack.addr(), writeable_sp.addr());
 
         process.thread_count.fetch_add(1, Ordering::SeqCst);
 
@@ -222,7 +222,7 @@ impl Scheduler {
             id,
             process, //Arc::into_raw(process),
             flags,
-            state: Cell::new(thread::ThreadState::Ready),
+            state: (thread::ThreadState::Ready as usize).into(),
             stack_addr: stack.addr(),
             stack_size,
             stack_pointer: writeable_sp.addr(),
@@ -278,7 +278,7 @@ impl Scheduler {
             .as_ref()
             .unwrap()
             .state
-            .set(ThreadState::Sleeping);
+            .store(ThreadState::Sleeping as usize, Ordering::SeqCst);
 
         self.working_queue.retain(|x| x.id != self.current_thread.as_ref().unwrap().id);
 
@@ -309,7 +309,7 @@ impl Scheduler {
             let (task, wakeup_time) = &self.sleeping_queue[index];
 
             if crate::time::get_uptime_ticks() > *wakeup_time {
-                task.state.set(ThreadState::Ready);
+                task.state.store(ThreadState::Ready as usize, Ordering::SeqCst);
 
                 self.working_queue.push_back(Arc::clone(task));
 
@@ -337,10 +337,12 @@ impl Scheduler {
         let mut task: Option<SharedThread> = None;
 
         while let Some(t) = self.working_queue.pop_front() {
-            debug_assert!(t.state.get() != ThreadState::Dead, "Found a dead task in the working queue!");
-            debug_assert!(t.state.get() != ThreadState::Sleeping, "Found a sleeping task in the working queue!");
+            let thread_state: thread::ThreadState = thread::ThreadState::from(t.state.load(Ordering::SeqCst));
 
-            if t.state.get() == ThreadState::Sleeping {
+            debug_assert!(thread_state != ThreadState::Dead, "Found a dead task in the working queue!");
+            debug_assert!(thread_state != ThreadState::Sleeping, "Found a sleeping task in the working queue!");
+
+            if thread_state == ThreadState::Sleeping {
                 continue;
             }
 
@@ -364,7 +366,7 @@ impl Scheduler {
 
         // If it's not an idle task, push it to the queue.
         if !Arc::ptr_eq(&this, self.idle_task.as_ref().unwrap()) {
-            let state = this.state.get();
+            let state = thread::ThreadState::from(this.state.load(Ordering::SeqCst));
 
             if state == ThreadState::Ready || state == ThreadState::Running {
                 self.working_queue.push_back(Arc::clone(&this));
@@ -463,7 +465,7 @@ pub fn create_thread(entry: fn() -> (), stack_size: usize, flags: ThreadFlags) {
     drop(il);
 }
 
-pub extern "C" fn schedule() {
+pub fn schedule() {
     let il = InterruptLocker::lock();
 
     //
@@ -549,15 +551,14 @@ pub fn sleep(dur: core::time::Duration) {
     // }
 }
 
-pub extern "C" fn thread_exit() -> ! {
+// Exit from this thread.
+pub fn thread_exit() -> ! {
     arch::disable_interrupts();
 
     {
         let thread = this_thread();
 
-        thread.state.set(thread::ThreadState::Dead);
-
-        qemu_log!("Marked as dead");
+        thread.state.store(thread::ThreadState::Dead as _, Ordering::SeqCst);
 
         {
             let mut lock = this();
@@ -572,6 +573,19 @@ pub extern "C" fn thread_exit() -> ! {
     schedule();
 
     loop {}
+}
+
+#[unsafe(naked)]
+unsafe extern "C" fn thread_trampoline() -> ! {
+    core::arch::naked_asm!(
+        // Align RSP
+        "sub rsp, 8",
+        // RBX = entry point
+        "call rbx",
+        // If entry returned, call thread_exit to mark thread as dead.
+        "call {exit}",
+        exit = sym thread_exit
+    );
 }
 
 fn idle_task() {

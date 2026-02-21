@@ -306,10 +306,12 @@ unsafe impl GlobalAlloc for ArenaAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let il = InterruptLocker::lock();
 
-        let block = self.inner()
+        let block: *mut u8 = self.inner()
             .allocate(layout)
             .map(|ptr| ptr.as_ptr())
             .unwrap_or(ptr::null_mut());
+
+        debug_assert!(block.addr().is_multiple_of(layout.align()));
 
         drop(il);
 

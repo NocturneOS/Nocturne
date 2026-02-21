@@ -29,8 +29,14 @@
 
 .section .rodata
 .align 8
-conword:
+fpu_main_init_word:
     .word 0x37f
+
+fpu_invop:
+    .word 0x37e
+
+fpu_zerodiv_err:
+    .word 0x37a
 
 .section .text
 .type __pre_init, %function
@@ -38,16 +44,6 @@ conword:
 __pre_init:
     cli
     cld
-
-    # init FPU
-    fninit
-    finit
-    # Use RIP-relative addressing for conword access
-    fldcw conword - 0xFFFFFFFF80000000
-
-    mov %cr4, %eax
-    or $0x200, %eax
-    mov %eax, %cr4
 
     // Load stack - use physical address
     lea (stack_top), %esp
@@ -198,6 +194,18 @@ go64_p2:
     mov %cr4, %rax
     or $(3 << 9), %ax
     mov %rax, %cr4
+
+    mov %cr4, %rax
+    or $0x200, %rax
+    mov %rax, %cr4
+
+    # Use RIP-relative addressing for conword access
+    fldcw fpu_main_init_word
+    fldcw fpu_invop
+    fldcw fpu_zerodiv_err
+
+    # init FPU
+    finit
 
     pop %rdi
 

@@ -1,7 +1,7 @@
 .code64
 .global __context_switch
 __context_switch:
-    pushf
+    pushfq
 
     push %rax
     push %rbx
@@ -67,6 +67,6 @@ __context_switch:
     pop %rbx
     pop %rax
 
-    popf
+    popfq
 
     ret

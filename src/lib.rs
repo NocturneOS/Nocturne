@@ -23,21 +23,15 @@ mod unwind;
 extern crate alloc;
 
 fn test_task() {
-    // let mut inner_counter = 0;
-
     loop {
         let id = sched::this_thread_id();
 
         qemu_println!("Hello, my ID is: {id:?}");
 
-        sched::sleep(Duration::from_millis(id as u64 * 5));
+        sched::sleep(Duration::from_millis(id as u64 * 10));
 
-        // if inner_counter > 5 {
         qemu_println!("Exiting: {id:?}");
         break;
-        // }
-        
-        // inner_counter += 1;
     }
 }
 
@@ -47,38 +41,6 @@ extern "C" fn kmain() -> ! {
     // To make kernel fully initialized we should initialize heap.
 
     mem::heap::init();
-
-    // {
-    //     #[derive(Debug)]
-    //     struct Local {
-    //         name: String,
-    //         data: Vec<LinkedList<u32>>
-    //     }
-
-    //     let mut list = VecDeque::<Local>::new();
-
-    //     for i in 0..128 {
-    //         list.push_back(Local {
-    //             name: format!("Simple dimple: {:?} {:x}", i, i),
-    //             data: Vec::from([LinkedList::from_iter(0..i)])
-    //         });
-    //     }
-
-    //     for i in &mut list {
-    //         i.data[0].pop_front();
-    //         i.data[0].pop_front();
-    //         i.data[0].pop_front();
-    //         qemu_print!("{i:?}, ");
-    //     }
-    //  
-    //     qemu_println!();
-
-    //     qemu_log!("OK!");
-
-    //     // mem::heap::dump();
-
-    //     loop {}
-    // }
     
     sched::init();
     
