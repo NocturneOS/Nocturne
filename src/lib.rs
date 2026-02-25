@@ -27,11 +27,11 @@ fn test_task() {
     loop {
         qemu_println!("Hello, my ID is: {id:?}");
 
-        // sched::sleep(Duration::from_millis(2));
+        sched::sleep(Duration::from_millis((10 * id) as _));
 
         counter = counter.wrapping_add(1);
 
-        if counter == 0xff {
+        if counter == 0x40 {
             qemu_println!("Exiting: {id:?}");
             break;
         }
@@ -48,7 +48,7 @@ extern "C" fn kmain() -> ! {
     sched::init();
     
     {
-        for _ in 0..128 {
+        for _ in 0..4 {
             sched::create_thread(
                 test_task,
                 sched::KERNEL_THREAD_DEFAULT_STACK_SIZE,

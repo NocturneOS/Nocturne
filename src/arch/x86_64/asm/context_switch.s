@@ -24,15 +24,15 @@ __context_switch:
     # RDX = NEXT PROCESS
     # RCX = NEXT THREAD
 
-    # Save stack pointer (0x30 = Thread::stack_pointer)
-    mov %rsp, 0x30(%rsi)
+    # Save stack pointer (0x20 = Thread::ThreadStack::stack_pointer)
+    mov %rsp, 0x20(%rsi)
 
     # Save SIMD context (0x20 = Thread::arch_specific_region)
     mov 0x40(%rsi), %rax
     fxsave (%rax)
 
     # Load next stack
-    mov 0x30(%rcx), %rsp
+    mov 0x20(%rcx), %rsp
 
     # Restore SIMD context
     mov 0x40(%rcx), %rax

@@ -2,7 +2,7 @@ use core::{cell::Cell, sync::atomic::{AtomicPtr, AtomicUsize}};
 
 use bitflags::bitflags;
 
-use crate::sched::archspec::ArchitectureSpecificRegion;
+use crate::sched::{archspec::ArchitectureSpecificRegion, stack_manager::ThreadStack};
 
 bitflags! {
     #[derive(Copy, Clone, PartialEq, Eq)]
@@ -65,10 +65,7 @@ pub struct Thread {
     pub flags: ThreadFlags,
     pub state: AtomicUsize,
 
-    pub stack_addr: usize,
-    pub stack_size: usize,
-
-    pub stack_pointer: usize,
+    pub stack: ThreadStack,
 
     pub entry_point: usize,
 
@@ -89,9 +86,10 @@ const _: &[()] = &[
     assert!(core::mem::offset_of!(Thread, process) == 4),
     assert!(core::mem::offset_of!(Thread, flags) == 8),
     assert!(core::mem::offset_of!(Thread, state) == 12),
-    assert!(core::mem::offset_of!(Thread, stack_addr) == 16),
-    assert!(core::mem::offset_of!(Thread, stack_size) == 20),
-    assert!(core::mem::offset_of!(Thread, stack_pointer) == 24),
+    assert!(core::mem::offset_of!(Thread, stack) == 16),
+    assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_pointer) == 16),
+    assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_addr) == 20),
+    assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_size) == 24),
 ];
 
 #[cfg(target_arch = "x86_64")]
@@ -100,9 +98,10 @@ const _: &[()] = &[
     assert!(core::mem::offset_of!(Thread, process) == 0x8),
     assert!(core::mem::offset_of!(Thread, flags) == 0x10),
     assert!(core::mem::offset_of!(Thread, state) == 0x18),
-    assert!(core::mem::offset_of!(Thread, stack_addr) == 0x20),
-    assert!(core::mem::offset_of!(Thread, stack_size) == 0x28),
-    assert!(core::mem::offset_of!(Thread, stack_pointer) == 0x30),
+    assert!(core::mem::offset_of!(Thread, stack) == 0x20),
+    assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_pointer) == 0x20),
+    assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_addr) == 0x28),
+    assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_size) == 0x30),
     assert!(core::mem::offset_of!(Thread, arch_specific_region) == 0x40),
 ];
 
