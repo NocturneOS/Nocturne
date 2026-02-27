@@ -1,20 +1,20 @@
 use lazy_static::lazy_static;
 
-const ACCESS_PRESENT: u8 = 1 << 7;
-const ACCESS_DPL_0: u8 = 0 << 5;
-const ACCESS_DPL_3: u8 = 3 << 5;
-const ACCESS_CODE_OR_DATA: u8 = 1 << 4;
-const ACCESS_EXECUTABLE: u8 = 1 << 3;
-const ACCESS_DIRECTION_CONFORMING: u8 = 1 << 2;
-const ACCESS_RW: u8 = 1 << 1;
-const ACCESS_ACCESSED: u8 = 1 << 0;
+pub const ACCESS_PRESENT: u8 = 1 << 7;
+pub const ACCESS_DPL_0: u8 = 0 << 5;
+pub const ACCESS_DPL_3: u8 = 3 << 5;
+pub const ACCESS_CODE_OR_DATA: u8 = 1 << 4;
+pub const ACCESS_EXECUTABLE: u8 = 1 << 3;
+pub const ACCESS_DIRECTION_CONFORMING: u8 = 1 << 2;
+pub const ACCESS_RW: u8 = 1 << 1;
+pub const ACCESS_ACCESSED: u8 = 1 << 0;
 
-const FLAG_GRANULARITY: u8 = 1 << 3;
-const FLAG_SIZE: u8 = 1 << 2;
-const FLAG_LONGMODE: u8 = 1 << 1;
+pub const FLAG_GRANULARITY: u8 = 1 << 3;
+pub const FLAG_SIZE: u8 = 1 << 2;
+pub const FLAG_LONGMODE: u8 = 1 << 1;
 
 #[repr(C, packed(1))]
-struct GDTEntry {
+pub struct GDTEntry {
     limit_low: u16,
     base_low: u16,
     base_middle: u8,
@@ -37,7 +37,7 @@ impl GDTEntry {
 }
 
 #[repr(align(16))]
-struct GDT <const N: usize> {
+pub struct GDT <const N: usize> {
     entries: [GDTEntry; N]
 }
 
@@ -49,13 +49,25 @@ impl<const N: usize> GDT<N> {
 
         unsafe { &mut *(self.entries.as_ptr() as *mut GDTEntry).add(index) }
     }
+
+    pub fn nth_ptr(&self, index: usize) -> *mut GDTEntry {
+        if index >= N {
+            panic!("GDT out of range");
+        }
+
+        unsafe { (self.entries.as_ptr() as *mut GDTEntry).add(index) }
+    }
+
+    pub fn len(&self) -> usize {
+        N
+    }
 }
 
 unsafe impl<const N: usize> Sync for GDT<N> {}
 unsafe impl<const N: usize> Send for GDT<N> {}
 
 lazy_static! {
-    static ref GDT_ENTRIES: GDT<6> = unsafe { core::mem::zeroed() };
+    pub static ref GDT_ENTRIES: GDT<7> = unsafe { core::mem::zeroed() };
 }
 
 unsafe extern "C" {

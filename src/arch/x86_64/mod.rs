@@ -62,6 +62,8 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     crate::mem::physical::init();
 
+    tss::init();
+
     for i in mb
         .mmap()
         .iter()

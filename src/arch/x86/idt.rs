@@ -15,13 +15,13 @@ const GATE_32_TRAP: u8 = 0b1111;
 struct IDTEntry {
     base_low: u16,
     selector: u16,
-    always0: u8,
+    reserved_1: u8,
     flags: u8,
     base_high: u16,
     #[cfg(target_arch = "x86_64")]
     base_higher: u32,
     #[cfg(target_arch = "x86_64")]
-    reserved: u32,
+    reserved_2: u32,
 }
 
 impl IDTEntry {
@@ -29,14 +29,19 @@ impl IDTEntry {
         Self {
             base_low: (base & 0xffff) as u16,
             selector,
-            always0: 0,
+            reserved_1: 0,
             flags,
             base_high: ((base >> 16) & 0xffff) as u16,
             #[cfg(target_arch = "x86_64")]
             base_higher: ((base >> 32) & 0xffffffff) as u32,
             #[cfg(target_arch = "x86_64")]
-            reserved: 0
+            reserved_2: 0
         }
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub fn set_ist(&mut self, ist: u8) {
+        self.reserved_1 = ist & 0b111;
     }
 }
 
@@ -135,6 +140,11 @@ pub fn init() {
     bind[29] = IDTEntry::new(isr29 as *const () as _, 0x08, PRESENT | DPL_0 | GATE_32_TRAP);
     bind[30] = IDTEntry::new(isr30 as *const () as _, 0x08, PRESENT | DPL_0 | GATE_32_TRAP);
     bind[31] = IDTEntry::new(isr31 as *const () as _, 0x08, PRESENT | DPL_0 | GATE_32_TRAP);
+
+    #[cfg(target_arch = "x86_64")]
+    for idx in 0..32 {
+        bind[idx].set_ist(1);
+    }
 
     bind[32 + 0] = IDTEntry::new(irq0 as *const () as _, 0x08, PRESENT | DPL_0 | GATE_32_INTERRUPT);
     bind[32 + 1] = IDTEntry::new(irq1 as *const () as _, 0x08, PRESENT | DPL_0 | GATE_32_INTERRUPT);

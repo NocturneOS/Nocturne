@@ -25,14 +25,14 @@ fn test_task() {
     let mut counter: usize = 0;
 
     loop {
-        qemu_println!("Hello, my ID is: {id:?}");
+        qemu_log!("Hello, my ID is: {id:?} {id:#x?}");
 
         sched::sleep(Duration::from_millis((10 * id) as _));
 
         counter = counter.wrapping_add(1);
 
         if counter == 0x40 {
-            qemu_println!("Exiting: {id:?}");
+            qemu_log!("Exiting: {id:?}");
             break;
         }
     }
@@ -44,14 +44,14 @@ extern "C" fn kmain() -> ! {
     // To make kernel fully initialized we should initialize heap.
 
     mem::heap::init();
-    
+
     sched::init();
     
     {
         for _ in 0..4 {
             sched::create_thread(
                 test_task,
-                sched::KERNEL_THREAD_DEFAULT_STACK_SIZE,
+                4 << 10,
                 ThreadPriority::Low,
                 ThreadFlags::empty(),
             );
