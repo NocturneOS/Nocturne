@@ -1,3 +1,7 @@
+use lazy_static::lazy_static;
+
+use crate::tools::pseudosync::PseudoSync;
+
 #[repr(C, packed)]
 pub struct TSSEntry {
     pub prev_tss: u32,
@@ -27,4 +31,13 @@ pub struct TSSEntry {
     pub ldtr: u32,
     pub trap: u16,
     pub iomap_base: u16,
+}
+
+lazy_static! {
+    static ref BSP_TSS: PseudoSync<TSSEntry> = unsafe { core::mem::zeroed() };
+}
+
+// TODO: Initialize the TSS!
+pub fn init() {
+
 }

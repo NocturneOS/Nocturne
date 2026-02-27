@@ -71,6 +71,8 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     crate::mem::physical::init();
 
+    tss::init();
+
     // After physical memory initialization we have to mark reserved memory as used.
     for i in mb
         .mmap()
