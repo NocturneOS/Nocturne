@@ -3,11 +3,9 @@
 
 use core::{panic::PanicInfo, time::Duration};
 
-use alloc::{collections::{btree_map::BTreeMap, linked_list::LinkedList, vec_deque::VecDeque}, string::String};
+use alloc::{collections::{btree_map::BTreeMap, linked_list::LinkedList, vec_deque::VecDeque}, format, string::String, vec::Vec};
 
-use crate::{
-    sched::thread::ThreadFlags,
-};
+use crate::sched::thread::{ThreadFlags, ThreadPriority::{self, Medium}};
 
 mod arch;
 mod interrupts;
@@ -23,21 +21,20 @@ mod unwind;
 extern crate alloc;
 
 fn test_task() {
-    // let mut inner_counter = 0;
+    let id = sched::this_thread_id();
+    let mut counter: usize = 0;
 
     loop {
-        let id = sched::this_thread_id();
-
         qemu_println!("Hello, my ID is: {id:?}");
 
-        sched::sleep(Duration::from_millis(id as u64 * 5));
+        sched::sleep(Duration::from_millis((10 * id) as _));
 
-        // if inner_counter > 5 {
-        qemu_println!("Exiting: {id:?}");
-        break;
-        // }
-        
-        // inner_counter += 1;
+        counter = counter.wrapping_add(1);
+
+        if counter == 0x40 {
+            qemu_println!("Exiting: {id:?}");
+            break;
+        }
     }
 }
 
@@ -47,43 +44,15 @@ extern "C" fn kmain() -> ! {
     // To make kernel fully initialized we should initialize heap.
 
     mem::heap::init();
-
-    // {
-    //     let mut list = VecDeque::new();
-
-    //     for i in 0..490 {
-    //         list.push_back(i);
-    //     }
-        
-    //     let mut bm = BTreeMap::new();
-
-    //     bm.insert("abc", String::from("def"));
-    //     bm.insert("123", String::from("456"));
-    //     bm.insert("???", String::from("!!!"));
-    //     bm.insert("101", String::from("666"));
-
-    //     qemu_println!("{bm:?}");
-
-    //     for i in &list {
-    //         qemu_print!("{i}, ");
-    //     }
-        
-    //     qemu_println!();
-
-    //     qemu_log!("OK!");
-
-    //     // mem::heap::dump();
-
-    //     loop {}
-    // }
     
     sched::init();
     
     {
-        for _ in 0..128 {
+        for _ in 0..4 {
             sched::create_thread(
                 test_task,
                 sched::KERNEL_THREAD_DEFAULT_STACK_SIZE,
+                ThreadPriority::Low,
                 ThreadFlags::empty(),
             );
         }

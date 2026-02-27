@@ -19,6 +19,16 @@ pub struct Process {
     pub cwd: AtomicPtr<c_char>,
 }
 
+#[cfg(target_arch = "x86")]
+const _: &[()] = &[
+    assert!(core::mem::offset_of!(Process, id) == 0),
+    assert!(core::mem::offset_of!(Process, page_directory_phys) == 4),
+    assert!(core::mem::offset_of!(Process, page_directory_virt) == 8),
+    assert!(core::mem::offset_of!(Process, thread_count) == 12),
+    assert!(core::mem::offset_of!(Process, name) == 16),
+    assert!(core::mem::offset_of!(Process, cwd) == 20),
+];
+
 fn next_pid() -> usize {
     GLOBAL_PID.fetch_add(1, Ordering::SeqCst)
 }

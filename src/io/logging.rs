@@ -2,7 +2,7 @@ use core::fmt::{self, Write};
 
 use lazy_static::lazy_static;
 
-use crate::{arch, tools::pseudosync::PseudoSync};
+use crate::{arch, tools::{interrupt_locker::InterruptLocker, pseudosync::PseudoSync}};
 
 lazy_static! {
     // pub static ref QEMU: Mutex<SerialWriter> = Mutex::new(SerialWriter { port: 0x3f8 });
@@ -14,15 +14,11 @@ pub struct SerialWriter {
 }
 
 pub fn __qemu_print(args: fmt::Arguments) {
-    let is_ena = arch::are_interrupts_enabled();
-
-    arch::disable_interrupts();
+    let is_ena = InterruptLocker::lock();
 
     unsafe { QEMU.get_mut().write_fmt(args).unwrap() };
 
-    if is_ena {
-        arch::enable_interrupts();
-    }
+    drop(is_ena);
 }
 
 impl fmt::Write for SerialWriter {

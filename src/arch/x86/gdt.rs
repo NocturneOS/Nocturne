@@ -1,7 +1,4 @@
-use core::ptr::addr_of_mut;
-
 use lazy_static::lazy_static;
-use spin::mutex::Mutex;
 
 const ACCESS_PRESENT: u8 = 1 << 7;
 const ACCESS_DPL_0: u8 = 0 << 5;
@@ -94,7 +91,7 @@ pub fn init() {
 
     unsafe {
         gdt_flush(&x86::dtables::DescriptorTablePointer {
-            limit: (core::mem::size_of::<GDTEntry>() * entries.len() - 1) as u16,
+            limit: (core::mem::size_of::<GDTEntry>() * entries.len() - 1).try_into().expect("Failed to convert limit to u16"),
             base: entries.as_ptr()
         });
     };

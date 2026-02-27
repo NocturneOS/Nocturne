@@ -21,15 +21,15 @@ __context_switch:
     mov 40(%esp), %eax  # Current thread
     mov 48(%esp), %ebx  # Next thread
 
-    # Save stack (0x18 = Thread::stack_pointer)
-    mov %esp, 0x18(%eax)
+    # Save stack (0x10 = Thread::ThreadStack::stack_pointer)
+    mov %esp, 0x10(%eax)
 
     # Save SIMD context (0x20 = Thread::arch_specific_region)
     mov 0x20(%eax), %ecx
     fxsave (%ecx)
 
     # Load stack
-    mov 0x18(%ebx), %esp
+    mov 0x10(%ebx), %esp
 
     # Restore SIMD context
     mov 0x20(%ebx), %edx
