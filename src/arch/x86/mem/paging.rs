@@ -1,3 +1,5 @@
+use core::ops::{BitAnd, Deref};
+
 use crate::{arch::get_page_size, mem::physical, qemu_log, tools};
 use bitflags::bitflags;
 
@@ -18,39 +20,84 @@ bitflags! {
     }
 }
 
-unsafe extern "C" {
-    // Defined in src/arch/x86/asm/init.s
-    static mut boot_page_directory: [u32; 1024];
+// unsafe extern "C" {
+//     // Defined in src/arch/x86/asm/init.s
+//     static mut boot_page_directory: [u32; 1024];
 
+// }
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+pub struct Page(usize);
+
+impl Page {
+    pub fn phys(&self) -> usize {
+        self.0 & !0xfff
+    }
+
+    pub fn flags(&self) -> PageFlags {
+        PageFlags::from_bits(self.0 & 0xFFF).unwrap()
+    }
+
+    pub fn is_present(&self) -> bool {
+        self.flags().contains(PageFlags::Present)
+    }
+
+    pub fn is_writeable(&self) -> bool {
+        self.flags().contains(PageFlags::Writeable)
+    }
+
+    pub fn is_extended(&self) -> bool {
+        self.flags().contains(PageFlags::Extended)
+    }
 }
 
-#[inline]
-pub fn page_directory() -> &'static [usize] {
-    unsafe { core::slice::from_raw_parts(0xFFFF_F000 as *const usize, 1023) }
+impl Deref for Page {
+    type Target = usize;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
-#[inline]
-pub fn page_directory_mut() -> &'static mut [usize] {
-    unsafe { core::slice::from_raw_parts_mut(0xFFFF_F000 as *mut usize, 1023) }
-}
-
-#[inline]
-pub fn page_table(pd_idx: usize) -> &'static [usize] {
-    unsafe {
-        core::slice::from_raw_parts((0xFFC0_0000 + (pd_idx * PAGE_SIZE)) as *const usize, 1024)
+impl PartialEq<usize> for Page {
+    fn eq(&self, other: &usize) -> bool {
+        self.0 == *other
     }
 }
 
 #[inline]
-pub fn page_table_mut(pd_idx: usize) -> &'static mut [usize] {
+pub fn page_directory() -> &'static [Page] {
+    unsafe { core::slice::from_raw_parts(0xFFFF_F000 as *const Page, 1023) }
+}
+
+#[inline]
+pub fn page_directory_mut() -> &'static mut [Page] {
+    unsafe { core::slice::from_raw_parts_mut(0xFFFF_F000 as *mut Page, 1023) }
+}
+
+#[inline]
+pub fn page_table(pd_idx: usize) -> &'static [Page] {
     unsafe {
-        core::slice::from_raw_parts_mut((0xFFC0_0000 + (pd_idx * PAGE_SIZE)) as *mut usize, 1024)
+        core::slice::from_raw_parts((0xFFC0_0000 + (pd_idx * PAGE_SIZE)) as *const Page, 1024)
+    }
+}
+
+#[inline]
+pub fn page_table_mut(pd_idx: usize) -> &'static mut [Page] {
+    unsafe {
+        core::slice::from_raw_parts_mut((0xFFC0_0000 + (pd_idx * PAGE_SIZE)) as *mut Page, 1024)
     }
 }
 
 #[inline]
 pub fn vaddr2indices(vaddr: usize) -> (usize, usize) {
     (vaddr >> 22, (vaddr >> 12) & 0x3ff)
+}
+
+#[inline]
+pub fn indices2vaddr(pde: usize, pte: usize) -> usize {
+    (pde << 22) | (pte << 12)
 }
 
 pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: PageFlags) {
@@ -63,15 +110,15 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
     if pt == 0 {
         let new_pt = physical::allocate_one().unwrap();
 
-        page_directory_mut()[pdi] = new_pt | table_flags.bits();
+        page_directory_mut()[pdi] = Page(new_pt | table_flags.bits());
 
         let page_table = page_table_mut(pdi);
-        page_table.fill(0);
+        page_table.fill(Page(0));
     }
 
     let page_table = page_table_mut(pdi);
 
-    page_table[pti] = physical_address | flags.bits() | 1;
+    page_table[pti] = Page(physical_address | flags.bits() | 1);
 
     unsafe { x86::tlb::flush(virtual_address) };
 
@@ -89,7 +136,7 @@ pub fn unmap_single_page(virtual_address: usize) {
 
     let page_table = page_table_mut(pdi);
 
-    page_table[pti] = 0;
+    page_table[pti] = Page(0);
 
     unsafe { x86::tlb::flush(virtual_address) };
 
@@ -122,22 +169,22 @@ pub fn virt2phys(virt_addr: usize) -> Option<usize> {
     let (pdi, pti) = vaddr2indices(virt_addr & !0xfff);
 
     // If no page table in page directory, exit.
-    if (page_directory()[pdi] & 1) == 0 {
+    if !page_directory()[pdi].is_present() {
         return None;
     }
 
     // If page directory entry is an extended page, return it.
-    if (page_directory()[pdi] & (1 << 7)) != 0 {
-        return Some(page_directory()[pdi] & !0xfff);
+    if page_directory()[pdi].is_extended() {
+        return Some(page_directory()[pdi].phys());
     }
 
     // If page is not mapped in page table, exit.
-    if (page_table(pdi)[pti] & 1) == 0 {
+    if !page_table(pdi)[pti].is_present() {
         return None;
     }
 
     // Otherwise, get the page table entry and clear service bits.
-    Some(page_table(pdi)[pti] & !0x3ff)
+    Some(page_table(pdi)[pti].0 & !0x3ff)
 }
 
 #[inline]
@@ -202,7 +249,7 @@ pub fn preinit(available_memory_size: usize) {
             continue;
         }
 
-        qemu_log!("PD[{n}] = {i:#x}");
+        qemu_log!("PD[{n}] = {:#x}", **i);
     }
 
     qemu_log!("Finished");

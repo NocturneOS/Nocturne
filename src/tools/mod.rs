@@ -1,5 +1,6 @@
-pub mod pseudosync;
 pub mod interrupt_locker;
+pub mod pseudosync;
+pub mod without_interrupts;
 
 #[inline]
 pub fn align_value(value: usize, alignment: usize) -> usize {
@@ -11,6 +12,6 @@ pub fn align_value(value: usize, alignment: usize) -> usize {
 }
 
 #[inline]
-fn align_down(addr: usize, align: usize) -> usize {
+pub fn align_down(addr: usize, align: usize) -> usize {
     addr & !(align - 1)
 }

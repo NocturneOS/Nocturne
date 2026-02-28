@@ -26,6 +26,7 @@ use crate::{
 mod archspec;
 pub mod process;
 mod stack_manager;
+mod address_space;
 pub mod thread;
 
 pub const KERNEL_THREAD_DEFAULT_STACK_SIZE: usize = 64 << 10; // 64 KB
@@ -139,6 +140,17 @@ impl Scheduler {
         self.working_queue.push_back(kernel_thread);
 
         self.is_initialized = true;
+    }
+
+    pub fn create_process(
+        &mut self,
+        page_directory_phys: usize,
+        name: &str,
+        cwd: &str
+    ) -> SharedProcess {
+        let proc = Process::new(page_directory_phys, 0, name, cwd);
+
+        Arc::new(proc)
     }
 
     pub fn create_thread(
@@ -449,7 +461,24 @@ pub fn this_process() -> SharedProcess {
     value
 }
 
+pub fn create_process(pd_phys: usize, name: &str, cwd: &str) -> SharedProcess {
+    let il = InterruptLocker::lock();
+
+    let process: SharedProcess;
+
+    {
+        let mut binding = this();
+
+        process = binding.create_process(pd_phys, name, cwd);
+    }
+
+    drop(il);
+
+    process
+}
+
 pub fn create_thread(
+    process: SharedProcess,
     entry: fn() -> (),
     stack_size: usize,
     priority: ThreadPriority,
@@ -460,10 +489,9 @@ pub fn create_thread(
     //
 
     {
-        let proc = this_process_unlocked();
         let mut binding = this();
 
-        binding.create_thread(proc, entry, stack_size, priority, flags);
+        binding.create_thread(process, entry, stack_size, priority, flags);
     }
 
     //

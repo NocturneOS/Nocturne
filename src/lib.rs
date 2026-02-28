@@ -5,7 +5,7 @@ use core::{panic::PanicInfo, time::Duration};
 
 use alloc::{collections::{btree_map::BTreeMap, linked_list::LinkedList, vec_deque::VecDeque}, format, string::String, vec::Vec};
 
-use crate::sched::thread::{ThreadFlags, ThreadPriority::{self, Medium}};
+use crate::{sched::thread::{ThreadFlags, ThreadPriority::{self, Medium}}, tools::without_interrupts::without_interrupts};
 
 mod arch;
 mod interrupts;
@@ -25,9 +25,11 @@ fn test_task() {
     let mut counter: usize = 0;
 
     loop {
-        qemu_log!("Hello, my ID is: {id:?} {id:#x?}");
+        let cr3 = unsafe { x86::controlregs::cr3() };
 
-        sched::sleep(Duration::from_millis((10 * id) as _));
+        qemu_log!("Hello, my ID is: {id:?} (CR3: {cr3:08x?})");
+
+        sched::sleep(Duration::from_millis((100 * id) as _));
 
         counter = counter.wrapping_add(1);
 
@@ -44,25 +46,36 @@ extern "C" fn kmain() -> ! {
     // To make kernel fully initialized we should initialize heap.
 
     mem::heap::init();
+    
+    let new_as = without_interrupts(|| arch::x86::mem::clone::clone_kernel_page_root() );
+    
+    qemu_log!("Page directory: {new_as:08x?}");
+
+    // unsafe { x86::controlregs::cr3_write(new_as as _) };
 
     sched::init();
+
+    let proc = sched::create_process(new_as, "Test Process", "rd0:?");
     
-    {
-        for _ in 0..4 {
-            sched::create_thread(
-                test_task,
-                16 << 10,
-                ThreadPriority::Low,
-                ThreadFlags::empty(),
-            );
-        }
+    sched::create_thread(proc, test_task, 8 << 10, ThreadPriority::Low, ThreadFlags::empty());
 
-        loop {
-            qemu_log!("Main thread!");
+    // {
+    //     for _ in 0..4 {
+    //         sched::create_thread(
+    //             test_task,
+    //             16 << 10,
+    //             ThreadPriority::Low,
+    //             ThreadFlags::empty(),
+    //         );
+    //     }
 
-            sched::sleep(Duration::from_millis(500));
-        }
-    }
+        // loop {
+        //     let cr3 = unsafe { x86::controlregs::cr3() };
+        //     qemu_log!("Main thread! CR3: {cr3:08x?}");
+
+        //     sched::sleep(Duration::from_millis(500));
+        // }
+    // }
 
     // clear_screen();
     // test_write();

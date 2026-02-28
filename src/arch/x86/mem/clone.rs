@@ -1,0 +1,67 @@
+use core::alloc::Layout;
+
+use crate::{arch::{get_page_size, mem::paging::{self, PageFlags}}, qemu_log};
+
+/// Clones kernel's paging root
+pub fn clone_kernel_page_root() -> usize {
+    // This is a temporary block. We will map pages, work and unmap to it to reduce heap usage.
+    let layout = Layout::from_size_align(get_page_size(), 0x1000).unwrap();
+    let temporary_block = unsafe { alloc::alloc::alloc(layout) };
+
+    paging::unmap_single_page(temporary_block.addr());
+
+    let new_page_directory = crate::mem::physical::allocate_one().unwrap();
+
+    paging::map_single_page(new_page_directory, temporary_block.addr(), PageFlags::Writeable | PageFlags::Present);
+
+    unsafe { (temporary_block as *mut usize).add(1023).write(new_page_directory | 3) };
+
+    for i in 0..1023 {
+        let pt = paging::page_directory()[i];
+
+        if pt.is_present() {
+            qemu_log!("[{:08x}] Available: {i} -> {:08x}", paging::indices2vaddr(i, 0), pt.phys());
+
+            if !pt.is_extended() {
+                let new_pt = crate::mem::physical::allocate_one().unwrap();
+
+                unsafe {
+                    (temporary_block as *mut usize).add(i).write(new_pt | 3);
+                }
+
+                paging::map_single_page(new_pt, temporary_block.addr(), PageFlags::Writeable | PageFlags::Present);
+
+                // unsafe {
+                //     (temporary_block as *mut usize).add(1023).write(new_pt | 3);
+                // }
+
+                for j in 0..1023 {
+                    let pte = paging::page_table(i)[j];
+
+                    if pte.is_present() {
+                        qemu_log!("- [{:08x}] Available: {j} -> {:08x}", paging::indices2vaddr(i, j), pte.phys());
+
+                        if pte.phys() != new_pt {
+                            unsafe { (temporary_block as *mut usize).add(j).write(pte.phys() | 3) };
+                        }
+                    }
+                }
+            } else {
+                paging::map_single_page(new_page_directory, temporary_block.addr(), PageFlags::Writeable | PageFlags::Present);
+
+                unsafe {
+                    (temporary_block as *mut usize).add(i).write(*pt);
+                }
+
+                qemu_log!("Mapped: {i}");
+            }
+        }
+    }
+
+    // Clean up mappings.
+    paging::unmap_single_page(temporary_block.addr());
+
+    unsafe { alloc::alloc::dealloc(temporary_block, layout) };
+
+    new_page_directory
+}

@@ -87,11 +87,11 @@ const _: &[()] = &[
     assert!(core::mem::offset_of!(Thread, flags) == 8),
     assert!(core::mem::offset_of!(Thread, state) == 12),
     assert!(core::mem::offset_of!(Thread, stack) == 16),
-    assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_pointer) == 16),
-    assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_addr) == 20),
-    assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_size) == 24),
-    assert!(core::mem::offset_of!(Thread, arch_specific_region) + core::mem::offset_of!(ArchitectureSpecificRegion, fxsave_region) == 0x20),
-    assert!(core::mem::offset_of!(Thread, arch_specific_region) + core::mem::offset_of!(ArchitectureSpecificRegion, tss_kernel_stack) == 0x24),
+    assert!(core::mem::offset_of!(Thread, stack.stack_pointer) == 16),
+    assert!(core::mem::offset_of!(Thread, stack.stack_addr) == 20),
+    assert!(core::mem::offset_of!(Thread, stack.stack_size) == 24),
+    assert!(core::mem::offset_of!(Thread, arch_specific_region.fxsave_region) == 32),
+    assert!(core::mem::offset_of!(Thread, arch_specific_region.tss_kernel_stack) == 36),
 ];
 
 #[cfg(target_arch = "x86_64")]
@@ -101,9 +101,9 @@ const _: &[()] = &[
     assert!(core::mem::offset_of!(Thread, flags) == 0x10),
     assert!(core::mem::offset_of!(Thread, state) == 0x18),
     assert!(core::mem::offset_of!(Thread, stack) == 0x20),
-    assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_pointer) == 0x20),
-    assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_addr) == 0x28),
-    assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_size) == 0x30),
+    assert!(core::mem::offset_of!(Thread, stack.stack_pointer) == 0x20),
+    assert!(core::mem::offset_of!(Thread, stack.stack_addr) == 0x28),
+    assert!(core::mem::offset_of!(Thread, stack.stack_size) == 0x30),
     assert!(core::mem::offset_of!(Thread, arch_specific_region) == 0x40),
 ];
 

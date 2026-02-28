@@ -202,7 +202,7 @@ impl InnerArenaAllocator {
         let mut upper_bound = if end_addr & page_mask == 0 && !is_last_block {
             end_addr  // Page-aligned end, but exclude this page (next block might start here)
         } else {
-            end_addr & !page_mask  // Round down to page boundary
+            tools::align_down(end_addr, page_size) 
         };
     
         // For last block, we can safely include the final page if end is page-aligned
@@ -213,6 +213,9 @@ impl InnerArenaAllocator {
         for i in (lower_bound..upper_bound).step_by(page_size) {
             if let Some(free_addr) = paging::virt2phys(i) {
                 unmap_single_page(i);
+                
+                debug_assert!(free_addr != 0);
+
                 physical::free_one(free_addr);
             }
         }
