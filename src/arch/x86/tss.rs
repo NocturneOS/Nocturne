@@ -1,6 +1,7 @@
 use lazy_static::lazy_static;
+use x86::{Ring, segmentation::SegmentSelector};
 
-use crate::tools::pseudosync::PseudoSync;
+use crate::{arch::x86::gdt, tools::pseudosync::PseudoSync};
 
 #[repr(C, packed)]
 pub struct TSSEntry {
@@ -33,11 +34,36 @@ pub struct TSSEntry {
     pub iomap_base: u16,
 }
 
-lazy_static! {
-    static ref BSP_TSS: PseudoSync<TSSEntry> = unsafe { core::mem::zeroed() };
-}
+#[unsafe(no_mangle)]
+static BSP_TSS: PseudoSync<TSSEntry> = unsafe { core::mem::zeroed() };
+static BSP_TSS_KERNEL_STACK: [usize; 0x100] = [0; 0x100];
 
 // TODO: Initialize the TSS!
 pub fn init() {
+    unsafe {
+        let tss = BSP_TSS.get_mut();
 
+        tss.ss0 = 0x10;
+        tss.esp0 = (BSP_TSS_KERNEL_STACK.as_ptr().addr() + 0x100) as u32;
+
+        tss.cs = 0x08 | 3;
+        tss.ss = 0x10 | 3;
+        tss.ds = 0x10 | 3;
+        tss.es = 0x10 | 3;
+        tss.fs = 0x10 | 3;
+        tss.gs = 0x10 | 3;
+
+        *gdt::GDT_ENTRIES.nth(5) = gdt::GDTEntry::new(
+            (tss as *mut TSSEntry).addr() as u32,
+            (core::mem::size_of::<TSSEntry>() - 1) as u32,
+            gdt::ACCESS_PRESENT | gdt::ACCESS_EXECUTABLE | gdt::ACCESS_ACCESSED,
+            0,
+        );
+
+        x86::task::load_tr(SegmentSelector::new(5, Ring::Ring0));
+    }
+}
+
+pub fn get_tss_stack_addr() -> usize {
+    BSP_TSS_KERNEL_STACK.as_ptr().addr() + 0x100
 }

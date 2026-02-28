@@ -1,3 +1,4 @@
+.extern BSP_TSS
 .global __context_switch
 __context_switch:
     pushf
@@ -35,7 +36,12 @@ __context_switch:
     mov 0x20(%ebx), %edx
     fxrstor (%edx)
 
-    # TODO: TSS
+    # Load kernel stack top to TSS::ESP0
+    # 0x24 = Thread::ArchitectureSpecificRegion::tss_kernel_stack
+    mov 0x24(%eax), %ecx
+    mov $BSP_TSS, %edx
+    # 0x04 = TSSEntry::esp0
+    mov %eax, 4(%edx)
 
     # Get current process' PD
     mov 0x4(%esi), %ecx   # PD of current process

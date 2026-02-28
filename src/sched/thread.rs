@@ -90,6 +90,8 @@ const _: &[()] = &[
     assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_pointer) == 16),
     assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_addr) == 20),
     assert!(core::mem::offset_of!(Thread, stack) + core::mem::offset_of!(ThreadStack, stack_size) == 24),
+    assert!(core::mem::offset_of!(Thread, arch_specific_region) + core::mem::offset_of!(ArchitectureSpecificRegion, fxsave_region) == 0x20),
+    assert!(core::mem::offset_of!(Thread, arch_specific_region) + core::mem::offset_of!(ArchitectureSpecificRegion, tss_kernel_stack) == 0x24),
 ];
 
 #[cfg(target_arch = "x86_64")]

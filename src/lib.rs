@@ -51,7 +51,7 @@ extern "C" fn kmain() -> ! {
         for _ in 0..4 {
             sched::create_thread(
                 test_task,
-                4 << 10,
+                16 << 10,
                 ThreadPriority::Low,
                 ThreadFlags::empty(),
             );

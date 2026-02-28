@@ -12,7 +12,8 @@ use lazy_static::lazy_static;
 use spin::{Mutex, MutexGuard};
 
 use crate::{
-    arch, qemu_log,
+    arch::{self, x86::tss::get_tss_stack_addr},
+    qemu_log,
     sched::{
         archspec::ArchitectureSpecificRegion,
         process::Process,
@@ -95,14 +96,21 @@ impl Scheduler {
 
         let kernel_process = Arc::new(kernel_process);
 
+        let arch_specific_region =
+            ArchitectureSpecificRegion::with_tss_stack(crate::arch::x86::tss::get_tss_stack_addr());
+
         let kernel_thread = Thread {
             id: next_tid(),
 
             process: Arc::clone(&kernel_process), //Arc::into_raw(Arc::clone(&kernel_process)).into(),
             flags: ThreadFlags::empty(),
             state: (thread::ThreadState::Running as usize).into(),
-            stack: ThreadStack::from_existing(core::ptr::null_mut(), 64 << 10, core::ptr::null_mut()), // 64 KB
-            arch_specific_region: ArchitectureSpecificRegion::new(),
+            stack: ThreadStack::from_existing(
+                core::ptr::null_mut(),
+                64 << 10,
+                core::ptr::null_mut(),
+            ), // 64 KB
+            arch_specific_region,
 
             priority: thread::ThreadPriority::Low,
             time_quantum: 1.into(),
@@ -234,7 +242,7 @@ impl Scheduler {
         (*thread.process)
             .thread_count
             .fetch_sub(1, Ordering::SeqCst);
-        
+
         drop(thread);
     }
 
