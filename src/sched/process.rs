@@ -7,7 +7,7 @@ use core::{
 use alloc::ffi::CString;
 use lazy_static::lazy_static;
 
-use crate::{qemu_log, sched::address_space::AddressSpace};
+use crate::{qemu_log, sched::address_space::AddressSpace, tools::pseudosync::PseudoSync};
 
 lazy_static! {
     static ref GLOBAL_PID: AtomicUsize = AtomicUsize::new(0);
@@ -16,7 +16,7 @@ lazy_static! {
 #[repr(C)]
 pub struct Process {
     pub id: usize,
-    pub address_space: AddressSpace,
+    pub address_space: PseudoSync<AddressSpace>,
 
     // SAFE ZONE
     pub thread_count: AtomicUsize,
@@ -27,8 +27,7 @@ pub struct Process {
 #[cfg(target_arch = "x86")]
 const _: &[()] = &[
     assert!(core::mem::offset_of!(Process, id) == 0),
-    assert!(core::mem::offset_of!(Process, address_space.page_root_physical) == 4),
-    assert!(core::mem::offset_of!(Process, address_space.page_root_virtual) == 8),
+    assert!(core::mem::offset_of!(Process, address_space) == 4),
     assert!(core::mem::offset_of!(Process, thread_count) == 12),
     assert!(core::mem::offset_of!(Process, name) == 16),
     assert!(core::mem::offset_of!(Process, cwd) == 20),
@@ -39,16 +38,29 @@ fn next_pid() -> usize {
 }
 
 impl Process {
-    pub fn new(pd_phys: usize, pd_virt: usize, name: &str, cwd: &str) -> Self {
+    pub fn new(name: &str, cwd: &str) -> Self {
+        let name_ptr = CString::new(name).unwrap().into_raw();
+        let cwd_ptr = CString::new(cwd).unwrap().into_raw();
+
+        Self {
+            id: next_pid(),
+            address_space: AddressSpace::default().into(),
+            thread_count: 0.into(),
+            name: name_ptr.into(),
+            cwd: cwd_ptr.into(),
+        }
+    }
+
+    pub fn with_predefined_page_roots(pageaddr_phys: usize, pageaddr_virt: usize, name: &str, cwd: &str) -> Self {
         let name_ptr = CString::new(name).unwrap().into_raw();
         let cwd_ptr = CString::new(cwd).unwrap().into_raw();
 
         Self {
             id: next_pid(),
             address_space: AddressSpace {
-                page_root_physical: pd_phys,
-                page_root_virtual: pd_virt,
-            },
+                page_root_physical: pageaddr_phys,
+                page_root_virtual: pageaddr_virt,
+            }.into(),
             thread_count: 0.into(),
             name: name_ptr.into(),
             cwd: cwd_ptr.into(),

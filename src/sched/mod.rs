@@ -1,7 +1,7 @@
 use core::{
     alloc::Layout,
     cell::Cell,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 use alloc::{
@@ -15,23 +15,21 @@ use crate::{
     arch::{self, x86::tss::get_tss_stack_addr},
     qemu_log,
     sched::{
-        archspec::ArchitectureSpecificRegion,
-        process::Process,
-        stack_manager::ThreadStack,
-        thread::{Thread, ThreadFlags, ThreadPriority, ThreadState},
+        address_space::AddressSpace, archspec::ArchitectureSpecificRegion, process::Process, stack_manager::ThreadStack, thread::{Thread, ThreadFlags, ThreadPriority, ThreadState}
     },
     tools::interrupt_locker::InterruptLocker,
 };
 
+mod address_space;
 mod archspec;
 pub mod process;
 mod stack_manager;
-mod address_space;
 pub mod thread;
 
 pub const KERNEL_THREAD_DEFAULT_STACK_SIZE: usize = 64 << 10; // 64 KB
 
 lazy_static! {
+    static ref IS_SCHEDULER_INITIALIZED: AtomicBool = AtomicBool::default();
     static ref SCHEDULER: Mutex<Scheduler> = Mutex::new(Scheduler::new());
     static ref GLOBAL_TID: AtomicUsize = AtomicUsize::new(0);
 }
@@ -40,8 +38,6 @@ pub type SharedProcess = Arc<Process>;
 pub type SharedThread = Arc<Thread>;
 
 pub struct Scheduler {
-    pub is_initialized: bool,
-
     process_list: LinkedList<SharedProcess>,
     thread_list: LinkedList<SharedThread>,
 
@@ -53,6 +49,8 @@ pub struct Scheduler {
 
     current_process: Option<SharedProcess>,
     current_thread: Option<SharedThread>,
+
+    kernel_process: Option<SharedProcess>,
 }
 
 unsafe extern "C" {
@@ -71,8 +69,6 @@ fn next_tid() -> usize {
 impl Scheduler {
     pub const fn new() -> Self {
         Self {
-            is_initialized: false,
-
             process_list: LinkedList::new(),
             thread_list: LinkedList::new(),
 
@@ -84,18 +80,19 @@ impl Scheduler {
 
             current_process: None,
             current_thread: None,
+
+            kernel_process: None
         }
     }
 
     pub fn init(&mut self) {
-        let kernel_process = Process::new(
-            unsafe { x86::controlregs::cr3() as _ },
-            unsafe { x86::controlregs::cr3() as _ },
-            "kernel",
-            "",
-        );
+        let cr3 = unsafe { x86::controlregs::cr3() as _ };
+
+        let kernel_process = Process::with_predefined_page_roots(cr3, cr3, "kernel", "");
 
         let kernel_process = Arc::new(kernel_process);
+
+        self.kernel_process = Some(Arc::clone(&kernel_process));
 
         let arch_specific_region =
             ArchitectureSpecificRegion::with_tss_stack(crate::arch::x86::tss::get_tss_stack_addr());
@@ -139,16 +136,15 @@ impl Scheduler {
 
         self.working_queue.push_back(kernel_thread);
 
-        self.is_initialized = true;
+        IS_SCHEDULER_INITIALIZED.store(true, Ordering::SeqCst);
     }
 
-    pub fn create_process(
-        &mut self,
-        page_directory_phys: usize,
-        name: &str,
-        cwd: &str
-    ) -> SharedProcess {
-        let proc = Process::new(page_directory_phys, 0, name, cwd);
+    pub fn kernel_process(&self) -> &SharedProcess {
+        self.kernel_process.as_ref().unwrap()
+    }
+
+    pub fn create_process(&mut self, name: &str, cwd: &str) -> SharedProcess {
+        let proc = Process::new(name, cwd);
 
         Arc::new(proc)
     }
@@ -213,7 +209,7 @@ impl Scheduler {
 
         let tcb = Thread {
             id,
-            process, //Arc::into_raw(process),
+            process: Arc::clone(&process),
             flags,
             state: (thread::ThreadState::Ready as usize).into(),
             stack,
@@ -230,6 +226,21 @@ impl Scheduler {
 
         if !flags.contains(ThreadFlags::Raw) {
             self.working_queue.push_back(Arc::clone(&tcb));
+        }
+
+        // IMPORTANT THING! In this method interrupts are always disabled.
+        // We use clone-on-demand method on making processes.
+        // It means that if we have a fresh process with unset page roots,
+        // we should make them here, because we already prepared everything.
+        // So if we do it before we can get a random page fault or something worse.
+
+        if process.address_space.get().page_root_physical == 0 {
+            let new_addrspace = arch::mem::clone::clone_kernel_page_root();
+
+            *unsafe { process.address_space.get_mut() } = AddressSpace {
+                page_root_physical: new_addrspace,
+                page_root_virtual: new_addrspace,
+            };
         }
 
         qemu_log!("Added thread nr: {id}");
@@ -420,6 +431,10 @@ impl Scheduler {
     }
 }
 
+pub fn is_intiialized() -> bool {
+    IS_SCHEDULER_INITIALIZED.load(Ordering::SeqCst)
+}
+
 pub fn this() -> MutexGuard<'static, Scheduler> {
     // unsafe { SCHEDULER.get_mut() }
     SCHEDULER.try_lock().expect("Failed to lock a scheduler!")
@@ -469,7 +484,7 @@ pub fn create_process(pd_phys: usize, name: &str, cwd: &str) -> SharedProcess {
     {
         let mut binding = this();
 
-        process = binding.create_process(pd_phys, name, cwd);
+        process = binding.create_process(name, cwd);
     }
 
     drop(il);
@@ -490,7 +505,7 @@ pub fn create_thread(
 
     {
         let mut binding = this();
-
+        
         binding.create_thread(process, entry, stack_size, priority, flags);
     }
 
@@ -513,7 +528,7 @@ pub fn schedule() {
 
         let mut binding = this();
 
-        if binding.is_initialized {
+        if is_intiialized() {
             binding.schedule();
         }
     }
@@ -564,6 +579,27 @@ pub fn this_thread_id() -> usize {
     drop(il);
 
     id
+}
+
+pub fn in_kernel_context<T>(f: impl FnOnce() -> T) -> T {
+    let il = InterruptLocker::lock();
+    
+    if !is_intiialized() {
+        return f();
+    }
+
+    let this_cr3 = unsafe { x86::controlregs::cr3() };
+    let kernel_cr3 = this().kernel_process().address_space.get().page_root_physical;
+
+    unsafe { x86::controlregs::cr3_write(kernel_cr3 as _) };
+
+    let result = f();
+
+    unsafe { x86::controlregs::cr3_write(this_cr3 as _) };
+
+    drop(il);
+    
+    result
 }
 
 pub fn sleep(dur: core::time::Duration) {

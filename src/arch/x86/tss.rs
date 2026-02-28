@@ -34,9 +34,11 @@ pub struct TSSEntry {
     pub iomap_base: u16,
 }
 
+pub const TSS_KERNEL_STACK_SIZE: usize = 0x1000;
+
 #[unsafe(no_mangle)]
 static BSP_TSS: PseudoSync<TSSEntry> = unsafe { core::mem::zeroed() };
-static BSP_TSS_KERNEL_STACK: [usize; 0x100] = [0; 0x100];
+static BSP_TSS_KERNEL_STACK: [usize; TSS_KERNEL_STACK_SIZE / core::mem::size_of::<usize>()] = [0; TSS_KERNEL_STACK_SIZE / core::mem::size_of::<usize>()];
 
 // TODO: Initialize the TSS!
 pub fn init() {
@@ -44,7 +46,7 @@ pub fn init() {
         let tss = BSP_TSS.get_mut();
 
         tss.ss0 = 0x10;
-        tss.esp0 = (BSP_TSS_KERNEL_STACK.as_ptr().addr() + 0x100) as u32;
+        tss.esp0 = (BSP_TSS_KERNEL_STACK.as_ptr().addr() + (TSS_KERNEL_STACK_SIZE / core::mem::size_of::<usize>())) as u32;
 
         tss.cs = 0x08 | 3;
         tss.ss = 0x10 | 3;
@@ -65,5 +67,5 @@ pub fn init() {
 }
 
 pub fn get_tss_stack_addr() -> usize {
-    BSP_TSS_KERNEL_STACK.as_ptr().addr() + 0x100
+    BSP_TSS_KERNEL_STACK.as_ptr().addr() + (TSS_KERNEL_STACK_SIZE / core::mem::size_of::<usize>())
 }

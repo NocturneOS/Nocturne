@@ -3,6 +3,7 @@ use crate::arch::CPURegisters;
 
 use crate::interrupts::eoi;
 use crate::qemu_log;
+use crate::sched::in_kernel_context;
 use crate::tools::pseudosync::PseudoSync;
 
 pub type InterruptCallback = fn(&mut CPURegisters) -> ();
@@ -48,6 +49,7 @@ pub fn interrupt_handler(regs: &mut CPURegisters) {
         .flatten();
 
     if let Some(iv) = iv {
+        // in_kernel_context(|| iv(regs));
         iv(regs);
     }
 }

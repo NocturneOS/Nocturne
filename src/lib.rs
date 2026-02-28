@@ -3,7 +3,7 @@
 
 use core::{panic::PanicInfo, time::Duration};
 
-use alloc::{collections::{btree_map::BTreeMap, linked_list::LinkedList, vec_deque::VecDeque}, format, string::String, vec::Vec};
+use alloc::{collections::{btree_map::BTreeMap, linked_list::LinkedList, vec_deque::VecDeque}, format, string::String, sync::Arc, vec::Vec};
 
 use crate::{sched::thread::{ThreadFlags, ThreadPriority::{self, Medium}}, tools::without_interrupts::without_interrupts};
 
@@ -47,17 +47,20 @@ extern "C" fn kmain() -> ! {
 
     mem::heap::init();
     
-    let new_as = without_interrupts(|| arch::x86::mem::clone::clone_kernel_page_root() );
+    sched::init();
+
+    // as - address space
+    let new_as = without_interrupts(|| arch::x86::mem::clone::clone_kernel_page_root());
     
     qemu_log!("Page directory: {new_as:08x?}");
 
-    // unsafe { x86::controlregs::cr3_write(new_as as _) };
-
-    sched::init();
-
-    let proc = sched::create_process(new_as, "Test Process", "rd0:?");
+    let proc = sched::create_process(new_as, "Test Process", "rd0:/");
     
-    sched::create_thread(proc, test_task, 8 << 10, ThreadPriority::Low, ThreadFlags::empty());
+    sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
+    // sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
+    
+    // sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
+    // sched::create_thread(proc, test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
 
     // {
     //     for _ in 0..4 {
@@ -69,12 +72,12 @@ extern "C" fn kmain() -> ! {
     //         );
     //     }
 
-        // loop {
-        //     let cr3 = unsafe { x86::controlregs::cr3() };
-        //     qemu_log!("Main thread! CR3: {cr3:08x?}");
+        loop {
+            let cr3 = unsafe { x86::controlregs::cr3() };
+            qemu_log!("Main thread! CR3: {cr3:08x?}");
 
-        //     sched::sleep(Duration::from_millis(500));
-        // }
+            sched::sleep(Duration::from_millis(500));
+        }
     // }
 
     // clear_screen();

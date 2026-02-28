@@ -1,4 +1,3 @@
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 use core::sync::atomic::AtomicPtr;
 use core::{alloc::Layout, arch::asm};
 
@@ -9,7 +8,8 @@ pub struct ArchitectureSpecificRegion {
     pub(super) tss_kernel_stack: AtomicPtr<u8>,
 }
 
-const TSS_KERNEL_STACK_SIZE: usize = 0x100;
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+use crate::arch::x86::tss::TSS_KERNEL_STACK_SIZE;
 
 impl ArchitectureSpecificRegion {
     pub fn new() -> Self {
