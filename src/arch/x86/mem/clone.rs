@@ -22,39 +22,13 @@ pub fn clone_kernel_page_root() -> usize {
         if pt.is_present() {
             qemu_log!("[{:08x}] Available: {i} -> {:08x}", paging::indices2vaddr(i, 0), pt.phys());
 
-            if !pt.is_extended() {
-                let new_pt = crate::mem::physical::allocate_one().unwrap();
+            paging::map_single_page(new_page_directory, temporary_block.addr(), PageFlags::Writeable | PageFlags::Present);
 
-                unsafe {
-                    (temporary_block as *mut usize).add(i).write(new_pt | 3);
-                }
-
-                paging::map_single_page(new_pt, temporary_block.addr(), PageFlags::Writeable | PageFlags::Present);
-
-                // unsafe {
-                //     (temporary_block as *mut usize).add(1023).write(new_pt | 3);
-                // }
-
-                for j in 0..1023 {
-                    let pte = paging::page_table(i)[j];
-
-                    if pte.is_present() {
-                        qemu_log!("- [{:08x}] Available: {j} -> {:08x}", paging::indices2vaddr(i, j), pte.phys());
-
-                        if pte.phys() != new_pt {
-                            unsafe { (temporary_block as *mut usize).add(j).write(pte.phys() | 3) };
-                        }
-                    }
-                }
-            } else {
-                paging::map_single_page(new_page_directory, temporary_block.addr(), PageFlags::Writeable | PageFlags::Present);
-
-                unsafe {
-                    (temporary_block as *mut usize).add(i).write(*pt);
-                }
-
-                qemu_log!("Mapped: {i}");
+            unsafe {
+                (temporary_block as *mut usize).add(i).write(*pt);
             }
+
+            qemu_log!("Mapped: {i}");
         }
     }
 

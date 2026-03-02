@@ -57,7 +57,7 @@ extern "C" fn kmain() -> ! {
     let proc = sched::create_process(new_as, "Test Process", "rd0:/");
     
     sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
-    // sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
+    sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
     
     // sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
     // sched::create_thread(proc, test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
