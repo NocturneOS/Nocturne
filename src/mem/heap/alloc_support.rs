@@ -12,7 +12,7 @@ pub fn init() {
     let available_size = info().installed_memory.unwrap() - info().available_memory_start.unwrap();
 
     GLOBAL_ALLOCATOR.init(
-        0x100_000,
+        0xD000_0000,
         available_size,
     );
 }

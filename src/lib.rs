@@ -54,23 +54,31 @@ extern "C" fn kmain() -> ! {
     
     qemu_log!("Page directory: {new_as:08x?}");
 
-    let proc = sched::create_process(new_as, "Test Process", "rd0:/");
     
-    sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
-    sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
-    
-    // sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
-    // sched::create_thread(proc, test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
+    {
+        // for _ in 0..16 {
+        //     let proc = sched::create_process(new_as, "Test Process", "rd0:/");
+            
+        //     for _ in 0..8 {
+        //         sched::create_thread(
+        //             Arc::clone(&proc),
+        //             test_task,
+        //             16 << 10,
+        //             ThreadPriority::Low,
+        //             ThreadFlags::empty(),
+        //         );
+        //     }
+        // }
 
-    // {
-    //     for _ in 0..4 {
-    //         sched::create_thread(
-    //             test_task,
-    //             16 << 10,
-    //             ThreadPriority::Low,
-    //             ThreadFlags::empty(),
-    //         );
-    //     }
+        for _ in 0..128 {
+            sched::create_thread(
+                sched::this_process(),
+                test_task,
+                16 << 10,
+                ThreadPriority::Low,
+                ThreadFlags::empty(),
+            );
+        }
 
         loop {
             let cr3 = unsafe { x86::controlregs::cr3() };
@@ -78,7 +86,7 @@ extern "C" fn kmain() -> ! {
 
             sched::sleep(Duration::from_millis(500));
         }
-    // }
+    }
 
     // clear_screen();
     // test_write();
