@@ -74,10 +74,10 @@ impl Drop for Process {
             qemu_log!("PROCESS DEALLOCATED!");
 
             drop(CString::from_raw(
-                self.name.load(core::sync::atomic::Ordering::SeqCst),
+                self.name.load(core::sync::atomic::Ordering::Relaxed),
             ));
             drop(CString::from_raw(
-                self.cwd.load(core::sync::atomic::Ordering::SeqCst),
+                self.cwd.load(core::sync::atomic::Ordering::Relaxed),
             ));
         }
     }

@@ -339,7 +339,7 @@ impl Scheduler {
 
         while let Some(t) = self.working_queue.pop_front() {
             let thread_state: thread::ThreadState =
-                thread::ThreadState::from(t.state.load(Ordering::SeqCst));
+                thread::ThreadState::from(t.state.load(Ordering::Relaxed));
 
             debug_assert!(
                 thread_state != ThreadState::Dead,
@@ -374,12 +374,12 @@ impl Scheduler {
 
         // If it's not an idle task, check it.
         if !Arc::ptr_eq(&this, self.idle_task.as_ref().unwrap()) {
-            let state = thread::ThreadState::from(this.state.load(Ordering::SeqCst));
+            let state = thread::ThreadState::from(this.state.load(Ordering::Relaxed));
 
             // If it's running or ready, push it to the queue.
             if state == ThreadState::Ready || state == ThreadState::Running {
                 // If we DIDN'T ran out of quantum, decrement and continue.
-                if this.time_quantum.load(Ordering::SeqCst) != 0 {
+                if this.time_quantum.load(Ordering::Relaxed) != 0 {
                     this.time_quantum.fetch_sub(1, Ordering::SeqCst);
                     return;
                 }

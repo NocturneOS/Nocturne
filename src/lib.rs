@@ -5,7 +5,7 @@ use core::{panic::PanicInfo, time::Duration};
 
 use alloc::{collections::{btree_map::BTreeMap, linked_list::LinkedList, vec_deque::VecDeque}, format, string::String, sync::Arc, vec::Vec};
 
-use crate::{sched::thread::{ThreadFlags, ThreadPriority::{self, Medium}}, tools::without_interrupts::without_interrupts};
+use crate::{arch::mem::address_space_manager::AddressSpace, sched::thread::{ThreadFlags, ThreadPriority::{self, Medium}}, tools::without_interrupts::without_interrupts};
 
 mod arch;
 mod interrupts;
@@ -50,10 +50,15 @@ extern "C" fn kmain() -> ! {
     sched::init();
 
     // as - address space
-    let new_as = without_interrupts(|| arch::x86::mem::clone::clone_kernel_page_root());
-    
-    qemu_log!("Page directory: {new_as:08x?}");
+    // {
+    //     let mut new_as = AddressSpace::new();
 
+    //     new_as.alloc_map_multiple_pages(0x8000_0000, 64 << 10).unwrap();
+        
+    //     qemu_log!("Page directory: {:08x?}", new_as.root_physical_addr());
+
+    //     drop(new_as);
+    // }
     
     {
         // for _ in 0..16 {

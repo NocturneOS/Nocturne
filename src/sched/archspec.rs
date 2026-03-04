@@ -48,12 +48,12 @@ impl Drop for ArchitectureSpecificRegion {
     fn drop(&mut self) {
         unsafe {
             alloc::alloc::dealloc(
-                self.fxsave_region.load(core::sync::atomic::Ordering::SeqCst),
+                self.fxsave_region.load(core::sync::atomic::Ordering::Relaxed),
                 Layout::from_size_align_unchecked(512, 16),
             );
 
             alloc::alloc::dealloc(
-                self.tss_kernel_stack.load(core::sync::atomic::Ordering::SeqCst).byte_sub(TSS_KERNEL_STACK_SIZE),
+                self.tss_kernel_stack.load(core::sync::atomic::Ordering::Relaxed).byte_sub(TSS_KERNEL_STACK_SIZE),
                 Layout::from_size_align_unchecked(TSS_KERNEL_STACK_SIZE, 16),
             )
         };

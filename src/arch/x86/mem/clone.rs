@@ -25,10 +25,8 @@ pub fn clone_kernel_page_root() -> usize {
             paging::map_single_page(new_page_directory, temporary_block.addr(), PageFlags::Writeable | PageFlags::Present);
 
             unsafe {
-                (temporary_block as *mut usize).add(i).write(*pt);
+                (temporary_block as *mut usize).add(i).write(pt.raw());
             }
-
-            qemu_log!("Mapped: {i}");
         }
     }
 

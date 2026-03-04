@@ -1,24 +1,19 @@
 use core::fmt::{self, Write};
 
-use lazy_static::lazy_static;
-
-use crate::{arch, tools::{interrupt_locker::InterruptLocker, pseudosync::PseudoSync}};
-
-lazy_static! {
-    // pub static ref QEMU: Mutex<SerialWriter> = Mutex::new(SerialWriter { port: 0x3f8 });
-    pub static ref QEMU: PseudoSync<SerialWriter> = PseudoSync::new(SerialWriter { port: 0x3f8 });
-}
+use crate::{tools::{interrupt_locker::InterruptLocker}};
 
 pub struct SerialWriter {
     pub port: u16,
 }
 
 pub fn __qemu_print(args: fmt::Arguments) {
-    let is_ena = InterruptLocker::lock();
+    let il = InterruptLocker::lock();
 
-    unsafe { QEMU.get_mut().write_fmt(args).unwrap() };
+    let mut writer = SerialWriter { port: 0x3f8 };
 
-    drop(is_ena);
+    writer.write_fmt(args).unwrap();
+
+    drop(il);
 }
 
 impl fmt::Write for SerialWriter {

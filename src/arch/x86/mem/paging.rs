@@ -31,6 +31,18 @@ bitflags! {
 pub struct Page(usize);
 
 impl Page {
+    pub fn new(phys_addr: usize, flags: PageFlags) -> Self {
+        Self(phys_addr | flags.bits())
+    }
+
+    pub fn null() -> Self {
+        Self(0)
+    }
+
+    pub fn raw(&self) -> usize {
+        self.0
+    }
+
     pub fn phys(&self) -> usize {
         self.0 & !0xfff
     }
@@ -52,13 +64,13 @@ impl Page {
     }
 }
 
-impl Deref for Page {
-    type Target = usize;
+// impl Deref for Page {
+//     type Target = usize;
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+//     fn deref(&self) -> &Self::Target {
+//         &self.0
+//     }
+// }
 
 impl PartialEq<usize> for Page {
     fn eq(&self, other: &usize) -> bool {
@@ -113,7 +125,7 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
         page_directory_mut()[pdi] = Page(new_pt | table_flags.bits());
 
         let page_table = page_table_mut(pdi);
-        page_table.fill(Page(0));
+        page_table.fill(Page::null());
     }
 
     let page_table = page_table_mut(pdi);
@@ -136,7 +148,7 @@ pub fn unmap_single_page(virtual_address: usize) {
 
     let page_table = page_table_mut(pdi);
 
-    page_table[pti] = Page(0);
+    page_table[pti] = Page::null();
 
     unsafe { x86::tlb::flush(virtual_address) };
 
@@ -249,7 +261,7 @@ pub fn preinit(available_memory_size: usize) {
             continue;
         }
 
-        qemu_log!("PD[{n}] = {:#x}", **i);
+        qemu_log!("PD[{n}] = {:#x}", i.raw());
     }
 
     qemu_log!("Finished");
