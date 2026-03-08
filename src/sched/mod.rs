@@ -12,15 +12,14 @@ use lazy_static::lazy_static;
 use spin::{Mutex, MutexGuard};
 
 use crate::{
-    arch::{self, x86::tss::get_tss_stack_addr},
+    arch::{self, mem::address_space_manager::AddressSpace, x86::tss::get_tss_stack_addr},
     qemu_log,
     sched::{
-        address_space::AddressSpace, archspec::ArchitectureSpecificRegion, process::Process, stack_manager::ThreadStack, thread::{Thread, ThreadFlags, ThreadPriority, ThreadState}
+        archspec::ArchitectureSpecificRegion, process::Process, stack_manager::ThreadStack, thread::{Thread, ThreadFlags, ThreadPriority, ThreadState}
     },
     tools::interrupt_locker::InterruptLocker,
 };
 
-mod address_space;
 mod archspec;
 pub mod process;
 mod stack_manager;
@@ -88,7 +87,7 @@ impl Scheduler {
     pub fn init(&mut self) {
         let cr3 = unsafe { x86::controlregs::cr3() as _ };
 
-        let kernel_process = Process::with_predefined_page_roots(cr3, cr3, "kernel", "");
+        let kernel_process = Process::with_predefined_page_roots(cr3, "kernel", "");
 
         let kernel_process = Arc::new(kernel_process);
 
@@ -157,25 +156,33 @@ impl Scheduler {
         priority: ThreadPriority,
         flags: ThreadFlags,
     ) -> Option<SharedThread> {
-        let mut stack = ThreadStack::new(stack_size);
+        let is_user_proc = process.id != 0;
+
+        let mut stack = if is_user_proc {
+            ThreadStack::new_user(unsafe { process.address_space.get_mut() }, stack_size)
+        } else {
+            ThreadStack::new(stack_size)
+        };
+
+        qemu_log!("Stack allocated: base @ {:#x?}", stack.stack_addr);
 
         let id = next_tid();
 
         #[cfg(target_arch = "x86")]
         unsafe {
-            stack.push(thread_exit as *const () as usize);
+            stack.push(process.address_space.get_mut(), thread_exit as *const () as usize);
 
-            stack.push(entry as *const () as usize);
+            stack.push(process.address_space.get_mut(), entry as *const () as usize);
 
-            stack.push(0x202); // IF=1, IOPL=0
+            stack.push(process.address_space.get_mut(), 0x202); // IF=1, IOPL=0
 
-            stack.push(0); // EAX
-            stack.push(0); // EBX
-            stack.push(0); // ECX
-            stack.push(0); // EDX
-            stack.push(0); // ESI
-            stack.push(0); // EDI
-            stack.push(0); // EBP
+            stack.push(process.address_space.get_mut(), 0); // EAX
+            stack.push(process.address_space.get_mut(), 0); // EBX
+            stack.push(process.address_space.get_mut(), 0); // ECX
+            stack.push(process.address_space.get_mut(), 0); // EDX
+            stack.push(process.address_space.get_mut(), 0); // ESI
+            stack.push(process.address_space.get_mut(), 0); // EDI
+            stack.push(process.address_space.get_mut(), 0); // EBP
         }
 
         #[cfg(target_arch = "x86_64")]
@@ -233,15 +240,6 @@ impl Scheduler {
         // It means that if we have a fresh process with unset page roots,
         // we should make them here, because we already prepared everything.
         // So if we do it before we can get a random page fault or something worse.
-
-        if process.address_space.get().page_root_physical == 0 {
-            let new_addrspace = arch::mem::clone::clone_kernel_page_root();
-
-            *unsafe { process.address_space.get_mut() } = AddressSpace {
-                page_root_physical: new_addrspace,
-                page_root_virtual: new_addrspace,
-            };
-        }
 
         qemu_log!("Added thread nr: {id}");
         Some(tcb)
@@ -476,7 +474,7 @@ pub fn this_process() -> SharedProcess {
     value
 }
 
-pub fn create_process(pd_phys: usize, name: &str, cwd: &str) -> SharedProcess {
+pub fn create_process(name: &str, cwd: &str) -> SharedProcess {
     let il = InterruptLocker::lock();
 
     let process: SharedProcess;
@@ -589,7 +587,7 @@ pub fn in_kernel_context<T>(f: impl FnOnce() -> T) -> T {
     }
 
     let this_cr3 = unsafe { x86::controlregs::cr3() };
-    let kernel_cr3 = this().kernel_process().address_space.get().page_root_physical;
+    let kernel_cr3 = this().kernel_process().address_space.get().page_root_phys;
 
     unsafe { x86::controlregs::cr3_write(kernel_cr3 as _) };
 

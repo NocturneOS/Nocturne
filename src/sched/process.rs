@@ -1,13 +1,11 @@
 use core::{
-    cell::Cell,
-    ffi::c_char,
-    sync::atomic::{AtomicPtr, AtomicUsize, Ordering},
+    cell::Cell, ffi::c_char, mem::MaybeUninit, sync::atomic::{AtomicPtr, AtomicUsize, Ordering}
 };
 
 use alloc::ffi::CString;
 use lazy_static::lazy_static;
 
-use crate::{qemu_log, sched::address_space::AddressSpace, tools::pseudosync::PseudoSync};
+use crate::{arch::mem::address_space_manager::AddressSpace, qemu_log, tools::pseudosync::PseudoSync};
 
 lazy_static! {
     static ref GLOBAL_PID: AtomicUsize = AtomicUsize::new(0);
@@ -28,9 +26,6 @@ pub struct Process {
 const _: &[()] = &[
     assert!(core::mem::offset_of!(Process, id) == 0),
     assert!(core::mem::offset_of!(Process, address_space) == 4),
-    assert!(core::mem::offset_of!(Process, thread_count) == 12),
-    assert!(core::mem::offset_of!(Process, name) == 16),
-    assert!(core::mem::offset_of!(Process, cwd) == 20),
 ];
 
 fn next_pid() -> usize {
@@ -44,23 +39,20 @@ impl Process {
 
         Self {
             id: next_pid(),
-            address_space: AddressSpace::default().into(),
+            address_space: AddressSpace::new().into(),
             thread_count: 0.into(),
             name: name_ptr.into(),
             cwd: cwd_ptr.into(),
         }
     }
 
-    pub fn with_predefined_page_roots(pageaddr_phys: usize, pageaddr_virt: usize, name: &str, cwd: &str) -> Self {
+    pub fn with_predefined_page_roots(pageaddr_phys: usize, name: &str, cwd: &str) -> Self {
         let name_ptr = CString::new(name).unwrap().into_raw();
         let cwd_ptr = CString::new(cwd).unwrap().into_raw();
 
         Self {
             id: next_pid(),
-            address_space: AddressSpace {
-                page_root_physical: pageaddr_phys,
-                page_root_virtual: pageaddr_virt,
-            }.into(),
+            address_space: AddressSpace::predefined(pageaddr_phys).into(),
             thread_count: 0.into(),
             name: name_ptr.into(),
             cwd: cwd_ptr.into(),

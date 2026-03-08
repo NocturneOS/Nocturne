@@ -1,4 +1,4 @@
-use crate::{mem::heap::ArenaAllocator, qemu_log, sys::info::info};
+use crate::{mem::heap::ArenaAllocator, qemu_log, sys::info::info, tools::interrupt_locker::InterruptLocker};
 
 /// Global allocator instance for the `alloc` crate
 #[global_allocator]
@@ -27,6 +27,8 @@ pub fn init() {
 }
 
 pub fn dump() {
+    let il = InterruptLocker::lock();
+
     let lock = GLOBAL_ALLOCATOR.inner();
 
     for (n, i) in lock.blocks().iter().enumerate() {
@@ -36,4 +38,6 @@ pub fn dump() {
 
         qemu_log!("#{n}: {:x?} - ({})", i.address, i.size);
     }
+
+    drop(il);
 }

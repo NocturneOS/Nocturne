@@ -48,7 +48,7 @@ impl Page {
     }
 
     pub fn flags(&self) -> PageFlags {
-        PageFlags::from_bits(self.0 & 0xFFF).unwrap()
+        PageFlags::from_bits(self.0 & 0x3FF).unwrap()
     }
 
     pub fn is_present(&self) -> bool {

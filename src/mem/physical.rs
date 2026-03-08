@@ -154,11 +154,11 @@ pub fn allocate_one() -> Option<usize> {
 pub fn allocate_bulk(page_count: usize) -> Option<usize> {
     let first_free = first_free_cluster(page_count)?;
 
-    qemu_log!(
-        "Bulk found first free block: {:x} (with page count: {})",
-        first_free,
-        page_count
-    );
+    // qemu_log!(
+    //     "Bulk found first free block: {:x} (with page count: {})",
+    //     first_free,
+    //     page_count
+    // );
 
     for i in 0..page_count {
         let addr = first_free + (i * arch::get_page_size());

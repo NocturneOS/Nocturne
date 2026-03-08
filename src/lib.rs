@@ -29,7 +29,7 @@ fn test_task() {
 
         qemu_log!("Hello, my ID is: {id:?} (CR3: {cr3:08x?})");
 
-        sched::sleep(Duration::from_millis((100 * id) as _));
+        sched::sleep(Duration::from_millis((75 * id) as _));
 
         counter = counter.wrapping_add(1);
 
@@ -49,41 +49,32 @@ extern "C" fn kmain() -> ! {
     
     sched::init();
 
-    // as - address space
-    // {
-    //     let mut new_as = AddressSpace::new();
-
-    //     new_as.alloc_map_multiple_pages(0x8000_0000, 64 << 10).unwrap();
-        
-    //     qemu_log!("Page directory: {:08x?}", new_as.root_physical_addr());
-
-    //     drop(new_as);
-    // }
-    
     {
-        // for _ in 0..16 {
-        //     let proc = sched::create_process(new_as, "Test Process", "rd0:/");
+        for _ in 0..8 {
+            let proc = sched::create_process("Test Process", "rd0:/");
             
-        //     for _ in 0..8 {
-        //         sched::create_thread(
-        //             Arc::clone(&proc),
-        //             test_task,
-        //             16 << 10,
-        //             ThreadPriority::Low,
-        //             ThreadFlags::empty(),
-        //         );
-        //     }
+            for _ in 0..8 {
+                sched::create_thread(
+                    Arc::clone(&proc),
+                    test_task,
+                    16 << 10,
+                    ThreadPriority::Low,
+                    ThreadFlags::empty(),
+                );
+            }
+        }
+
+        // for _ in 0..128 {
+        //     sched::create_thread(
+        //         sched::this_process(),
+        //         test_task,
+        //         16 << 10,
+        //         ThreadPriority::Low,
+        //         ThreadFlags::empty(),
+        //     );
         // }
 
-        for _ in 0..128 {
-            sched::create_thread(
-                sched::this_process(),
-                test_task,
-                16 << 10,
-                ThreadPriority::Low,
-                ThreadFlags::empty(),
-            );
-        }
+        // mem::heap::dump();
 
         loop {
             let cr3 = unsafe { x86::controlregs::cr3() };

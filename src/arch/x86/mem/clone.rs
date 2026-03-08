@@ -14,6 +14,8 @@ pub fn clone_kernel_page_root() -> usize {
 
     paging::map_single_page(new_page_directory, temporary_block.addr(), PageFlags::Writeable | PageFlags::Present);
 
+    unsafe { temporary_block.write_bytes(0, get_page_size()) };
+
     unsafe { (temporary_block as *mut usize).add(1023).write(new_page_directory | 3) };
 
     for i in 0..1023 {

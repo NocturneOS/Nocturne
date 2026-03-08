@@ -1,6 +1,6 @@
 use core::alloc::Layout;
 
-use crate::qemu_log;
+use crate::{arch::{self, mem::{address_space_manager::AddressSpace, paging::{Page, PageFlags}}}, qemu_log};
 
 const STACK_ALIGNEMNT: usize = 0x1000;
 
@@ -32,7 +32,6 @@ impl ThreadStack {
         let pointer = unsafe { allocation.byte_add(real_stack_size) };
 
         // Unmap the first page.
-        // TODO: Set some flags to make difference between `Non-Present` page and `Guard` page.
         crate::arch::mem::paging::unmap_single_page(allocation.addr());
 
         qemu_log!("Allocated a stack at: {allocation:?} with size: {real_stack_size:#x?} (ptr: {pointer:?})");
@@ -41,6 +40,23 @@ impl ThreadStack {
             stack_pointer: pointer as usize,
             stack_size: size,
             stack_addr: allocation as usize,
+        }
+    }
+
+    pub fn new_user(address_space: &mut AddressSpace, size: usize) -> Self {
+        let page_size = crate::arch::get_page_size();
+        let base_with_guard = address_space.alloc_virt_region(size + page_size);
+        let mapped_base = base_with_guard + page_size; // guard page left unmapped
+
+        address_space.alloc_map_multiple_pages(
+            mapped_base, size,
+            PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace,
+        ).expect("stack mapping failed");
+
+        Self {
+            stack_pointer: mapped_base + size, // top of stack
+            stack_addr: mapped_base,
+            stack_size: size,
         }
     }
 
@@ -56,7 +72,29 @@ impl ThreadStack {
         self.stack_pointer as *mut usize 
     }
 
-    pub unsafe fn push(&mut self, value: usize) {
+    fn push_user(&mut self, address_space: &mut AddressSpace, value: usize) {
+        let mut ptr = self.stack_pointer as *mut usize;
+
+        ptr = unsafe { ptr.sub(1) };
+
+        self.stack_pointer = ptr.addr();
+
+        // 
+
+        let index = (self.stack_pointer & 0xfff) / crate::spec::WORD_SIZE;
+        // qemu_log!("Stack pointer: {:#x?}; Index: {};", self.stack_pointer, index);
+        
+        address_space.self_map_page_from_virt(self.stack_pointer & !0xfff, |data| {
+            data[index] = value;
+        });
+    }
+
+    pub unsafe fn push(&mut self, address_space: &mut AddressSpace, value: usize) {
+        if self.stack_pointer <= crate::spec::KERNEL_BASE {
+            return self.push_user(address_space, value);
+            // panic!("ThreadStack::push cannot be used on user stacks. Use `ThreadStack::push_user` instead.");
+        }
+
         let mut ptr = self.stack_pointer as *mut usize;
 
         unsafe {
@@ -70,6 +108,10 @@ impl ThreadStack {
 
 impl Drop for ThreadStack {
     fn drop(&mut self) {
+        if self.stack_addr < crate::spec::KERNEL_BASE {
+            todo!("It's a user space stack, we need to deallocate it!");
+        }
+
         // Now we creating a stack layout by using `_unchecked` kind of method,
         // because if we created a layout when creating a stack, it will 100% work on this stage too,
         // so we don't have to check.
