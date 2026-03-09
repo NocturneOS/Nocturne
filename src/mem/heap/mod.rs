@@ -98,6 +98,16 @@ impl InnerArenaAllocator {
             .expect("Getting blocks on uninitialized allocator!")
     }
 
+    fn dump(&self) {
+        for (n, i) in self.blocks().iter().enumerate() {
+            if i.address == 0 {
+                break;
+            }
+    
+            qemu_log!("#{n}: {:x?} - ({})", i.address, i.size);
+        }
+    }
+
     // Returns Option<(INDEX, ADDRESS)>
     fn find_suitable_block(&self, layout: &Layout) -> Option<(usize, usize)> {
         let mut index = 0usize;
@@ -106,7 +116,16 @@ impl InnerArenaAllocator {
             let this_block = &i[0];
             let next_block = &i[1];
 
-            let this_block_end = this_block.address + this_block.size;
+            // THIS THING IS OVERFLOWING!
+            // let this_block_end = this_block.address + this_block.size;
+
+            let this_block_end = if let Some(a) = this_block.address.checked_add(this_block.size) {
+                a
+            } else {
+                self.dump();
+                
+                panic!("Failed to `+` {:#x?} and {} (index = {index})", this_block.address, this_block.size);
+            };
 
             let aligned_new_block_addr = tools::align_value(this_block_end, layout.align());
 
@@ -143,7 +162,7 @@ impl InnerArenaAllocator {
     fn remove_block(&mut self, index: usize) {
         let arena = self.arena.as_mut().unwrap();
 
-        arena.copy_within(index + 1..self.alloc_count + 1, index);
+        arena.copy_within(index + 1..=self.alloc_count, index);
 
         arena[self.alloc_count] = unsafe { core::mem::zeroed() };
     }
@@ -213,8 +232,6 @@ impl InnerArenaAllocator {
         for i in (lower_bound..upper_bound).step_by(page_size) {
             if let Some(free_addr) = paging::virt2phys(i) {
                 unmap_single_page(i);
-                
-                debug_assert!(free_addr != 0);
 
                 physical::free_one(free_addr);
             }
@@ -232,7 +249,7 @@ impl InnerArenaAllocator {
         let arena_len = self.arena.as_ref().unwrap().len();
 
         // Why `-2`? Because with `-1` we convert length to index of last element,
-        // and another `-1` ensures that is condition below confirms, we can place a block with new arena there.
+        // and another `-1` ensures that if condition below confirms, we can place a block with new arena there.
         if self.alloc_count == arena_len - 2 {
             qemu_log!("Arena reallocation condition!");
 

@@ -18,11 +18,9 @@ const KERNEL_HEAP_START: usize = {
 /// This should be called once during kernel initialization, after
 /// physical memory management and paging are set up.
 pub fn init() {
-    let available_size = info().installed_memory.unwrap() - info().available_memory_start.unwrap();
-
     GLOBAL_ALLOCATOR.init(
         KERNEL_HEAP_START,
-        available_size,
+        0x0800_0000,  //  0xD000_0000 .. 0xD800_0000
     );
 }
 

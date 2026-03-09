@@ -8,7 +8,7 @@
 use crate::{
     arch::{self},
     qemu_log,
-    spec::WORD_SIZE_BITS,
+    spec::WORD_SIZE_BITS, tools::interrupt_locker::InterruptLocker,
 };
 
 unsafe extern "C" {
@@ -63,13 +63,21 @@ fn indices_to_addr(index: usize, bit_index: usize) -> usize {
 }
 
 fn is_used(address: usize) -> bool {
+    let il = InterruptLocker::lock();
+
     let (idx, bitidx) = addr_to_indices(address);
 
-    bitmap()[idx] & (1 << bitidx) != 0
+    let result = bitmap()[idx] & (1 << bitidx) != 0;
+
+    drop(il);
+
+    result
 }
 
 /// Mark one page at `address` used or free.
 pub fn mark_page(address: usize, is_used: bool) {
+    let il = InterruptLocker::lock();
+
     let (idx, bitidx) = addr_to_indices(address);
 
     let data = bitmap()[idx];
@@ -79,20 +87,28 @@ pub fn mark_page(address: usize, is_used: bool) {
     } else {
         bitmap_mut()[idx] = data & !(1 << bitidx);
     }
+
+    drop(il);
 }
 
 /// Finds first free page
 /// Returns an address in physical memory of free page
 fn first_free_page() -> Option<usize> {
+    let il = InterruptLocker::lock();
+
     for (n, i) in bitmap().iter().enumerate() {
         for nb in 0..WORD_SIZE_BITS {
             let element = i & (1 << nb);
 
             if element == 0 {
+                drop(il);
+
                 return Some(indices_to_addr(n, nb));
             }
         }
     }
+
+    drop(il);
 
     None
 }
@@ -103,6 +119,8 @@ fn first_free_cluster(cluster_size: usize) -> Option<usize> {
     let mut counter = 0usize;
     let mut indices = (0usize, 0usize);
     let mut okay = false;
+
+    let il = InterruptLocker::lock();
 
     // Now it's getting complex.
     // Introducing counter we ensure that we found a free cluster (counter == cluster_size)
@@ -132,6 +150,8 @@ fn first_free_cluster(cluster_size: usize) -> Option<usize> {
         }
     }
 
+    drop(il);
+
     if okay {
         Some(indices_to_addr(indices.0, indices.1))
     } else {
@@ -142,9 +162,13 @@ fn first_free_cluster(cluster_size: usize) -> Option<usize> {
 /// Allocate one page of physical memory.
 /// Returns an address in physical memory, guaranteed to be pagesize-aligned.
 pub fn allocate_one() -> Option<usize> {
+    let il = InterruptLocker::lock();
+
     let first_free = first_free_page()?;
 
     mark_page(first_free, true);
+
+    drop(il);
 
     Some(first_free)
 }
@@ -152,6 +176,8 @@ pub fn allocate_one() -> Option<usize> {
 /// Allocate one page of physical memory.
 /// Returns an address in physical memory, guaranteed to be pagesize-aligned.
 pub fn allocate_bulk(page_count: usize) -> Option<usize> {
+    let il = InterruptLocker::lock();
+
     let first_free = first_free_cluster(page_count)?;
 
     // qemu_log!(
@@ -165,6 +191,8 @@ pub fn allocate_bulk(page_count: usize) -> Option<usize> {
 
         mark_page(addr, true);
     }
+
+    drop(il);
 
     Some(first_free)
 }
@@ -182,11 +210,13 @@ pub fn free_bulk(address: usize, page_count: usize) {
 pub fn init() {
     // Zero out the bitmap, marking all memory as free.
 
+    // Don't disable interrupts here - multithreading is not available while physical memory manager is not initialized.
     bitmap_mut().fill(0);
 
     qemu_log!(
         "Bitmap size: {} bytes",
         bitmap().len() * crate::spec::WORD_SIZE
     );
+
     qemu_log!("Bitmap length: {}", bitmap().len());
 }

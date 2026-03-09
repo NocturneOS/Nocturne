@@ -52,6 +52,8 @@ impl AddressSpace {
         let layout = Layout::from_size_align(arch::get_page_size(), 0x1000).unwrap();
         let mapping_region = unsafe { alloc::alloc::alloc(layout) };
 
+        physical::free_one(arch::mem::paging::virt2phys(mapping_region.addr()).unwrap());
+
         map_single_page(
             addr,
             mapping_region.addr(),
@@ -77,6 +79,8 @@ impl AddressSpace {
     pub fn self_map_page_from_virt<T>(&self, virt_addr: usize, f: impl FnOnce(&mut [usize]) -> T) -> T {
         let layout = Layout::from_size_align(arch::get_page_size(), 0x1000).unwrap();
         let mapping_region = unsafe { alloc::alloc::alloc(layout) };
+
+        physical::free_one(arch::mem::paging::virt2phys(mapping_region.addr()).unwrap());
 
         let phys = self.self_map_page(self.page_root_phys, |data| {
             let (pdi, pti) = vaddr2indices(virt_addr);

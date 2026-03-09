@@ -29,7 +29,7 @@ fn test_task() {
 
         qemu_log!("Hello, my ID is: {id:?} (CR3: {cr3:08x?})");
 
-        sched::sleep(Duration::from_millis((75 * id) as _));
+        sched::sleep(Duration::from_millis((10 * id) as _));
 
         counter = counter.wrapping_add(1);
 
@@ -50,10 +50,20 @@ extern "C" fn kmain() -> ! {
     sched::init();
 
     {
-        for _ in 0..8 {
+        //{
+        //    let proc = sched::create_process("Test Process", "rd0:/");
+
+        //    qemu_log!("Process CR3: {:x?}", proc.address_space.get().page_root_phys);
+        //    sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
+        //    sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
+        //    sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
+        //    sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
+        //}
+
+        for _ in 0..16 {
             let proc = sched::create_process("Test Process", "rd0:/");
             
-            for _ in 0..8 {
+            for _ in 0..16 {
                 sched::create_thread(
                     Arc::clone(&proc),
                     test_task,
