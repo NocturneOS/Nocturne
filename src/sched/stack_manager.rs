@@ -92,7 +92,6 @@ impl ThreadStack {
     pub unsafe fn push(&mut self, address_space: &mut AddressSpace, value: usize) {
         if self.stack_pointer <= crate::spec::KERNEL_BASE {
             return self.push_user(address_space, value);
-            // panic!("ThreadStack::push cannot be used on user stacks. Use `ThreadStack::push_user` instead.");
         }
 
         let mut ptr = self.stack_pointer as *mut usize;
@@ -109,7 +108,11 @@ impl ThreadStack {
 impl Drop for ThreadStack {
     fn drop(&mut self) {
         if self.stack_addr < crate::spec::KERNEL_BASE {
-            todo!("It's a user space stack, we need to deallocate it!");
+            // We will free the stack in the sched/mod.rs instead, because we can't reach
+            // AddressSpace here.
+
+            return;
+            //todo!("It's a user space stack, we need to deallocate it!");
         }
 
         // Now we creating a stack layout by using `_unchecked` kind of method,

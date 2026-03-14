@@ -246,6 +246,12 @@ impl Scheduler {
     }
 
     fn remove_task(&mut self, thread: SharedThread) {
+        if unsafe { thread.stack.pointer().addr() } < crate::spec::KERNEL_BASE {
+            //let process = &thread.process.address_space;
+            
+            todo!("Free user thread's stack!");
+        }
+
         // Remove the thread from the thread list.
         self.thread_list
             .extract_if(|x| x.id == thread.id)
