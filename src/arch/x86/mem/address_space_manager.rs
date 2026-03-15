@@ -1,42 +1,53 @@
-use core::alloc::Layout;
+use core::{alloc::Layout, ops::Add};
+
+use alloc::vec::Vec;
 
 use crate::{
     arch::{
         self,
         mem::paging::{Page, PageFlags, map_single_page, unmap_single_page, vaddr2indices},
-    },
-    mem::physical::{self, allocate_bulk, allocate_one, free_one},
-    spec::WORD_SIZE,
+    }, mem::physical::{self, allocate_bulk, allocate_one, free_one}, qemu_log, spec::WORD_SIZE
 };
 
+#[derive(Debug)]
+pub struct AddressSpaceVirtualBlock {
+    address: usize,
+    size: usize,
+}
+
+#[repr(C)]
 pub struct AddressSpace {
     pub page_root_phys: usize,
 
-    // Bump allocator VMA.
-    pub(super) next_free_virt_addr: usize
+    // Allocator VMA.
+    pub(super) used_virt_areas: Vec<AddressSpaceVirtualBlock>,
 }
 
 impl AddressSpace {
     pub fn new() -> Self {
+        let areas = Vec::with_capacity(1024);
         let root = super::clone::clone_kernel_page_root();
 
         Self {
             page_root_phys: root,
-            next_free_virt_addr: crate::spec::KERNEL_BASE,
+            // next_free_virt_addr: crate::spec::KERNEL_BASE,
+            used_virt_areas: areas,
         }
     }
 
     pub fn uninitialized() -> Self {
         Self {
             page_root_phys: 0,
-            next_free_virt_addr: crate::spec::KERNEL_BASE,
+            // next_free_virt_addr: crate::spec::KERNEL_BASE,
+            used_virt_areas: Vec::new(),
         }
     }
 
     pub fn predefined(phys: usize) -> Self {
         Self {
             page_root_phys: phys,
-            next_free_virt_addr: crate::spec::KERNEL_BASE,
+            // next_free_virt_addr: crate::spec::KERNEL_BASE,
+            used_virt_areas: Vec::new(),
         }
     }
 
@@ -76,7 +87,11 @@ impl AddressSpace {
         result
     }
 
-    pub fn self_map_page_from_virt<T>(&self, virt_addr: usize, f: impl FnOnce(&mut [usize]) -> T) -> T {
+    pub fn self_map_page_from_virt<T>(
+        &self,
+        virt_addr: usize,
+        f: impl FnOnce(&mut [usize]) -> T,
+    ) -> T {
         let layout = Layout::from_size_align(arch::get_page_size(), 0x1000).unwrap();
         let mapping_region = unsafe { alloc::alloc::alloc(layout) };
 
@@ -87,9 +102,7 @@ impl AddressSpace {
 
             let pt_phys = data[pdi];
 
-            self.self_map_page(pt_phys.phys(), |pt| {
-                pt[pti].phys()
-            })
+            self.self_map_page(pt_phys.phys(), |pt| pt[pti].phys())
         });
 
         map_single_page(
@@ -115,9 +128,17 @@ impl AddressSpace {
     }
 
     // FIXME: Check the control flow on `?`
-    pub fn map_single_page(&mut self, phys_addr: usize, virt_addr: usize, flags: PageFlags) -> Result<(), ()> {
+    pub fn map_single_page(
+        &mut self,
+        phys_addr: usize,
+        virt_addr: usize,
+        flags: PageFlags,
+    ) -> Result<(), ()> {
         if virt_addr >= crate::spec::KERNEL_BASE {
-            panic!("Attemped to map pages on a kernel region! ({:#x?})", virt_addr);
+            panic!(
+                "Attemped to map pages on a kernel region! ({:#x?})",
+                virt_addr
+            );
         }
 
         self.self_map_page(self.page_root_phys, |page_root| {
@@ -125,6 +146,10 @@ impl AddressSpace {
 
             if !page_root[pdi].is_present() {
                 let page_table = allocate_one().ok_or(())?;
+
+                // self.self_map_page(page_table, |x| {
+                //     x.fill(Page::null());
+                // });
 
                 page_root[pdi] = Page::new(
                     page_table,
@@ -135,10 +160,8 @@ impl AddressSpace {
             let pt_phys = page_root[pdi].phys();
 
             self.self_map_page(pt_phys, |page_table| {
-                page_table[pti] = Page::new(
-                    phys_addr,
-                    PageFlags::Present | flags | PageFlags::Userspace,
-                );
+                page_table[pti] =
+                    Page::new(phys_addr, PageFlags::Present | flags | PageFlags::Userspace);
             });
 
             Ok(())
@@ -175,7 +198,13 @@ impl AddressSpace {
         }
     }
 
-    pub fn map_pages(&mut self, phys_addr: usize, virt_addr: usize, size: usize, flags: PageFlags) -> Result<(), ()> {
+    pub fn map_pages(
+        &mut self,
+        phys_addr: usize,
+        virt_addr: usize,
+        size: usize,
+        flags: PageFlags,
+    ) -> Result<(), ()> {
         assert!(phys_addr.is_multiple_of(arch::get_page_size()));
         assert!(virt_addr.is_multiple_of(arch::get_page_size()));
 
@@ -185,7 +214,7 @@ impl AddressSpace {
             self.map_single_page(
                 phys_addr + (i * arch::get_page_size()),
                 virt_addr + (i * arch::get_page_size()),
-                flags
+                flags,
             )?;
         }
 
@@ -201,7 +230,12 @@ impl AddressSpace {
     }
 
     /// Bulk allocates and maps pages in `(virt_addr..virt_addr + size_in_bytes)` range.
-    pub fn alloc_map_multiple_pages(&mut self, virt_addr: usize, size_in_bytes: usize, flags: PageFlags) -> Result<(), ()> {
+    pub fn alloc_map_multiple_pages(
+        &mut self,
+        virt_addr: usize,
+        size_in_bytes: usize,
+        flags: PageFlags,
+    ) -> Result<(), ()> {
         let page_count = size_in_bytes.div_ceil(arch::get_page_size());
 
         // Try allocate pages in bulk.
@@ -223,7 +257,8 @@ impl AddressSpace {
 
                 let page = allocate_one().unwrap();
 
-                self.map_single_page(page, virt_addr + (i * arch::get_page_size()), flags).unwrap();
+                self.map_single_page(page, virt_addr + (i * arch::get_page_size()), flags)
+                    .unwrap();
             }
         }
 
@@ -232,12 +267,72 @@ impl AddressSpace {
 
     /// Allocates a region of virtual memory. (Growing down)
     /// Returns the starting address of the region.
-    pub fn alloc_virt_region(&mut self, size: usize) -> usize {
-        let page_size: usize = arch::get_page_size();
-        let aligned = size.next_multiple_of(page_size);
+    // pub fn alloc_virt_region(&mut self, size: usize) -> usize {
+    //     let page_size: usize = arch::get_page_size();
+    //     let aligned = size.next_multiple_of(page_size);
 
-        self.next_free_virt_addr -= aligned;
-        self.next_free_virt_addr
+    //     self.next_free_virt_addr -= aligned;
+    //     self.next_free_virt_addr
+    // }
+
+    // Maybe Result<usize, ASVAllocationError>?
+    pub fn alloc_virt_region(&mut self, size: usize) -> usize {
+        qemu_log!("Allocate: {size} ({size:x})");
+
+        if self.used_virt_areas.is_empty() {
+            let addr = crate::spec::KERNEL_BASE - size;
+            self.used_virt_areas.push(AddressSpaceVirtualBlock { address: addr, size });
+            return addr;
+        }
+    
+        // Check the gap between KERNEL_BASE and the topmost block.
+        {
+            let first = &self.used_virt_areas[0];
+            let gap = crate::spec::KERNEL_BASE - (first.address + first.size);
+            if gap >= size {
+                let addr = crate::spec::KERNEL_BASE - size;
+                self.used_virt_areas.insert(0, AddressSpaceVirtualBlock { address: addr, size });
+                return addr;
+            }
+        }
+    
+        // Scan gaps between consecutive blocks (list is high-low).
+        for i in 0..self.used_virt_areas.len() - 1 {
+            let upper_addr = self.used_virt_areas[i].address;
+            let lower_end  = self.used_virt_areas[i + 1].address
+                           + self.used_virt_areas[i + 1].size;
+            let gap = upper_addr - lower_end;
+    
+            if gap >= size {
+                let addr = upper_addr - size;
+                self.used_virt_areas.insert(i + 1, AddressSpaceVirtualBlock { address: addr, size });
+                return addr;
+            }
+        }
+    
+        // No gap found — extend below the lowest block.
+        let addr = self.used_virt_areas.last().unwrap().address - size;
+        self.used_virt_areas.push(AddressSpaceVirtualBlock { address: addr, size });
+        addr
+    }
+
+    pub fn free_virt_region(&mut self, address: usize) {
+        let mut index: Option<usize> = None;
+
+        for (idx, block) in self.used_virt_areas.iter().enumerate() {
+            // qemu_log!("{idx}: {block:x?}");
+
+            if block.address == address {
+                index = Some(idx);
+                break;
+            }
+        }
+
+        if let Some(idx) = index {
+            self.used_virt_areas.remove(idx);
+        } else {
+            panic!("Tried to free nonexistent block in ASVA: {address:#x?}");
+        }
     }
 }
 

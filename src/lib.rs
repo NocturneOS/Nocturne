@@ -50,26 +50,26 @@ extern "C" fn kmain() -> ! {
     sched::init();
 
     {
-        {
-            let proc = sched::create_process("Test Process", "rd0:/");
-
-            qemu_log!("Process CR3: {:x?}", proc.address_space.get().page_root_phys);
-            sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
-        }
-
-        // for _ in 0..16 {
+        // {
         //     let proc = sched::create_process("Test Process", "rd0:/");
-        //     
-        //     for _ in 0..16 {
-        //         sched::create_thread(
-        //             Arc::clone(&proc),
-        //             test_task,
-        //             16 << 10,
-        //             ThreadPriority::Low,
-        //             ThreadFlags::empty(),
-        //         );
-        //     }
+
+        //     qemu_log!("Process CR3: {:x?}", proc.address_space.get().page_root_phys);
+        //     sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
         // }
+
+        for _ in 0..16 {
+            let proc = sched::create_process("Test Process", "rd0:/");
+            
+            for _ in 0..16 {
+                sched::create_thread(
+                    Arc::clone(&proc),
+                    test_task,
+                    16 << 10,
+                    ThreadPriority::Low,
+                    ThreadFlags::empty(),
+                );
+            }
+        }
 
         // for _ in 0..128 {
         //     sched::create_thread(

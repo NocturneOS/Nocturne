@@ -48,6 +48,8 @@ impl ThreadStack {
         let base_with_guard = address_space.alloc_virt_region(size + page_size);
         let mapped_base = base_with_guard + page_size; // guard page left unmapped
 
+        qemu_log!("Map from: {mapped_base:#x} to {:#x}", mapped_base + size);
+
         address_space.alloc_map_multiple_pages(
             mapped_base, size,
             PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace,
