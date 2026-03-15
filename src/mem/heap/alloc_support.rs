@@ -1,14 +1,20 @@
-use crate::{mem::heap::ArenaAllocator, qemu_log, sys::info::info, tools::interrupt_locker::InterruptLocker};
+use core::alloc::Layout;
+
+use crate::{
+    mem::heap::ArenaAllocator, qemu_log, sys::info::info, tools::interrupt_locker::InterruptLocker,
+};
 
 /// Global allocator instance for the `alloc` crate
 #[global_allocator]
 static GLOBAL_ALLOCATOR: ArenaAllocator = ArenaAllocator::new();
 
 const KERNEL_HEAP_START: usize = {
-    #[cfg(target_arch = "x86")] {
+    #[cfg(target_arch = "x86")]
+    {
         0xD000_0000
     }
-    #[cfg(target_arch = "x86_64")] {
+    #[cfg(target_arch = "x86_64")]
+    {
         0xFFFF_FFFF_A000_0000
     }
 };
@@ -20,8 +26,22 @@ const KERNEL_HEAP_START: usize = {
 pub fn init() {
     GLOBAL_ALLOCATOR.init(
         KERNEL_HEAP_START,
-        0x0800_0000,  //  0xD000_0000 .. 0xD800_0000
+        0x0800_0000, //  0xD000_0000 .. 0xD800_0000
     );
+}
+
+pub unsafe fn allocate_no_map(layout: Layout) -> *mut u8 {
+    let il = InterruptLocker::lock();
+
+    let ptr = GLOBAL_ALLOCATOR
+        .inner()
+        .allocate_no_map(layout)
+        .expect("Non-mapping allocation failed!")
+        .as_ptr();
+
+    drop(il);
+
+    ptr
 }
 
 pub fn dump() {

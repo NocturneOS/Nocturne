@@ -1,7 +1,7 @@
 mod alloc_support;
 
 // Re-export the init function for convenience
-pub use alloc_support::{init, dump};
+pub use alloc_support::{init, dump, allocate_no_map};
 
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::{self, NonNull};
@@ -291,11 +291,28 @@ impl InnerArenaAllocator {
         NonNull::new(address as *mut u8)
     }
 
+    fn inner_allocate_no_map(&mut self, layout: Layout) -> Option<NonNull<u8>> {
+        let (index, address) = self.find_suitable_block(&layout)?;
+
+        self.add_block(index, address, layout.size());
+
+        self.alloc_count += 1;
+
+        NonNull::new(address as *mut u8)
+    }
+
     /// Allocate memory with the given layout
     pub fn allocate(&mut self, layout: Layout) -> Option<NonNull<u8>> {
         self.ensure_arena_available();
 
         self.inner_allocate(layout)
+    }
+
+    /// Allocate memory with the given layout without mapping it
+    pub fn allocate_no_map(&mut self, layout: Layout) -> Option<NonNull<u8>> {
+        self.ensure_arena_available();
+
+        self.inner_allocate_no_map(layout)
     }
 
     /// Deallocate memory
