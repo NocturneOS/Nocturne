@@ -340,26 +340,32 @@ impl AddressSpace {
 
 impl Drop for AddressSpace {
     fn drop(&mut self) {
+        let mut physial_addresses = [0usize; 768];
+
         self.self_map_page(self.page_root_phys, |page_root| {
             // This region (0..768) is dedicated to user-space memory.
             for i in 0..768 {
                 if page_root[i].is_present() {
                     let real_address = page_root[i].phys();
 
-                    // Free all the entries in the page table before freeing it.
-                    self.self_map_page(real_address, |page_table| {
-                        for i in page_table {
-                            // qemu_log!("Checking address: {i:x?}");
-
-                            if i.raw() >= 0x1000 && i.is_present() {
-                                free_one(i.phys());
-                            }
-                        }
-                    });
-
-                    physical::free_one(real_address);
+                    physial_addresses[i] = real_address;
                 }
             }
         });
+
+        for real_address in physial_addresses.iter().filter(|&&x| x != 0) {
+            // Free all the entries in the page table before freeing it.
+            self.self_map_page(*real_address, |page_table| {
+                for i in page_table {
+                    // qemu_log!("Checking address: {i:x?}");
+
+                    if i.raw() >= 0x1000 && i.is_present() {
+                        free_one(i.phys());
+                    }
+                }
+            });
+
+            physical::free_one(*real_address);
+        }
     }
 }
