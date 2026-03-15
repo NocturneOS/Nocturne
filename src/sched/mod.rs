@@ -246,12 +246,18 @@ impl Scheduler {
     }
 
     fn remove_task(&mut self, thread: SharedThread) {
+        // If thread is placed in userspace AddrSpace.
         if unsafe { thread.stack.pointer().addr() } < crate::spec::KERNEL_BASE {
-            let process = &thread.process.address_space;
+            let address_space = &thread.process.address_space;
             let stack_addr = thread.stack.stack_addr;
 
+            // address_space.get_mut().
+
             // Count guard page in.
-            unsafe { process.get_mut().free_virt_region(stack_addr - crate::arch::get_page_size()) };
+            let addr = stack_addr - crate::arch::get_page_size();
+
+            unsafe { address_space.get_mut().unmap_pages(stack_addr, thread.stack.stack_size) };
+            unsafe { address_space.get_mut().free_virt_region(addr) };
             
             // todo!("Free user thread's stack!");
         }

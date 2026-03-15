@@ -29,11 +29,11 @@ fn test_task() {
 
         qemu_log!("Hello, my ID is: {id:?} (CR3: {cr3:08x?})");
 
-        sched::sleep(Duration::from_millis((5 * id) as _));
+        sched::sleep(Duration::from_millis((3 * id) as _));
 
         counter = counter.wrapping_add(1);
 
-        if counter == 0x20 {
+        if counter == 0x3 {
             qemu_log!("Exiting: {id:?}");
             break;
         }
@@ -71,15 +71,15 @@ extern "C" fn kmain() -> ! {
             }
         }
 
-        // for _ in 0..128 {
-        //     sched::create_thread(
-        //         sched::this_process(),
-        //         test_task,
-        //         16 << 10,
-        //         ThreadPriority::Low,
-        //         ThreadFlags::empty(),
-        //     );
-        // }
+        for _ in 0..128 {
+            sched::create_thread(
+                sched::this_process(),
+                test_task,
+                16 << 10,
+                ThreadPriority::Low,
+                ThreadFlags::empty(),
+            );
+        }
 
         // mem::heap::dump();
 

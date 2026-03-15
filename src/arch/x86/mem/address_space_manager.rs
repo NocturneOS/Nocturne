@@ -141,7 +141,7 @@ impl AddressSpace {
             );
         }
 
-        self.self_map_page(self.page_root_phys, |page_root| {
+        let (pt_phys, pti) = self.self_map_page(self.page_root_phys, |page_root| {
             let (pdi, pti) = vaddr2indices(virt_addr);
 
             if !page_root[pdi].is_present() {
@@ -159,40 +159,42 @@ impl AddressSpace {
 
             let pt_phys = page_root[pdi].phys();
 
-            self.self_map_page(pt_phys, |page_table| {
-                page_table[pti] =
-                    Page::new(phys_addr, PageFlags::Present | flags | PageFlags::Userspace);
-            });
+            Ok((pt_phys, pti))
+        })?;
 
-            Ok(())
-        })
+        self.self_map_page(pt_phys, |page_table| {
+            page_table[pti] =
+                Page::new(phys_addr, PageFlags::Present | flags | PageFlags::Userspace);
+        });
+
+        Ok(())
     }
 
-    pub fn unmap_single_page(&mut self, phys_addr: usize, virt_addr: usize) {
-        self.self_map_page(self.page_root_phys, |page_root| {
+    pub fn unmap_single_page(&mut self, virt_addr: usize) {
+        let data: Option<(usize, usize)> = self.self_map_page(self.page_root_phys, |page_root| {
             let (pdi, pti) = vaddr2indices(virt_addr);
 
             if !page_root[pdi].is_present() {
-                return;
+                return None;
             }
 
-            let pt_phys = page_root[pdi].phys();
+            Some((page_root[pdi].phys(), pti))
+        });
 
+        if let Some((pt_phys, pti)) = data {
             self.self_map_page(pt_phys, |page_table| {
                 page_table[pti] = Page::null();
             });
-        });
+        }
     }
 
-    pub fn unmap_pages(&mut self, phys_addr: usize, virt_addr: usize, size: usize) {
-        assert!(phys_addr.is_multiple_of(arch::get_page_size()));
+    pub fn unmap_pages(&mut self, virt_addr: usize, size: usize) {
         assert!(virt_addr.is_multiple_of(arch::get_page_size()));
 
         let page_count = size.div_ceil(arch::get_page_size());
 
         for i in 0..page_count {
             self.unmap_single_page(
-                phys_addr + (i * arch::get_page_size()),
                 virt_addr + (i * arch::get_page_size()),
             );
         }
@@ -347,7 +349,9 @@ impl Drop for AddressSpace {
                     // Free all the entries in the page table before freeing it.
                     self.self_map_page(real_address, |page_table| {
                         for i in page_table {
-                            if i.is_present() {
+                            // qemu_log!("Checking address: {i:x?}");
+
+                            if i.raw() >= 0x1000 && i.is_present() {
                                 free_one(i.phys());
                             }
                         }
