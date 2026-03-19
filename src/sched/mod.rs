@@ -701,7 +701,7 @@ unsafe extern "C" fn thread_trampoline_usermode() -> ! {
         "push 0x1B",
         "push ebx",
 
-        "iret",
+        "iretd",
     );
 }
 

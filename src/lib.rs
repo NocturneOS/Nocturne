@@ -55,38 +55,13 @@ extern "C" fn kmain() -> ! {
     let code_position = (USERMODE_CODE.as_ptr().addr() - crate::spec::KERNEL_BASE) + 0x4000_0000;
 
     {
-        /*{
+        {
             let proc = sched::create_process("Test Process", "rd0:/");
 
             qemu_log!("Process CR3: {:x?}", proc.address_space.get().page_root_phys);
 
             sched::create_thread(Arc::clone(&proc), unsafe { core::mem::transmute(code_position) }, 32 << 10, ThreadPriority::Low, ThreadFlags::empty());
-        }*/
-
-        crate::arch::mem::paging::map_pages(0x500_000, 0x8000_0000, 0x4000, PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace);
-        crate::arch::mem::paging::map_pages(0x600_000, 0x2000_0000, 0x4000, PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace);
-
-        unsafe { (0x2000_0000 as *mut u8).copy_from(USERMODE_CODE.as_ptr(), USERMODE_CODE.len()) };
-
-        unsafe {
-            asm!(
-                "mov ax, 0x23",
-                "mov ds, ax",
-                "mov es, ax",
-                "mov fs, ax",
-                "mov gs, ax",
-
-                "cli",
-                "push 0x00000023", // DS | 3
-                "push 0x80004000", // ESP
-                "push 0x00000202", // EFLAGS
-                "push 0x0000001B", // CS | 3
-                "push 0x20000000", // EIP
-                "iretd",
-            );
         }
-
-        loop {}
 
         // for _ in 0..16 {
         //     let proc = sched::create_process("Test Process", "rd0:/");
