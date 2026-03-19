@@ -1,11 +1,11 @@
 #![no_std]
 #![feature(linked_list_retain)]
 
-use core::{panic::PanicInfo, time::Duration};
+use core::{arch::{asm, naked_asm}, panic::PanicInfo, time::Duration};
 
 use alloc::{collections::{btree_map::BTreeMap, linked_list::LinkedList, vec_deque::VecDeque}, format, string::String, sync::Arc, vec::Vec};
 
-use crate::{arch::mem::address_space_manager::AddressSpace, sched::thread::{ThreadFlags, ThreadPriority::{self, Medium}}, tools::without_interrupts::without_interrupts};
+use crate::{arch::mem::{address_space_manager::AddressSpace, paging::PageFlags}, sched::thread::{ThreadFlags, ThreadPriority::{self, Medium}}, tools::without_interrupts::without_interrupts};
 
 mod arch;
 mod interrupts;
@@ -29,16 +29,19 @@ fn test_task() {
 
         qemu_log!("Hello, my ID is: {id:?} (CR3: {cr3:08x?})");
 
-        sched::sleep(Duration::from_millis((3 * id) as _));
+        sched::sleep(Duration::from_millis((40 * id) as _));
 
         counter = counter.wrapping_add(1);
 
-        if counter == 0x3 {
+        if counter == 0x40 {
             qemu_log!("Exiting: {id:?}");
             break;
         }
     }
 }
+
+#[unsafe(link_section = ".text")]
+static USERMODE_CODE: &[u8] = &[0x66, 0x31, 0xc0, 0x66, 0x40, 0x70, 0x02, 0xeb, 0xfa, 0x66, 0x43, 0x66, 0x31, 0xc0, 0xeb, 0xf3];
 
 // This entry point is called from `arch_init`.
 extern "C" fn kmain() -> ! {
@@ -49,37 +52,65 @@ extern "C" fn kmain() -> ! {
     
     sched::init();
 
+    let code_position = (USERMODE_CODE.as_ptr().addr() - crate::spec::KERNEL_BASE) + 0x4000_0000;
+
     {
-        // {
-        //     let proc = sched::create_process("Test Process", "rd0:/");
-
-        //     qemu_log!("Process CR3: {:x?}", proc.address_space.get().page_root_phys);
-        //     sched::create_thread(Arc::clone(&proc), test_task, 16 << 10, ThreadPriority::Low, ThreadFlags::empty());
-        // }
-
-        for _ in 0..16 {
+        /*{
             let proc = sched::create_process("Test Process", "rd0:/");
-            
-            for _ in 0..16 {
-                sched::create_thread(
-                    Arc::clone(&proc),
-                    test_task,
-                    16 << 10,
-                    ThreadPriority::Low,
-                    ThreadFlags::empty(),
-                );
-            }
-        }
 
-        for _ in 0..128 {
-            sched::create_thread(
-                sched::this_process(),
-                test_task,
-                16 << 10,
-                ThreadPriority::Low,
-                ThreadFlags::empty(),
+            qemu_log!("Process CR3: {:x?}", proc.address_space.get().page_root_phys);
+
+            sched::create_thread(Arc::clone(&proc), unsafe { core::mem::transmute(code_position) }, 32 << 10, ThreadPriority::Low, ThreadFlags::empty());
+        }*/
+
+        crate::arch::mem::paging::map_pages(0x500_000, 0x8000_0000, 0x4000, PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace);
+        crate::arch::mem::paging::map_pages(0x600_000, 0x2000_0000, 0x4000, PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace);
+
+        unsafe { (0x2000_0000 as *mut u8).copy_from(USERMODE_CODE.as_ptr(), USERMODE_CODE.len()) };
+
+        unsafe {
+            asm!(
+                "mov ax, 0x23",
+                "mov ds, ax",
+                "mov es, ax",
+                "mov fs, ax",
+                "mov gs, ax",
+
+                "cli",
+                "push 0x00000023", // DS | 3
+                "push 0x80004000", // ESP
+                "push 0x00000202", // EFLAGS
+                "push 0x0000001B", // CS | 3
+                "push 0x20000000", // EIP
+                "iretd",
             );
         }
+
+        loop {}
+
+        // for _ in 0..16 {
+        //     let proc = sched::create_process("Test Process", "rd0:/");
+        //     
+        //     for _ in 0..16 {
+        //         sched::create_thread(
+        //             Arc::clone(&proc),
+        //             test_task,
+        //             16 << 10,
+        //             ThreadPriority::Low,
+        //             ThreadFlags::empty(),
+        //         );
+        //     }
+        // }
+
+        // for _ in 0..128 {
+        //     sched::create_thread(
+        //         sched::this_process(),
+        //         test_task,
+        //         16 << 10,
+        //         ThreadPriority::Low,
+        //         ThreadFlags::empty(),
+        //     );
+        // }
 
         // mem::heap::dump();
 

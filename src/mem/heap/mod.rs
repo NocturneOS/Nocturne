@@ -310,6 +310,8 @@ impl InnerArenaAllocator {
 
     /// Allocate memory with the given layout without mapping it
     pub fn allocate_no_map(&mut self, layout: Layout) -> Option<NonNull<u8>> {
+        debug_assert!(layout.align().is_multiple_of(arch::get_page_size()), "Non-mapping allocation must be PAGESIZE-multiple aligned.");
+
         self.ensure_arena_available();
 
         self.inner_allocate_no_map(layout)

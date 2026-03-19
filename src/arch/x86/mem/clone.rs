@@ -20,7 +20,7 @@ pub fn clone_kernel_page_root() -> usize {
 
     unsafe { temporary_block.write_bytes(0, get_page_size()) };
 
-    unsafe { (temporary_block as *mut usize).add(1023).write(new_page_directory | 3) };
+    unsafe { (temporary_block as *mut usize).add(1023).write(new_page_directory | 3 | 4) };
 
     for i in 0..1023 {
         let pt = paging::page_directory()[i];

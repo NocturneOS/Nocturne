@@ -18,15 +18,7 @@ pub unsafe extern "C" fn isr_handler(mut regs: CPURegisters) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn irq_handler(mut regs: CPURegisters) {
     // Send EOI.
-    // eoi(regs.int_num as _);
-
-    {
-        if regs.int_num >= 0x28 {
-            unsafe { outb(0xA0, 0x20) };
-        }
-
-        unsafe { outb(0x20, 0x20) };
-    }
+    eoi(regs.int_num as _);
 
     interrupt_handler(&mut regs);
 }

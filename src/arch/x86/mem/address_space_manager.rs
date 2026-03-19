@@ -61,8 +61,8 @@ impl AddressSpace {
 
     pub fn self_map_page<T>(&self, addr: usize, f: impl FnOnce(&mut [Page]) -> T) -> T {
         let layout = Layout::from_size_align(arch::get_page_size(), 0x1000).unwrap();
+        
         // let mapping_region = unsafe { alloc::alloc::alloc(layout) };
-
         // physical::free_one(arch::mem::paging::virt2phys(mapping_region.addr()).unwrap());
 
         let mapping_region = unsafe { crate::mem::heap::allocate_no_map(layout) };

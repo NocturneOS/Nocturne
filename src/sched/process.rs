@@ -5,7 +5,7 @@ use core::{
 use alloc::ffi::CString;
 use lazy_static::lazy_static;
 
-use crate::{arch::mem::address_space_manager::AddressSpace, qemu_log, tools::pseudosync::PseudoSync};
+use crate::{arch::mem::{address_space_manager::AddressSpace, paging::PageFlags}, qemu_log, tools::pseudosync::PseudoSync};
 
 lazy_static! {
     static ref GLOBAL_PID: AtomicUsize = AtomicUsize::new(0);
@@ -37,9 +37,19 @@ impl Process {
         let name_ptr = CString::new(name).unwrap().into_raw();
         let cwd_ptr = CString::new(cwd).unwrap().into_raw();
 
+        // TEST SUITE!!!
+        let mut address_space = AddressSpace::new();
+
+        address_space.map_pages(
+            0x100_000,
+            0x4010_0000,
+            0x20_0000,
+            PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace
+        );
+
         Self {
             id: next_pid(),
-            address_space: AddressSpace::new().into(),
+            address_space: address_space.into(),
             thread_count: 0.into(),
             name: name_ptr.into(),
             cwd: cwd_ptr.into(),

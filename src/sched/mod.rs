@@ -166,18 +166,27 @@ impl Scheduler {
 
         qemu_log!("Stack allocated: base @ {:#x?}", stack.stack_addr);
 
+        let stack_top = stack.stack_pointer;
+
         let id = next_tid();
+        let archspec = ArchitectureSpecificRegion::new();
+
+        //let kst = archspec.tss_kernel_stack.load(Ordering::Relaxed);
 
         #[cfg(target_arch = "x86")]
         unsafe {
             stack.push(process.address_space.get_mut(), thread_exit as *const () as usize);
 
-            stack.push(process.address_space.get_mut(), entry as *const () as usize);
+            if is_user_proc {
+                stack.push(process.address_space.get_mut(), thread_trampoline_usermode as *const () as usize);
+            } else {
+                stack.push(process.address_space.get_mut(), thread_trampoline as *const () as usize);
+            }
 
             stack.push(process.address_space.get_mut(), 0x202); // IF=1, IOPL=0
 
-            stack.push(process.address_space.get_mut(), 0); // EAX
-            stack.push(process.address_space.get_mut(), 0); // EBX
+            stack.push(process.address_space.get_mut(), stack_top as usize); // EAX
+            stack.push(process.address_space.get_mut(), entry as *const () as usize); // EBX
             stack.push(process.address_space.get_mut(), 0); // ECX
             stack.push(process.address_space.get_mut(), 0); // EDX
             stack.push(process.address_space.get_mut(), 0); // ESI
@@ -221,7 +230,7 @@ impl Scheduler {
             state: (thread::ThreadState::Ready as usize).into(),
             stack,
             entry_point: entry as *const () as usize,
-            arch_specific_region: ArchitectureSpecificRegion::new(),
+            arch_specific_region: archspec,
             last_error: 0.into(),
             time_quantum: priority.to_ticks().into(),
             priority,
@@ -234,12 +243,6 @@ impl Scheduler {
         if !flags.contains(ThreadFlags::Raw) {
             self.working_queue.push_back(Arc::clone(&tcb));
         }
-
-        // IMPORTANT THING! In this method interrupts are always disabled.
-        // We use clone-on-demand method on making processes.
-        // It means that if we have a fresh process with unset page roots,
-        // we should make them here, because we already prepared everything.
-        // So if we do it before we can get a random page fault or something worse.
 
         qemu_log!("Added thread nr: {id}");
         Some(tcb)
@@ -664,6 +667,20 @@ pub fn thread_exit() -> ! {
 #[unsafe(naked)]
 unsafe extern "C" fn thread_trampoline() -> ! {
     core::arch::naked_asm!(
+        // Align ESP
+        "sub esp, 4",
+        // EBX = entry point
+        "call ebx",
+        // If entry returned, call thread_exit to mark thread as dead.
+        "call {exit}",
+        exit = sym thread_exit
+    );
+}
+
+
+#[unsafe(naked)]
+unsafe extern "C" fn thread_trampoline64() -> ! {
+    core::arch::naked_asm!(
         // Align RSP
         "sub rsp, 8",
         // RBX = entry point
@@ -671,6 +688,20 @@ unsafe extern "C" fn thread_trampoline() -> ! {
         // If entry returned, call thread_exit to mark thread as dead.
         "call {exit}",
         exit = sym thread_exit
+    );
+}
+
+#[unsafe(naked)]
+unsafe extern "C" fn thread_trampoline_usermode() -> ! {
+    core::arch::naked_asm!(
+        "cli",
+        "push 0x23",
+        "push eax",
+        "push 0x202",
+        "push 0x1B",
+        "push ebx",
+
+        "iret",
     );
 }
 
