@@ -329,7 +329,7 @@ impl Scheduler {
                 task.state
                     .store(ThreadState::Ready as usize, Ordering::SeqCst);
 
-                self.working_queue.push_back(Arc::clone(task));
+                self.working_queue.push_front(Arc::clone(task));
 
                 self.sleeping_queue.remove(index);
 
@@ -388,6 +388,14 @@ impl Scheduler {
         // qemu_log!("Entered scheduler");
 
         let this = Arc::clone(self.this_task());
+
+        // FIXME: We can encounter time skew under heavy loads,
+        // I mean if we have 128 threads running at the same time without sleeping,
+        // and we have one thread that sleeps every 500 ms, it will be woken up in 800-950 ms,
+        // having almost X2 ERROR!
+        //
+        // Solution is maybe to check for sleeping threads here, and switch to them (if wait time
+        // expires) no matter how much current task's quantum remaining.
 
         // If it's not an idle task, check it.
         if !Arc::ptr_eq(&this, self.idle_task.as_ref().unwrap()) {
