@@ -55,12 +55,14 @@ extern "C" fn kmain() -> ! {
     let code_position = (USERMODE_CODE.as_ptr().addr() - crate::spec::KERNEL_BASE) + 0x4000_0000;
 
     {
-        {
+        for _ in 0..8 {
             let proc = sched::create_process("Test Process", "rd0:/");
 
             qemu_log!("Process CR3: {:x?}", proc.address_space.get().page_root_phys);
 
-            sched::create_thread(Arc::clone(&proc), unsafe { core::mem::transmute(code_position) }, 32 << 10, ThreadPriority::Low, ThreadFlags::empty());
+            for _ in 0..16 {
+                sched::create_thread(Arc::clone(&proc), unsafe { core::mem::transmute(code_position) }, 32 << 10, ThreadPriority::Low, ThreadFlags::empty());
+            }
         }
 
         // for _ in 0..16 {

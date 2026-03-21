@@ -26,7 +26,7 @@ pub fn clone_kernel_page_root() -> usize {
         let pt = paging::page_directory()[i];
 
         if pt.is_present() {
-            qemu_log!("[{:08x}] Available: {i} -> {:08x}", paging::indices2vaddr(i, 0), pt.phys());
+            // qemu_log!("[{:08x}] Available: {i} -> {:08x}", paging::indices2vaddr(i, 0), pt.phys());
 
             paging::map_single_page(new_page_directory, temporary_block.addr(), PageFlags::Writeable | PageFlags::Present);
 

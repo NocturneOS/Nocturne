@@ -281,8 +281,6 @@ impl AddressSpace {
 
     // Maybe Result<usize, ASVAllocationError>?
     pub fn alloc_virt_region(&mut self, size: usize) -> usize {
-        qemu_log!("Allocate: {size} ({size:x})");
-
         if self.used_virt_areas.is_empty() {
             let addr = crate::spec::KERNEL_BASE - size;
             self.used_virt_areas.push(AddressSpaceVirtualBlock { address: addr, size });
