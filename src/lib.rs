@@ -41,7 +41,7 @@ fn test_task() {
 }
 
 #[unsafe(link_section = ".text")]
-static USERMODE_CODE: &[u8] = &[0x66, 0x31, 0xc0, 0x66, 0x40, 0x70, 0x02, 0xeb, 0xfa, 0x66, 0x43, 0x66, 0x31, 0xc0, 0xeb, 0xf3];
+static USERMODE_CODE: &[u8] = &[0x31, 0xc0, 0x31, 0xdb, 0x40, 0x70, 0x02, 0xeb, 0xfb, 0x43, 0x31, 0xc0, 0x81, 0xfb, 0x00, 0x01, 0x00, 0x74, 0x02, 0xeb, 0xee, 0xf4];
 
 // This entry point is called from `arch_init`.
 extern "C" fn kmain() -> ! {
@@ -52,10 +52,12 @@ extern "C" fn kmain() -> ! {
     
     sched::init();
 
+    qemu_log!("Code at: {:x}", USERMODE_CODE.as_ptr().addr());
+
     let code_position = (USERMODE_CODE.as_ptr().addr() - crate::spec::KERNEL_BASE) + 0x4000_0000;
 
     {
-        for _ in 0..8 {
+        {
             let proc = sched::create_process("Test Process", "rd0:/");
 
             qemu_log!("Process CR3: {:x?}", proc.address_space.get().page_root_phys);

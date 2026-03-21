@@ -702,6 +702,11 @@ unsafe extern "C" fn thread_trampoline64() -> ! {
 #[unsafe(naked)]
 unsafe extern "C" fn thread_trampoline_usermode() -> ! {
     core::arch::naked_asm!(
+        "mov ax, 0x23",
+        "mov ds, ax",
+        "mov es, ax",
+        "mov fs, ax",
+        "mov gs, ax",
         "cli",
         "push 0x23",
         "push eax",
