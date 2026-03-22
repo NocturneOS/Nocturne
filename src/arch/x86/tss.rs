@@ -1,6 +1,7 @@
+use noct_sync::pseudosync::PseudoSync;
 use x86::{Ring, segmentation::SegmentSelector};
 
-use crate::{arch::x86::gdt, qemu_log, tools::pseudosync::PseudoSync};
+use crate::{arch::x86::gdt, qemu_log};
 
 #[repr(C, packed)]
 #[derive(Debug)]

@@ -59,6 +59,14 @@ name = "noct-spec"
 version = "0.1.0"
 
 [[package]]
+name = "noct-sync"
+version = "0.1.0"
+
+[[package]]
+name = "noct-tools"
+version = "0.1.0"
+
+[[package]]
 name = "nocturne"
 version = "0.1.0"
 dependencies = [
@@ -67,6 +75,8 @@ dependencies = [
  "elf",
  "lazy_static",
  "noct-spec",
+ "noct-sync",
+ "noct-tools",
  "spin 0.10.0",
  "x86",
 ]

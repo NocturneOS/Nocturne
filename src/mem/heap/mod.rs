@@ -127,7 +127,7 @@ impl InnerArenaAllocator {
                 panic!("Failed to `+` {:#x?} and {} (index = {index})", this_block.address, this_block.size);
             };
 
-            let aligned_new_block_addr = tools::align_value(this_block_end, layout.align());
+            let aligned_new_block_addr = noct_tools::align_value(this_block_end, layout.align());
 
             if next_block.address == 0 && next_block.size == 0 {
                 // Since we are at end of the block list, we have to increment the index to avoid last block overwrite.
@@ -188,7 +188,7 @@ impl InnerArenaAllocator {
     /// If region within the range above is not accessible, allocate a physical page and map it.
     fn ensure_mapped(&self, addr: usize, size: usize) {
         let start_addr = addr & !(arch::get_page_size() - 1);
-        let end_addr = tools::align_value(addr + size, arch::get_page_size());
+        let end_addr = noct_tools::align_value(addr + size, arch::get_page_size());
 
         for i in (start_addr..end_addr).step_by(arch::get_page_size()) {
             if !paging::is_memory_accessible(i) {
@@ -221,7 +221,7 @@ impl InnerArenaAllocator {
         let mut upper_bound = if end_addr & page_mask == 0 && !is_last_block {
             end_addr  // Page-aligned end, but exclude this page (next block might start here)
         } else {
-            tools::align_down(end_addr, page_size) 
+            noct_tools::align_down(end_addr, page_size) 
         };
     
         // For last block, we can safely include the final page if end is page-aligned

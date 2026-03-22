@@ -228,7 +228,7 @@ pub fn preinit(available_memory_size: usize) {
     // Align it to usize boundary.
     if !phys_bitmap_size.is_multiple_of(WORD_SIZE) {
         qemu_log!("Aligning it");
-        phys_bitmap_size = tools::align_value(phys_bitmap_size, WORD_SIZE);
+        phys_bitmap_size = noct_tools::align_value(phys_bitmap_size, WORD_SIZE);
     }
 
     crate::sys::info::info_mut().physical_memory_bitmap_size = Some(phys_bitmap_size);

@@ -89,14 +89,14 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
         .filter(|x| x.ty() != MultibootMMapType::Available)
         .map(|x| (x.addr(), x.length()))
     {
-        let addr_start = tools::align_value(i.0.try_into().unwrap(), arch::get_page_size());
+        let addr_start = noct_tools::align_value(i.0.try_into().unwrap(), arch::get_page_size());
 
         if i.0 + i.1 - 1 >= usize::MAX as _ {
             break;
         }
 
         let addr_end =
-            tools::align_value((i.0 + i.1 - 1).try_into().unwrap(), arch::get_page_size());
+            noct_tools::align_value((i.0 + i.1 - 1).try_into().unwrap(), arch::get_page_size());
 
         if addr_start > mb.memory().total() {
             continue;
@@ -128,7 +128,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     {
         for (n, i) in mb.modules().iter().enumerate() {
             let start_addr = i.mod_start as usize;
-            let end_addr = tools::align_value(i.mod_end as usize, arch::get_page_size());
+            let end_addr = noct_tools::align_value(i.mod_end as usize, arch::get_page_size());
 
             for addr in (start_addr..end_addr).step_by(arch::get_page_size()) {
                 crate::mem::physical::mark_page(addr, true);

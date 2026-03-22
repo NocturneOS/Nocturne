@@ -1,10 +1,8 @@
-use x86::io::outb;
+use noct_sync::pseudosync::PseudoSync;
+
 use crate::arch::CPURegisters;
 
 use crate::interrupts::eoi;
-use crate::qemu_log;
-use crate::sched::in_kernel_context;
-use crate::tools::pseudosync::PseudoSync;
 
 pub type InterruptCallback = fn(&mut CPURegisters) -> ();
 

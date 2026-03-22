@@ -1,9 +1,7 @@
-use core::cell::UnsafeCell;
-
 use lazy_static::lazy_static;
-use spin::Mutex;
+use noct_sync::pseudosync::PseudoSync;
 
-use crate::{qemu_log, sched, tools::pseudosync::PseudoSync};
+use crate::{qemu_log, sched};
 
 lazy_static! {
     static ref TIME_TICKS: PseudoSync<u128> = PseudoSync::new(0);

@@ -1,11 +1,12 @@
 use core::{
-    cell::Cell, ffi::c_char, mem::MaybeUninit, sync::atomic::{AtomicPtr, AtomicUsize, Ordering}
+    ffi::c_char, sync::atomic::{AtomicPtr, AtomicUsize, Ordering}
 };
 
 use alloc::ffi::CString;
 use lazy_static::lazy_static;
+use noct_sync::pseudosync::PseudoSync;
 
-use crate::{arch::mem::{address_space_manager::AddressSpace, paging::PageFlags}, qemu_log, tools::pseudosync::PseudoSync};
+use crate::{arch::mem::{address_space_manager::AddressSpace, paging::PageFlags}, qemu_log};
 
 lazy_static! {
     static ref GLOBAL_PID: AtomicUsize = AtomicUsize::new(0);

@@ -1,7 +1,5 @@
 use lazy_static::lazy_static;
-use spin::RwLock;
-
-use crate::tools::pseudosync::PseudoSync;
+use noct_sync::pseudosync::PseudoSync;
 
 pub mod handler;
 
