@@ -6,6 +6,13 @@ name = "nocturne"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = [
+    "utils/chen",
+    "crates/noct-spec",
+]
+resolver = "2"
+
 [dependencies]
 x86 = "0.52.0"
 lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
@@ -13,6 +20,8 @@ spin = "0.10.0"
 elf = { version = "0.8.0", default-features = false }
 bitflags = "2.10.0"
 cfg-if = "1.0.4"
+
+noct-spec = { path = "crates/noct-spec" }
 
 
 # Profiles

@@ -9,6 +9,7 @@ use alloc::{
     sync::Arc,
 };
 use lazy_static::lazy_static;
+use noct_spec::KERNEL_BASE;
 use spin::{Mutex, MutexGuard};
 
 use crate::{
@@ -250,7 +251,7 @@ impl Scheduler {
 
     fn remove_task(&mut self, thread: SharedThread) {
         // If thread is placed in userspace AddrSpace.
-        if unsafe { thread.stack.pointer().addr() } < crate::spec::KERNEL_BASE {
+        if unsafe { thread.stack.pointer().addr() } < KERNEL_BASE {
             let address_space = &thread.process.address_space;
             let stack_addr = thread.stack.stack_addr;
 

@@ -1,5 +1,7 @@
 use core::alloc::Layout;
 
+use noct_spec::{KERNEL_BASE, WORD_SIZE};
+
 use crate::{arch::{self, mem::{address_space_manager::AddressSpace, paging::{Page, PageFlags}}}, qemu_log};
 
 const STACK_ALIGNEMNT: usize = 0x1000;
@@ -83,7 +85,7 @@ impl ThreadStack {
 
         // 
 
-        let index = (self.stack_pointer & 0xfff) / crate::spec::WORD_SIZE;
+        let index = (self.stack_pointer & 0xfff) / WORD_SIZE;
         // qemu_log!("Stack pointer: {:#x?}; Index: {};", self.stack_pointer, index);
         
         address_space.self_map_page_from_virt(self.stack_pointer & !0xfff, |data| {
@@ -92,7 +94,7 @@ impl ThreadStack {
     }
 
     pub unsafe fn push(&mut self, address_space: &mut AddressSpace, value: usize) {
-        if self.stack_pointer <= crate::spec::KERNEL_BASE {
+        if self.stack_pointer <= KERNEL_BASE {
             return self.push_user(address_space, value);
         }
 
@@ -109,7 +111,7 @@ impl ThreadStack {
 
 impl Drop for ThreadStack {
     fn drop(&mut self) {
-        if self.stack_addr < crate::spec::KERNEL_BASE {
+        if self.stack_addr < KERNEL_BASE {
             // We will free the stack in the sched/mod.rs instead, because we can't reach
             // AddressSpace here.
 

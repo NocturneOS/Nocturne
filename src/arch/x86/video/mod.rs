@@ -1,4 +1,4 @@
-use crate::spec::{KERNEL_BASE, units::Size};
+use noct_spec::{KERNEL_BASE, units::Size};
 
 pub mod bios_text_vga;
 

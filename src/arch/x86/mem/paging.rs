@@ -2,6 +2,7 @@ use core::ops::{BitAnd, Deref};
 
 use crate::{arch::get_page_size, mem::physical, qemu_log, tools};
 use bitflags::bitflags;
+use noct_spec::WORD_SIZE;
 
 pub const PAGE_SIZE: usize = 0x1000;
 
@@ -225,9 +226,9 @@ pub fn preinit(available_memory_size: usize) {
     let mut phys_bitmap_size = (available_memory_size / PAGE_SIZE) / 8;
 
     // Align it to usize boundary.
-    if !phys_bitmap_size.is_multiple_of(crate::spec::WORD_SIZE) {
+    if !phys_bitmap_size.is_multiple_of(WORD_SIZE) {
         qemu_log!("Aligning it");
-        phys_bitmap_size = tools::align_value(phys_bitmap_size, crate::spec::WORD_SIZE);
+        phys_bitmap_size = tools::align_value(phys_bitmap_size, WORD_SIZE);
     }
 
     crate::sys::info::info_mut().physical_memory_bitmap_size = Some(phys_bitmap_size);

@@ -5,10 +5,12 @@
 // C010_0000: Kernel itself
 // C010_0000 + KERNEL_SIZE: Physical memory bitmap
 
+use noct_spec::{WORD_SIZE, WORD_SIZE_BITS};
+
 use crate::{
     arch::{self},
     qemu_log,
-    spec::WORD_SIZE_BITS, tools::interrupt_locker::InterruptLocker,
+    tools::interrupt_locker::InterruptLocker,
 };
 
 unsafe extern "C" {
@@ -23,9 +25,9 @@ fn bitmap() -> &'static [usize] {
         .physical_memory_bitmap_size
         .unwrap();
 
-    assert!(size.is_multiple_of(crate::spec::WORD_SIZE));
+    assert!(size.is_multiple_of(WORD_SIZE));
 
-    let length = size / crate::spec::WORD_SIZE;
+    let length = size / WORD_SIZE;
 
     unsafe { core::slice::from_raw_parts(rawptr, length) }
 }
@@ -38,9 +40,9 @@ fn bitmap_mut() -> &'static mut [usize] {
         .physical_memory_bitmap_size
         .unwrap();
 
-    assert!(size.is_multiple_of(crate::spec::WORD_SIZE));
+    assert!(size.is_multiple_of(WORD_SIZE));
 
-    let length = size / crate::spec::WORD_SIZE;
+    let length = size / WORD_SIZE;
 
     unsafe { core::slice::from_raw_parts_mut(rawptr, length) }
 }
@@ -215,7 +217,7 @@ pub fn init() {
 
     qemu_log!(
         "Bitmap size: {} bytes",
-        bitmap().len() * crate::spec::WORD_SIZE
+        bitmap().len() * WORD_SIZE
     );
 
     qemu_log!("Bitmap length: {}", bitmap().len());

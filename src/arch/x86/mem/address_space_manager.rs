@@ -1,12 +1,13 @@
 use core::{alloc::Layout, ops::Add};
 
 use alloc::vec::Vec;
+use noct_spec::{KERNEL_BASE, WORD_SIZE};
 
 use crate::{
     arch::{
         self,
         mem::paging::{Page, PageFlags, map_single_page, unmap_single_page, vaddr2indices},
-    }, mem::physical::{self, allocate_bulk, allocate_one, free_one}, qemu_log, spec::WORD_SIZE
+    }, mem::physical::{self, allocate_bulk, allocate_one, free_one}, qemu_log
 };
 
 #[derive(Debug)]
@@ -30,7 +31,7 @@ impl AddressSpace {
 
         Self {
             page_root_phys: root,
-            // next_free_virt_addr: crate::spec::KERNEL_BASE,
+            // next_free_virt_addr: KERNEL_BASE,
             used_virt_areas: areas,
         }
     }
@@ -38,7 +39,7 @@ impl AddressSpace {
     pub fn uninitialized() -> Self {
         Self {
             page_root_phys: 0,
-            // next_free_virt_addr: crate::spec::KERNEL_BASE,
+            // next_free_virt_addr: KERNEL_BASE,
             used_virt_areas: Vec::new(),
         }
     }
@@ -46,7 +47,7 @@ impl AddressSpace {
     pub fn predefined(phys: usize) -> Self {
         Self {
             page_root_phys: phys,
-            // next_free_virt_addr: crate::spec::KERNEL_BASE,
+            // next_free_virt_addr: KERNEL_BASE,
             used_virt_areas: Vec::new(),
         }
     }
@@ -136,7 +137,7 @@ impl AddressSpace {
         virt_addr: usize,
         flags: PageFlags,
     ) -> Result<(), ()> {
-        if virt_addr >= crate::spec::KERNEL_BASE {
+        if virt_addr >= KERNEL_BASE {
             panic!(
                 "Attemped to map pages on a kernel region! ({:#x?})",
                 virt_addr
@@ -282,7 +283,7 @@ impl AddressSpace {
     // Maybe Result<usize, ASVAllocationError>?
     pub fn alloc_virt_region(&mut self, size: usize) -> usize {
         if self.used_virt_areas.is_empty() {
-            let addr = crate::spec::KERNEL_BASE - size;
+            let addr = KERNEL_BASE - size;
             self.used_virt_areas.push(AddressSpaceVirtualBlock { address: addr, size });
             return addr;
         }
@@ -290,9 +291,9 @@ impl AddressSpace {
         // Check the gap between KERNEL_BASE and the topmost block.
         {
             let first = &self.used_virt_areas[0];
-            let gap = crate::spec::KERNEL_BASE - (first.address + first.size);
+            let gap = KERNEL_BASE - (first.address + first.size);
             if gap >= size {
-                let addr = crate::spec::KERNEL_BASE - size;
+                let addr = KERNEL_BASE - size;
                 self.used_virt_areas.insert(0, AddressSpaceVirtualBlock { address: addr, size });
                 return addr;
             }

@@ -1,6 +1,6 @@
 use core::ffi::{CStr, c_char};
 
-use crate::spec::KERNEL_BASE;
+use noct_spec::KERNEL_BASE;
 
 #[repr(C, packed)]
 #[derive(Debug)]

@@ -1,3 +1,5 @@
+#![no_std]
+
 pub mod units;
 
 pub const WORD_SIZE: usize = core::mem::size_of::<usize>();

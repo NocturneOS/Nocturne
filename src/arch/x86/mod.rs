@@ -13,7 +13,8 @@ use crate::{
     arch::{
         self,
         x86::multiboot::{MultibootHeader, MultibootMMapType},
-    }, kmain, qemu_log, spec::KERNEL_BASE, tools
+    },
+    kmain, qemu_log, tools,
 };
 
 #[cfg(target_arch = "x86")]
@@ -21,13 +22,21 @@ use crate::{
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
 
-    let mb = unsafe { &*((multiboot_header_address + KERNEL_BASE) as *const MultibootHeader) };
+    let mb = unsafe {
+        use noct_spec::KERNEL_BASE;
+        &*((multiboot_header_address + KERNEL_BASE) as *const MultibootHeader)
+    };
 
     qemu_log!("Command line: {:?}", mb.cmdline());
     qemu_log!("Modules count: {}", mb.modules().len());
 
     for i in mb.modules() {
-        qemu_log!("- {:?} <{:#x?} - {:#x?}>", i.cmdline().as_ptr(), i.start() as *const usize, i.end() as *const usize);
+        qemu_log!(
+            "- {:?} <{:#x?} - {:#x?}>",
+            i.cmdline().as_ptr(),
+            i.start() as *const usize,
+            i.end() as *const usize
+        );
     }
 
     qemu_log!(
@@ -103,7 +112,9 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     // Mark all the memory past the kernel (and the kernel region) as used
 
     {
-        let start = crate::sys::info::info().kernel_end - crate::spec::KERNEL_BASE;
+        use noct_spec::KERNEL_BASE;
+
+        let start = crate::sys::info::info().kernel_end - KERNEL_BASE;
 
         for addr in (0..start).step_by(arch::get_page_size()) {
             crate::mem::physical::mark_page(addr, true);
@@ -122,13 +133,21 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
             for addr in (start_addr..end_addr).step_by(arch::get_page_size()) {
                 crate::mem::physical::mark_page(addr, true);
             }
-            
-            qemu_log!("Marked module #{} {:#?} ({:x} - {:x}) as reserved.", n, i.cmdline(), start_addr, end_addr);
+
+            qemu_log!(
+                "Marked module #{} {:#?} ({:x} - {:x}) as reserved.",
+                n,
+                i.cmdline(),
+                start_addr,
+                end_addr
+            );
         }
     }
 
     // Update info for `kmain`
     {
+        use noct_spec::KERNEL_BASE;
+
         let kernel_end = crate::sys::info::info().kernel_end;
         let mut info = crate::sys::info::info_mut();
 
