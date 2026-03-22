@@ -1,5 +1,4 @@
 pub mod interrupt_locker;
-pub mod pseudosync;
 pub mod without_interrupts;
 
 #[inline]
