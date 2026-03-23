@@ -35,6 +35,10 @@ pub fn get_uptime_nanos() -> u128 {
     (ticks * 1_000_000_000) / freq as u128
 }
 
+pub fn get_uptime_millis() -> u128 {
+    get_uptime_nanos() / 1_000_000
+}
+
 #[inline]
 pub fn nanos_to_ticks(nanos: u128) -> u128 {
     let freq = *TICKING_FREQUENCY.get();

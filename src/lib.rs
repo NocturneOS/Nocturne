@@ -24,6 +24,11 @@ extern "C" fn kmain() -> ! {
     
     sched::init();
 
+    arch::x86::dev::pci::scan();
+
+    for i in arch::x86::dev::pci::devices().iter() {
+        qemu_log!("[{}.{}.{}]: ({}:{}): {:04x}:{:04x}", i.bus, i.slot, i.function, i.class, i.subclass, i.vendor, i.device);
+    }
 
     // clear_screen();
     // test_write();

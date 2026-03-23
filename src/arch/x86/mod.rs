@@ -1,3 +1,4 @@
+pub mod dev;
 pub mod gdt;
 pub mod idt;
 pub mod interrupts;
@@ -14,7 +15,7 @@ use crate::{
         self,
         x86::multiboot::{MultibootHeader, MultibootMMapType},
     },
-    kmain, qemu_log, tools,
+    kmain, qemu_log,
 };
 
 #[cfg(target_arch = "x86")]
