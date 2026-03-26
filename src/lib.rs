@@ -3,6 +3,8 @@
 
 use core::panic::PanicInfo;
 
+use crate::arch::mem::paging::PageFlags;
+
 mod arch;
 mod interrupts;
 mod io;
@@ -29,6 +31,21 @@ extern "C" fn kmain() -> ! {
     for i in arch::x86::dev::pci::devices().iter() {
         qemu_log!("[{}.{}.{}]: ({}:{}): {:04x}:{:04x}", i.bus, i.slot, i.function, i.class, i.subclass, i.vendor, i.device);
     }
+
+    {
+        arch::mem::paging::map_pages(0xf_0000, 0xf_0000, 0x1_0000, PageFlags::Present);
+
+        if let Some(smbios) = arch::x86::smbios::find_smbios() {
+            let values = smbios.scan();
+
+            for i in values {
+                qemu_log!("{i:#?}");
+            }
+        }
+
+        arch::mem::paging::unmap_pages(0xf_0000, 0x1_0000);
+    }
+
 
     // clear_screen();
     // test_write();

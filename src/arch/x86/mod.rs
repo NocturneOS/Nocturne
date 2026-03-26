@@ -6,6 +6,7 @@ pub mod mem;
 pub mod multiboot;
 pub mod regs;
 pub mod sys;
+pub mod smbios;
 pub mod timer;
 pub mod tss;
 pub mod video;
