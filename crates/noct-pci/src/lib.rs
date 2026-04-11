@@ -1,4 +1,7 @@
+#![no_std]
 #![allow(static_mut_refs)]
+
+extern crate alloc;
 
 use core::cell::OnceCell;
 
@@ -9,27 +12,17 @@ use x86::io::{inl, outl};
 
 use noct_time::systemclock::get_uptime_millis as timestamp;
 
+use crate::device::PCIDevice;
+
 static PCI_ADDRESS_PORT: u16 = 0xCF8;
 static PCI_DATA_PORT: u16 = 0xCFC;
 
+pub mod device;
+pub mod bar;
+
 static mut PCI_DEVICES: OnceCell<RwLock<Vec<PCIDevice>>> = OnceCell::new();
 
-#[derive(Clone, Copy, Debug, Default)]
-pub struct PCIDevice {
-    pub vendor: u16,
-    pub device: u16,
-
-    pub bus: u8,
-    pub slot: u8,
-    pub function: u8,
-
-    pub class: u8,
-    pub subclass: u8,
-
-    pub header_type: u8,
-}
-
-pub fn pci_read32(bus: u8, slot: u8, function: u8, offset: u8) -> u32 {
+pub fn read32(bus: u8, slot: u8, function: u8, offset: u8) -> u32 {
     let addr: u32 = ((bus as u32) << 16)
         | ((slot as u32) << 11)
         | ((function as u32) << 8)
@@ -43,7 +36,7 @@ pub fn pci_read32(bus: u8, slot: u8, function: u8, offset: u8) -> u32 {
     }
 }
 
-pub fn pci_read16(bus: u8, slot: u8, function: u8, offset: u8) -> u16 {
+pub fn read16(bus: u8, slot: u8, function: u8, offset: u8) -> u16 {
     let addr: u32 = ((bus as u32) << 16)
         | ((slot as u32) << 11)
         | ((function as u32) << 8)
@@ -57,7 +50,7 @@ pub fn pci_read16(bus: u8, slot: u8, function: u8, offset: u8) -> u16 {
     }
 }
 
-pub fn pci_write(bus: u8, slot: u8, func: u8, offset: u8, value: u32) {
+pub fn write(bus: u8, slot: u8, func: u8, offset: u8, value: u32) {
     let addr: u32 = ((bus as u32) << 16)
         | ((slot as u32) << 11)
         | ((func as u32) << 8)
@@ -69,7 +62,7 @@ pub fn pci_write(bus: u8, slot: u8, func: u8, offset: u8, value: u32) {
     }
 }
 
-pub fn pci_write16(bus: u8, slot: u8, func: u8, offset: u8, value: u16) {
+pub fn write16(bus: u8, slot: u8, func: u8, offset: u8, value: u16) {
     let addr: u32 = ((bus as u32) << 16)
         | ((slot as u32) << 11)
         | ((func as u32) << 8)
@@ -78,87 +71,6 @@ pub fn pci_write16(bus: u8, slot: u8, func: u8, offset: u8, value: u16) {
     unsafe {
         outl(PCI_ADDRESS_PORT, addr);
         outl(PCI_DATA_PORT, (value >> ((offset & 2) * 8)) as u32);
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum BARType {
-    Memory = 0,
-    IO = 1,
-}
-
-impl From<BARType> for u8 {
-    fn from(val: BARType) -> Self {
-        match val {
-            BARType::Memory => 0,
-            BARType::IO => 1,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct PCIBar {
-    pub bar_type: BARType,
-    pub address: usize,
-    pub length: usize,
-}
-
-impl PCIDevice {
-    pub fn read16(&self, offset: u8) -> u16 {
-        pci_read16(self.bus, self.slot, self.function, offset)
-    }
-
-    pub fn read32(&self, offset: u8) -> u32 {
-        pci_read32(self.bus, self.slot, self.function, offset)
-    }
-
-    fn write_command(&self, value: u16) {
-        pci_write16(self.bus, self.slot, self.function, 0x4, value);
-    }
-
-    fn read_command(&self) -> u16 {
-        pci_read16(self.bus, self.slot, self.function, 0x4)
-    }
-
-    pub fn read_bar(&self, bar: u8) -> Option<PCIBar> {
-        if bar > 5 {
-            return None;
-        }
-
-        let raw = self.read32(0x10 + (bar * 4));
-        let bar_type = if raw & 1 == 1 {
-            BARType::IO
-        } else {
-            BARType::Memory
-        };
-
-        let address = match bar_type {
-            BARType::IO => raw & 0xffff_fffc,
-            BARType::Memory => raw & 0xffff_fff0,
-        };
-
-        let orig_cmd = self.read_command();
-        self.write_command(orig_cmd & 0xfffc);
-
-        self.write(0x10 + (bar * 4), 0xffff_ffff);
-        let meta = self.read32(0x10 + (bar * 4));
-        let size = match bar_type {
-            BARType::IO => !(meta & 0xffff_fffc),
-            BARType::Memory => !(meta & 0xffff_fff0),
-        } + 1;
-
-        self.write(0x10 + (bar * 4), raw);
-        self.write_command(orig_cmd);
-
-        Some(PCIBar {
-            bar_type,
-            address: address as _,
-            length: size as _,
-        })
-    }
-
-    pub fn write(&self, offset: u8, value: u32) {
-        pci_write(self.bus, self.slot, self.function, offset, value);
     }
 }
 
@@ -180,7 +92,7 @@ pub fn find_device_by_class_and_subclass(class: u8, subclass: u8) -> Option<PCID
 
 #[inline(always)]
 pub fn pci_get_vendor(bus: u8, slot: u8, function: u8) -> u16 {
-    pci_read16(bus, slot, function, 0)
+    read16(bus, slot, function, 0)
 }
 
 pub fn scan() {
@@ -200,11 +112,11 @@ pub fn scan() {
             let mut vendor: u16 = pci_get_vendor(bus, slot, 0);
 
             if vendor != 0xFFFF {
-                let clid: u8 = ((pci_read16(bus, slot, 0, 0xA) >> 8) & 0xff) as u8;
-                let sclid: u8 = ((pci_read16(bus, slot, 0, 0xA)) & 0xff) as u8;
-                let device: u16 = pci_read16(bus, slot, 0, 0x2);
+                let clid: u8 = ((read16(bus, slot, 0, 0xA) >> 8) & 0xff) as u8;
+                let sclid: u8 = ((read16(bus, slot, 0, 0xA)) & 0xff) as u8;
+                let device: u16 = read16(bus, slot, 0, 0x2);
 
-                hdrtype = (pci_read16(bus, slot, 0, 0xE) & 0xff) as u8;
+                hdrtype = (read16(bus, slot, 0, 0xE) & 0xff) as u8;
 
                 unsafe {
                     let dev = PCIDevice {
@@ -229,9 +141,9 @@ pub fn scan() {
                     vendor = pci_get_vendor(bus, slot, func);
 
                     if vendor != 0xFFFF {
-                        let clid = ((pci_read16(bus, slot, func, 0xA) >> 8) & 0xff) as u8;
-                        let sclid = (pci_read16(bus, slot, func, 0xA) & 0xff) as u8;
-                        let device = pci_read16(bus, slot, func, 0x2);
+                        let clid = ((read16(bus, slot, func, 0xA) >> 8) & 0xff) as u8;
+                        let sclid = (read16(bus, slot, func, 0xA) & 0xff) as u8;
+                        let device = read16(bus, slot, func, 0x2);
 
                         unsafe {
                             let dev = PCIDevice {

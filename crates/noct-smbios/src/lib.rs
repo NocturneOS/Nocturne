@@ -1,3 +1,7 @@
+#![no_std]
+
+extern crate alloc;
+
 use core::ffi::CStr;
 
 use crate::alloc::borrow::ToOwned;

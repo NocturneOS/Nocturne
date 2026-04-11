@@ -1,8 +1,7 @@
 use core::arch::asm;
 
+use noct_logger::qemu_log;
 use x86::io::{inb, outb};
-
-use crate::qemu_log;
 
 use super::{PS2_DATA_PORT, PS2_STATE_REG};
 
@@ -140,7 +139,7 @@ pub fn init() -> (bool, bool) {
 
     if result == 0x00 {
         qemu_log!("Passed test for channel 1!");
-        unsafe { first_device_ok = true };
+        first_device_ok = true;
     } else {
         qemu_log!("Channel 1: Test failed! Result: {:x}", result);
     }

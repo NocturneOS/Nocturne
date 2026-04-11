@@ -1,0 +1,11 @@
+[package]
+name = "noct-ps2"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+noct-cpuregs = { path = "../noct-cpuregs" }
+noct-interrupts = { path = "../noct-interrupts" }
+noct-logger = { path = "../noct-logger" }
+
+x86 = "0.52.0"

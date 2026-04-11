@@ -2,6 +2,8 @@
 
 extern crate alloc;
 
+pub use noct_time;
+
 use core::fmt::{self, Write};
 
 use noct_tools::interrupt_locker::InterruptLocker;
@@ -53,7 +55,7 @@ macro_rules! qemu_println {
 macro_rules! qemu_log {
     ($($arg:tt)*) => {
         let factor = 1_000_000_000;
-        let time = noct_time::systemclock::get_uptime_nanos();
+        let time = $crate::noct_time::systemclock::get_uptime_nanos();
 
         $crate::qemu_print!("<{:3}.{:09}> {}\n", time / factor, time % factor, format_args!($($arg)*))
     };

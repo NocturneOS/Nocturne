@@ -3,7 +3,7 @@ use noct_interrupts::handler::register_interrupt_handler;
 use noct_logger::qemu_log;
 use x86::io::inb;
 
-use crate::{arch::{x86::dev::ps2::{PS2_STATE_REG, controller::{self, read_configuration_byte, write_configuration_byte}}}};
+use crate::{PS2_STATE_REG, controller::{self, read_configuration_byte, write_configuration_byte}};
 
 // TODO: Make it more Rust-like: with Result<T, E>.
 #[unsafe(no_mangle)]
