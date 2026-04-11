@@ -47,6 +47,7 @@ extern "C" fn kmain() -> ! {
         arch::mem::paging::unmap_pages(0xf_0000, 0x1_0000);
     }
 
+    arch::x86::dev::ps2::init();
 
     // clear_screen();
     // test_write();
