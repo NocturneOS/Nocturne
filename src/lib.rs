@@ -6,6 +6,7 @@ use core::panic::PanicInfo;
 use crate::arch::mem::paging::PageFlags;
 
 mod arch;
+mod dev;
 mod interrupts;
 mod io;
 mod mem;

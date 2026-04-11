@@ -8,7 +8,6 @@ edition = "2024"
 
 [workspace]
 members = [
-    "utils/chen",
     "crates/noct-sync",
     "crates/noct-spec", "crates/noct-tools",
 ]

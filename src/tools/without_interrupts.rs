@@ -1,11 +1,11 @@
-use crate::arch;
+use crate::{arch, tools::interrupt_locker::InterruptLocker};
 
 pub fn without_interrupts<T>(f: impl FnOnce() -> T) -> T {
-    arch::disable_interrupts();
+    let locker = InterruptLocker::lock();
 
     let result = f();
 
-    arch::enable_interrupts();
+    drop(locker);
 
     result
 }

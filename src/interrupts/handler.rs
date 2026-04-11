@@ -1,9 +1,9 @@
 use noct_sync::pseudosync::PseudoSync;
 
-use crate::arch::CPURegisters;
 
 use crate::interrupts::eoi;
 
+use crate::arch::CPURegisters;
 pub type InterruptCallback = fn(&mut CPURegisters) -> ();
 
 static INTERRUPT_VECTORS: PseudoSync<[Option<InterruptCallback>; 256]> = unsafe { core::mem::zeroed() };
@@ -39,7 +39,6 @@ pub fn interrupt_handler(regs: &mut CPURegisters) {
         .flatten();
 
     if let Some(iv) = iv {
-        // in_kernel_context(|| iv(regs));
         iv(regs);
     }
 }
