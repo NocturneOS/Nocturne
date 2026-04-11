@@ -1,6 +1,8 @@
+use noct_cpuregs::CPURegisters;
+use noct_interrupts::handler::register_interrupt_handler;
 use x86::io::inb;
 
-use crate::{arch::{CPURegisters, x86::dev::ps2::{PS2_STATE_REG, controller::{self, read_configuration_byte, write_configuration_byte}}}, interrupts::handler::register_interrupt_handler, qemu_log};
+use crate::{arch::{x86::dev::ps2::{PS2_STATE_REG, controller::{self, read_configuration_byte, write_configuration_byte}}}, qemu_log};
 
 // TODO: Make it more Rust-like: with Result<T, E>.
 #[unsafe(no_mangle)]

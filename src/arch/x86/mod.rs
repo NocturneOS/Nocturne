@@ -4,7 +4,6 @@ pub mod idt;
 pub mod interrupts;
 pub mod mem;
 pub mod multiboot;
-pub mod regs;
 pub mod sys;
 pub mod smbios;
 pub mod timer;

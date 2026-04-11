@@ -1,6 +1,5 @@
+use noct_interrupts::InterruptController;
 use x86::io::outb;
-
-use crate::interrupts::InterruptController;
 
 struct PIC;
 
@@ -34,7 +33,7 @@ pub fn init() {
         outb(0xA1, 0x0);
     }
 
-    crate::interrupts::set_interrupt_controller(&PIC_ENTITY);
+    noct_interrupts::set_interrupt_controller(&PIC_ENTITY);
 }
 
 pub fn disable() {

@@ -51,6 +51,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-cpuregs"
+version = "0.1.0"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
+name = "noct-interrupts"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "noct-cpuregs",
+ "noct-sync",
+]
+
+[[package]]
 name = "noct-spec"
 version = "0.1.0"
 
@@ -70,6 +86,8 @@ dependencies = [
  "cfg-if",
  "elf",
  "lazy_static",
+ "noct-cpuregs",
+ "noct-interrupts",
  "noct-spec",
  "noct-sync",
  "noct-tools",

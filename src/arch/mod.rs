@@ -5,15 +5,11 @@ use ::x86 as _x86;
 cfg_if! {
     if #[cfg(any(target_arch = "x86"))] {
         pub mod x86;
-        pub use x86::mem;
-        
-        pub use x86::regs::CPURegisters;
+        pub use x86::mem;        
     } else if #[cfg(target_arch = "x86_64")] {
         pub mod x86;
         pub mod x86_64;
         pub use x86_64::mem;
-
-        pub use x86_64::regs::CPURegisters;
     }
 }
 

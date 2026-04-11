@@ -1,9 +1,9 @@
+use crate::eoi;
+
+use noct_cpuregs::CPURegisters;
 use noct_sync::pseudosync::PseudoSync;
 
 
-use crate::interrupts::eoi;
-
-use crate::arch::CPURegisters;
 pub type InterruptCallback = fn(&mut CPURegisters) -> ();
 
 static INTERRUPT_VECTORS: PseudoSync<[Option<InterruptCallback>; 256]> = unsafe { core::mem::zeroed() };

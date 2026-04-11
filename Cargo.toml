@@ -10,7 +10,7 @@ edition = "2024"
 members = [
     "crates/noct-sync",
     "crates/noct-spec",
-    "crates/noct-tools",
+    "crates/noct-tools", "crates/noct-cpuregs", "crates/noct-interrupts",
 ]
 resolver = "2"
 
@@ -22,6 +22,8 @@ elf = { version = "0.8.0", default-features = false }
 bitflags = "2.10.0"
 cfg-if = "1.0.4"
 
+noct-cpuregs = { path = "crates/noct-cpuregs" }
+noct-interrupts = { path = "crates/noct-interrupts" }
 noct-sync = { path = "crates/noct-sync" }
 noct-spec = { path = "crates/noct-spec" }
 noct-tools = { path = "crates/noct-tools" }

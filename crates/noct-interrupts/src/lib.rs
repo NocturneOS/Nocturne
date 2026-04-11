@@ -1,26 +1,14 @@
+#![no_std]
+
+extern crate alloc;
+
 use lazy_static::lazy_static;
 use noct_sync::pseudosync::PseudoSync;
 
+use crate::store::ICStore;
+
+pub mod store;
 pub mod handler;
-
-struct ICStore {
-    ic: Option<&'static dyn InterruptController>,
-}
-
-impl ICStore {
-    pub const fn new() -> Self {
-        Self { ic: None }
-    }
-
-    pub fn eoi(&self, interrupt_nr: u8) {
-        if let Some(ic) = self.ic {
-            ic.eoi(interrupt_nr);
-        }
-    }
-}
-
-unsafe impl Send for ICStore {}
-unsafe impl Sync for ICStore {}
 
 lazy_static! {
     static ref CURRENT_INTERRUPT_CONTROLLER: PseudoSync<ICStore> = PseudoSync::new(ICStore::new());
