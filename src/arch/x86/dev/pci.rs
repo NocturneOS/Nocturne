@@ -3,10 +3,11 @@
 use core::cell::OnceCell;
 
 use alloc::vec::Vec;
+use noct_logger::qemu_log;
 use spin::{RwLock, RwLockReadGuard};
 use x86::io::{inl, outl};
 
-use crate::{qemu_log, time::get_uptime_millis as timestamp};
+use noct_time::systemclock::get_uptime_millis as timestamp;
 
 static PCI_ADDRESS_PORT: u16 = 0xCF8;
 static PCI_DATA_PORT: u16 = 0xCFC;

@@ -1,4 +1,4 @@
-use core::{cell::UnsafeCell, ptr::addr_of_mut};
+use core::{cell::UnsafeCell};
 
 pub struct PseudoSync<T> {
     data: UnsafeCell<T>

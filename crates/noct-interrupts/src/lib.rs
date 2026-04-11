@@ -10,6 +10,8 @@ use crate::store::ICStore;
 pub mod store;
 pub mod handler;
 
+pub mod cpu;
+
 lazy_static! {
     static ref CURRENT_INTERRUPT_CONTROLLER: PseudoSync<ICStore> = PseudoSync::new(ICStore::new());
 }

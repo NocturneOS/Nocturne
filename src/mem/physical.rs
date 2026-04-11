@@ -6,11 +6,11 @@
 // C010_0000 + KERNEL_SIZE: Physical memory bitmap
 
 use noct_spec::{WORD_SIZE, WORD_SIZE_BITS};
+use noct_tools::interrupt_locker::InterruptLocker;
 
 use crate::{
     arch::{self},
     qemu_log,
-    tools::interrupt_locker::InterruptLocker,
 };
 
 unsafe extern "C" {

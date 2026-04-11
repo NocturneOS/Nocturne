@@ -64,6 +64,16 @@ dependencies = [
  "lazy_static",
  "noct-cpuregs",
  "noct-sync",
+ "x86",
+]
+
+[[package]]
+name = "noct-logger"
+version = "0.1.0"
+dependencies = [
+ "noct-time",
+ "noct-tools",
+ "x86",
 ]
 
 [[package]]
@@ -75,8 +85,19 @@ name = "noct-sync"
 version = "0.1.0"
 
 [[package]]
+name = "noct-time"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "noct-sync",
+]
+
+[[package]]
 name = "noct-tools"
 version = "0.1.0"
+dependencies = [
+ "noct-interrupts",
+]
 
 [[package]]
 name = "nocturne"
@@ -88,8 +109,10 @@ dependencies = [
  "lazy_static",
  "noct-cpuregs",
  "noct-interrupts",
+ "noct-logger",
  "noct-spec",
  "noct-sync",
+ "noct-time",
  "noct-tools",
  "spin 0.10.0",
  "x86",

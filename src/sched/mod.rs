@@ -10,6 +10,7 @@ use alloc::{
 };
 use lazy_static::lazy_static;
 use noct_spec::KERNEL_BASE;
+use noct_tools::interrupt_locker::InterruptLocker;
 use spin::{Mutex, MutexGuard};
 
 use crate::{
@@ -18,7 +19,6 @@ use crate::{
     sched::{
         archspec::ArchitectureSpecificRegion, process::Process, stack_manager::ThreadStack, thread::{Thread, ThreadFlags, ThreadPriority, ThreadState}
     },
-    tools::interrupt_locker::InterruptLocker,
 };
 
 mod archspec;
@@ -326,7 +326,7 @@ impl Scheduler {
         while index < len {
             let (task, wakeup_time) = &self.sleeping_queue[index];
 
-            if crate::time::get_uptime_ticks() > *wakeup_time {
+            if noct_time::systemclock::get_uptime_ticks() > *wakeup_time {
                 task.state
                     .store(ThreadState::Ready as usize, Ordering::SeqCst);
 
@@ -469,17 +469,13 @@ pub fn this() -> MutexGuard<'static, Scheduler> {
 pub fn init() {
     qemu_log!("-- init");
 
-    let is_ena = arch::are_interrupts_enabled();
-
-    arch::disable_interrupts();
+    let il = InterruptLocker::lock();
 
     {
         this().init();
     }
 
-    if is_ena {
-        arch::enable_interrupts();
-    }
+    drop(il);
 
     qemu_log!("-- finished");
 }
@@ -629,8 +625,8 @@ pub fn in_kernel_context<T>(f: impl FnOnce() -> T) -> T {
 }
 
 pub fn sleep(dur: core::time::Duration) {
-    let target = crate::time::get_uptime_nanos() + dur.as_nanos();
-    let ticks = crate::time::nanos_to_ticks(target);
+    let target = noct_time::systemclock::get_uptime_nanos() + dur.as_nanos();
+    let ticks = noct_time::systemclock::nanos_to_ticks(target);
 
     let il = InterruptLocker::lock();
 
@@ -649,7 +645,7 @@ pub fn sleep(dur: core::time::Duration) {
 
 // Exit from this thread.
 pub fn thread_exit() -> ! {
-    arch::disable_interrupts();
+    noct_interrupts::cpu::disable_interrupts();
 
     {
         let thread = this_thread();

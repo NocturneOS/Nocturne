@@ -23,7 +23,7 @@ pub fn init(frequency: u32) {
         x86::io::outb(0x40, hi_byte);
     }
 
-    crate::time::set_timer_frequency(frequency as _);
+    noct_time::systemclock::set_timer_frequency(frequency as _);
 
     register_interrupt_handler(0x20, callback);
 }

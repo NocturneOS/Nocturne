@@ -1,6 +1,4 @@
-use core::ops::{BitAnd, Deref};
-
-use crate::{arch::get_page_size, mem::physical, qemu_log, tools};
+use crate::{arch::get_page_size, mem::physical, qemu_log};
 use bitflags::bitflags;
 use noct_spec::WORD_SIZE;
 

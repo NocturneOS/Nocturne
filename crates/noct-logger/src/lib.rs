@@ -1,6 +1,10 @@
+#![no_std]
+
+extern crate alloc;
+
 use core::fmt::{self, Write};
 
-use crate::{tools::{interrupt_locker::InterruptLocker}};
+use noct_tools::interrupt_locker::InterruptLocker;
 
 pub struct SerialWriter {
     pub port: u16,
@@ -31,7 +35,7 @@ impl fmt::Write for SerialWriter {
 #[macro_export]
 macro_rules! qemu_print {
     ($($arg:tt)*) => {
-        $crate::io::logging::__qemu_print(format_args!($($arg)*))
+        $crate::__qemu_print(format_args!($($arg)*))
     };
 }
 
@@ -49,7 +53,7 @@ macro_rules! qemu_println {
 macro_rules! qemu_log {
     ($($arg:tt)*) => {
         let factor = 1_000_000_000;
-        let time = $crate::time::get_uptime_nanos();
+        let time = noct_time::systemclock::get_uptime_nanos();
 
         $crate::qemu_print!("<{:3}.{:09}> {}\n", time / factor, time % factor, format_args!($($arg)*))
     };

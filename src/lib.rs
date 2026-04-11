@@ -3,16 +3,16 @@
 
 use core::panic::PanicInfo;
 
+use noct_logger::qemu_log;
+
 use crate::arch::mem::paging::PageFlags;
 
 mod arch;
 mod dev;
-mod io;
 mod mem;
 mod sched;
 mod sys;
 mod time;
-mod tools;
 mod unwind;
 
 extern crate alloc;
@@ -60,7 +60,7 @@ extern "C" fn kmain() -> ! {
 
 #[panic_handler]
 fn __panic_handler(info: &PanicInfo) -> ! {
-    arch::disable_interrupts();
+    noct_interrupts::cpu::disable_interrupts();
     
     if let Some(loc) = info.location() {
         qemu_log!(

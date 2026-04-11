@@ -1,0 +1,10 @@
+[package]
+name = "noct-logger"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+x86 = "0.52.0"
+
+noct-time = { path = "../noct-time" }
+noct-tools = { path = "../noct-tools" }

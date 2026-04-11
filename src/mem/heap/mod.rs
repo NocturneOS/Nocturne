@@ -2,16 +2,17 @@ mod alloc_support;
 
 // Re-export the init function for convenience
 pub use alloc_support::{init, dump, allocate_no_map};
+use noct_logger::qemu_log;
+use noct_tools::interrupt_locker::InterruptLocker;
 
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::{self, NonNull};
 use core::usize;
 use spin::{Mutex, MutexGuard};
 
+use crate::arch;
 use crate::arch::mem::paging::{self, PageFlags, map_pages, map_single_page, unmap_single_page};
 use crate::mem::physical;
-use crate::tools::interrupt_locker::InterruptLocker;
-use crate::{arch, qemu_log, tools};
 
 /// Page flags for kernel heap: Present + Writable
 ///

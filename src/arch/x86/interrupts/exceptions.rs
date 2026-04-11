@@ -1,10 +1,11 @@
 use crate::{
     arch::halt_forever,
-    qemu_println, unwind,
+    unwind,
 };
 
 use noct_cpuregs::CPURegisters;
 use noct_interrupts::handler::register_interrupt_handler;
+use noct_logger::qemu_println;
 
 fn division_by_zero(regs: &mut CPURegisters) {
     qemu_println!("Division by zero...");
