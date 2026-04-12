@@ -4,11 +4,17 @@
 
 .include "./common.s"
 
-.section .multiboot_header, "a"
+.section .multiboot_header, "a", @progbits
 .align 4
 .int INIT_MBOOT_HEADER_MAGIC
 .int INIT_MBOOT_HEADER_FLAGS
 .int INIT_MBOOT_CHECKSUM
+
+# My laptop has screen resolution 1366x768, and with QEMU with 800x600 fits really well
+# I'll set higher resolution in the future (if it won't brake development)
+.long 0, 0, 0, 0, 0     # Unused
+.long 0                 # 0 - graphical mode
+.long 800, 600, 32      # Width, height, depth
 
 .section .bootstrap_stack, "aw", @nobits
     .global stack_bottom

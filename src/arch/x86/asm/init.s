@@ -4,11 +4,14 @@
 
 .include "./common.s"
 
-.section .multiboot_header, "a"
+.section .multiboot_header, "a", @progbits
 .align 4
 .int INIT_MBOOT_HEADER_MAGIC
 .int INIT_MBOOT_HEADER_FLAGS
 .int INIT_MBOOT_CHECKSUM
+.long 0, 0, 0, 0, 0     # Unused
+.long 0                 # 0 - graphical mode
+.long 800, 600, 32      # Width, height, depth
 
 .section .bootstrap_stack, "aw", @nobits
     .global stack_bottom

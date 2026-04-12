@@ -65,8 +65,6 @@ pub fn init() {
 
         x86::task::load_tr(SegmentSelector::new(5, Ring::Ring0));
     }
-
-    qemu_log!("TSS: {:#x?}", BSP_TSS.get());
 }
 
 pub fn get_tss_stack_addr() -> usize {
