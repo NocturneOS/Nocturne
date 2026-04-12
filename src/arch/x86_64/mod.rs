@@ -1,5 +1,4 @@
 pub mod mem;
-pub mod regs;
 pub mod tss;
 
 use crate::arch::mem::paging::{PageFlags, map_single_page};

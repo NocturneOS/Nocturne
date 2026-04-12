@@ -197,27 +197,27 @@ impl Scheduler {
 
         #[cfg(target_arch = "x86_64")]
         unsafe {
-            stack.push(0);
+            stack.push(process.address_space.get_mut(), 0);
 
-            stack.push(thread_trampoline as *const () as usize);
+            stack.push(process.address_space.get_mut(), thread_trampoline as *const () as usize);
 
-            stack.push(0x202); // IF=1, IOPL=0
+            stack.push(process.address_space.get_mut(), 0x202); // IF=1, IOPL=0
 
-            stack.push(0); // RAX
-            stack.push(entry as *const () as usize); // RBX = entry
-            stack.push(0); // RCX
-            stack.push(0); // RDX
-            stack.push(0); // RSI
-            stack.push(0); // RDI
-            stack.push(0); // RBP
-            stack.push(0); // R8
-            stack.push(0); // R9
-            stack.push(0); // R10
-            stack.push(0); // R11
-            stack.push(0); // R12
-            stack.push(0); // R13
-            stack.push(0); // R14
-            stack.push(0); // R15
+            stack.push(process.address_space.get_mut(), 0); // RAX
+            stack.push(process.address_space.get_mut(), entry as *const () as usize); // RBX = entry
+            stack.push(process.address_space.get_mut(), 0); // RCX
+            stack.push(process.address_space.get_mut(), 0); // RDX
+            stack.push(process.address_space.get_mut(), 0); // RSI
+            stack.push(process.address_space.get_mut(), 0); // RDI
+            stack.push(process.address_space.get_mut(), 0); // RBP
+            stack.push(process.address_space.get_mut(), 0); // R8
+            stack.push(process.address_space.get_mut(), 0); // R9
+            stack.push(process.address_space.get_mut(), 0); // R10
+            stack.push(process.address_space.get_mut(), 0); // R11
+            stack.push(process.address_space.get_mut(), 0); // R12
+            stack.push(process.address_space.get_mut(), 0); // R13
+            stack.push(process.address_space.get_mut(), 0); // R14
+            stack.push(process.address_space.get_mut(), 0); // R15
         }
 
         // qemu_log!("STACK: {:08x?}; ESP: {:08x?}", stack.addr(), writeable_sp.addr());
