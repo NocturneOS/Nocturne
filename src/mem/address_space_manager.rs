@@ -1,13 +1,14 @@
-use core::{alloc::Layout, ops::Add};
+use core::{alloc::Layout, marker::PhantomData};
 
 use alloc::vec::Vec;
+use noct_paging::PagingHierarchy;
 use noct_spec::{KERNEL_BASE, WORD_SIZE};
 
 use crate::{
     arch::{
         self,
         mem::paging::{Page, PageFlags, map_single_page, unmap_single_page, vaddr2indices},
-    }, mem::physical::{self, allocate_bulk, allocate_one, free_one}, qemu_log
+    }, mem::physical::{self, allocate_bulk, allocate_one, free_one}
 };
 
 #[derive(Debug)]
@@ -16,6 +17,8 @@ pub struct AddressSpaceVirtualBlock {
     size: usize,
 }
 
+/// Address space. It's a representation of CR3 paging root, that can be edited.
+/// It uses temporary mappings to access physical regions.
 #[repr(C)]
 pub struct AddressSpace {
     pub page_root_phys: usize,
@@ -27,11 +30,10 @@ pub struct AddressSpace {
 impl AddressSpace {
     pub fn new() -> Self {
         let areas = Vec::with_capacity(1024);
-        let root = super::clone::clone_kernel_page_root();
+        let root = arch::mem::clone::clone_kernel_page_root();
 
         Self {
             page_root_phys: root,
-            // next_free_virt_addr: KERNEL_BASE,
             used_virt_areas: areas,
         }
     }
@@ -39,7 +41,6 @@ impl AddressSpace {
     pub fn uninitialized() -> Self {
         Self {
             page_root_phys: 0,
-            // next_free_virt_addr: KERNEL_BASE,
             used_virt_areas: Vec::new(),
         }
     }
@@ -47,7 +48,6 @@ impl AddressSpace {
     pub fn predefined(phys: usize) -> Self {
         Self {
             page_root_phys: phys,
-            // next_free_virt_addr: KERNEL_BASE,
             used_virt_areas: Vec::new(),
         }
     }
@@ -60,16 +60,12 @@ impl AddressSpace {
         self.page_root_phys
     }
 
-    pub fn self_map_page<T>(&self, addr: usize, f: impl FnOnce(&mut [Page]) -> T) -> T {
+    pub fn self_map_page<T>(&self, phys_addr: usize, f: impl FnOnce(&mut [Page]) -> T) -> T {
         let layout = Layout::from_size_align(arch::get_page_size(), 0x1000).unwrap();
-        
-        // let mapping_region = unsafe { alloc::alloc::alloc(layout) };
-        // physical::free_one(arch::mem::paging::virt2phys(mapping_region.addr()).unwrap());
-
         let mapping_region = unsafe { crate::mem::heap::allocate_no_map(layout) };
 
         map_single_page(
-            addr,
+            phys_addr,
             mapping_region.addr(),
             PageFlags::Present | PageFlags::Writeable,
         );
@@ -100,11 +96,13 @@ impl AddressSpace {
 
         physical::free_one(arch::mem::paging::virt2phys(mapping_region.addr()).unwrap());
 
+        // Map paging root and get physical address of virtual one.
         let phys = self.self_map_page(self.page_root_phys, |data| {
             let (pdi, pti) = vaddr2indices(virt_addr);
 
             let pt_phys = data[pdi];
 
+            // Map page table and get its physical address.
             self.self_map_page(pt_phys.phys(), |pt| pt[pti].phys())
         });
 
@@ -226,6 +224,35 @@ impl AddressSpace {
         Ok(())
     }
 
+    pub fn phys_of_virt<PG: PagingHierarchy>(&self, virt_addr: usize) -> Option<usize> {
+        let mut current_table_phys = self.page_root_phys;
+
+        for level in 0..PG::LEVELS {
+            let idx = PG::index_at_level(virt_addr, level);
+
+            current_table_phys = self.self_map_page(current_table_phys, |table| {
+                let entry = table[idx];
+                
+                if entry.is_present() {
+                    Some(entry.phys())
+                } else {
+                    None
+                }
+            })?;
+        }
+
+        let leaf_idx = PG::index_at_level(virt_addr, PG::LEVELS - 1);
+        self.self_map_page(current_table_phys, |table| {
+            let entry = table[leaf_idx];
+            
+            if entry.is_present() {
+                Some(entry.phys())
+            } else {
+                None
+            }
+        })
+    }
+
     pub fn alloc_map_single_page(&mut self, virt_addr: usize, flags: PageFlags) -> Result<(), ()> {
         let page = allocate_one().ok_or(())?;
 
@@ -257,7 +284,7 @@ impl AddressSpace {
         // If it didn't work, let's try allocating one by one.
         {
             for i in 0..page_count {
-                // FIXME: Handle allocation error. We can't use `?`, because if this happens in the middle ...
+                // TODO: Handle allocation error. We can't use `?`, because if this happens in the middle ...
                 // ... of the loop, it will remain some pages mapped, but we have to revert this operation completely.
 
                 let page = allocate_one().unwrap();
@@ -269,16 +296,6 @@ impl AddressSpace {
 
         Ok(())
     }
-
-    /// Allocates a region of virtual memory. (Growing down)
-    /// Returns the starting address of the region.
-    // pub fn alloc_virt_region(&mut self, size: usize) -> usize {
-    //     let page_size: usize = arch::get_page_size();
-    //     let aligned = size.next_multiple_of(page_size);
-
-    //     self.next_free_virt_addr -= aligned;
-    //     self.next_free_virt_addr
-    // }
 
     // Maybe Result<usize, ASVAllocationError>?
     pub fn alloc_virt_region(&mut self, size: usize) -> usize {
@@ -313,7 +330,7 @@ impl AddressSpace {
             }
         }
     
-        // No gap found — extend below the lowest block.
+        // No gap found - extend below the lowest block.
         let addr = self.used_virt_areas.last().unwrap().address - size;
         self.used_virt_areas.push(AddressSpaceVirtualBlock { address: addr, size });
         addr
@@ -323,8 +340,6 @@ impl AddressSpace {
         let mut index: Option<usize> = None;
 
         for (idx, block) in self.used_virt_areas.iter().enumerate() {
-            // qemu_log!("{idx}: {block:x?}");
-
             if block.address == address {
                 index = Some(idx);
                 break;

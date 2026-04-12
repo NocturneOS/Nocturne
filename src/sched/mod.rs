@@ -14,7 +14,8 @@ use noct_tools::interrupt_locker::InterruptLocker;
 use spin::{Mutex, MutexGuard};
 
 use crate::{
-    arch::{self, mem::address_space_manager::AddressSpace, x86::tss::get_tss_stack_addr},
+    arch::{self, x86::tss::get_tss_stack_addr},
+    mem::address_space_manager::AddressSpace,
     qemu_log,
     sched::{
         archspec::ArchitectureSpecificRegion, process::Process, stack_manager::ThreadStack, thread::{Thread, ThreadFlags, ThreadPriority, ThreadState}

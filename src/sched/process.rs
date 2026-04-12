@@ -6,7 +6,8 @@ use alloc::ffi::CString;
 use lazy_static::lazy_static;
 use noct_sync::pseudosync::PseudoSync;
 
-use crate::{arch::mem::{address_space_manager::AddressSpace, paging::PageFlags}, qemu_log};
+use crate::{arch::mem::{paging::PageFlags}, qemu_log};
+use crate::mem::address_space_manager::AddressSpace;
 
 lazy_static! {
     static ref GLOBAL_PID: AtomicUsize = AtomicUsize::new(0);

@@ -1,5 +1,6 @@
 use crate::{arch::get_page_size, mem::physical, qemu_log};
 use bitflags::bitflags;
+use noct_paging::PagingHierarchy;
 use noct_spec::WORD_SIZE;
 
 pub const PAGE_SIZE: usize = 0x1000;
@@ -18,12 +19,6 @@ bitflags! {
         const Global = 1 << 8;
     }
 }
-
-// unsafe extern "C" {
-//     // Defined in src/arch/x86/asm/init.s
-//     static mut boot_page_directory: [u32; 1024];
-
-// }
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
@@ -63,18 +58,28 @@ impl Page {
     }
 }
 
-// impl Deref for Page {
-//     type Target = usize;
-
-//     fn deref(&self) -> &Self::Target {
-//         &self.0
-//     }
-// }
-
 impl PartialEq<usize> for Page {
     fn eq(&self, other: &usize) -> bool {
         self.0 == *other
     }
+}
+
+struct X86Paging;
+
+impl PagingHierarchy for X86Paging {
+    const LEVELS: usize = 2;
+    const ENTRIES: usize = 1024;
+
+    fn index_at_level(vaddr: usize, level: usize) -> usize {
+        match level {
+            0 => vaddr >> 22,
+            1 => (vaddr >> 12) & 0x3FF,
+            _ => unreachable!()
+        }
+    }
+
+    // 0x0000_0000 - 0xC000_0000
+    fn user_root_entry_count() -> usize { 768 }
 }
 
 #[inline]

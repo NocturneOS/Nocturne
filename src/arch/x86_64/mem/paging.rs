@@ -19,6 +19,26 @@ bitflags! {
     }
 }
 
+struct X86_64Paging;
+
+impl PagingHierarchy for X86_64Paging {
+    const LEVELS: usize = 4;
+    const ENTRIES: usize = 512;
+
+    fn index_at_level(vaddr: usize, level: usize) -> usize {
+        match level {
+            0 => vaddr >> 39,
+            1 => (vaddr >> 30) & 0x1FF,
+            2 => (vaddr >> 21) & 0x1FF,
+            3 => (vaddr >> 12) & 0x1FF,
+            _ => unreachable!()
+        }
+    }
+
+    // 0x0000_0000_0000_0000 - 0x8000_0000_0000_0000
+    fn user_root_entry_count() -> usize { 256 }
+}
+
 const fn indices2vaddr(pml4: u64, pdpt: u64, pd: u64, pt: u64) -> u64 {
     (pml4 << 39) | (pdpt << 30) | (pd << 21) | (pt << 12)
 }
