@@ -19,7 +19,7 @@ bitflags! {
     }
 }
 
-struct X86_64Paging;
+pub struct X86_64Paging;
 
 impl PagingHierarchy for X86_64Paging {
     const LEVELS: usize = 4;

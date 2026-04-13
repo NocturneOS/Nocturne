@@ -64,7 +64,7 @@ impl PartialEq<usize> for Page {
     }
 }
 
-struct X86Paging;
+pub struct X86Paging;
 
 impl PagingHierarchy for X86Paging {
     const LEVELS: usize = 2;

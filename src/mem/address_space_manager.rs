@@ -97,14 +97,12 @@ impl AddressSpace {
         physical::free_one(arch::mem::paging::virt2phys(mapping_region.addr()).unwrap());
 
         // Map paging root and get physical address of virtual one.
-        let phys = /*self.self_map_page(self.page_root_phys, |data| {
-            let (pdi, pti) = vaddr2indices(virt_addr);
-
-            let pt_phys = data[pdi];
-
-            // Map page table and get its physical address.
-            self.self_map_page(pt_phys.phys(), |pt| pt[pti].phys())
-        });*/ self.phys_of_virt(virt_addr).unwrap();
+        let phys = {
+        #[cfg(target_arch="x86")]
+            { self.phys_of_virt::<crate::arch::mem::paging::X86Paging>(virt_addr).unwrap() }
+        #[cfg(target_arch="x86_64")]
+            { self.phys_of_virt::<crate::arch::mem::paging::X86_64Paging>(virt_addr).unwrap() }
+        };
 
         map_single_page(
             phys,
