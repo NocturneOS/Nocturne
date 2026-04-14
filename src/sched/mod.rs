@@ -200,7 +200,12 @@ impl Scheduler {
         unsafe {
             stack.push(process.address_space.get_mut(), 0);
 
-            stack.push(process.address_space.get_mut(), thread_trampoline as *const () as usize);
+            if is_user_proc {
+                todo!("Usermode trampoline for x86_64")
+                // stack.push(process.address_space.get_mut(), thread_trampoline_usermode64 as *const () as usize);
+            } else {
+                stack.push(process.address_space.get_mut(), thread_trampoline64 as *const () as usize);
+            }
 
             stack.push(process.address_space.get_mut(), 0x202); // IF=1, IOPL=0
 

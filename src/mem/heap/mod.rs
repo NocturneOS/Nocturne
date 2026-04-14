@@ -90,6 +90,8 @@ impl InnerArenaAllocator {
         self.arena = Some(arena);
 
         self.heap_size = heap_size;
+
+        qemu_log!("Heap at: P{page:#x?} -> V{heap_start:#x?} with size: {heap_size:.} bytes");
     }
 
     pub fn blocks<'a>(&'a self) -> &'a [Block] {

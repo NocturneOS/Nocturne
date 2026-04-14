@@ -79,7 +79,7 @@ impl Process {
 impl Drop for Process {
     fn drop(&mut self) {
         unsafe {
-            qemu_log!("PROCESS DEALLOCATED!");
+            qemu_log!("PROCESS #{} DEALLOCATED!", self.id);
 
             drop(CString::from_raw(
                 self.name.load(core::sync::atomic::Ordering::Relaxed),

@@ -4,20 +4,8 @@ use noct_paging::PagingHierarchy;
 
 pub const PAGE_SIZE: usize = 0x1000;
 
-bitflags! {
-    #[derive(Copy, Clone)]
-    pub struct PageFlags : usize {
-        const Present = 1 << 0;
-        const Writeable = 1 << 1;
-        const Userspace = 1 << 2;
-        const WriteThrough = 1 << 3;
-        const CacheDisable = 1 << 4;
-        const Accessed = 1 << 5;
-        const Dirty = 1 << 6;
-        const Extended = 1 << 7;
-        const Global = 1 << 8;
-    }
-}
+// Re-export
+pub use crate::arch::x86::mem::paging::{Page, PageFlags};
 
 pub struct X86_64Paging;
 

@@ -61,17 +61,17 @@ pub fn init() {
 		upper_part.add(1).write(0);
 	}
 
-	for i in 0..gdt::GDT_ENTRIES.len() {
-		let data = gdt::GDT_ENTRIES.nth_ptr(i) as *mut u8;
+	// for i in 0..gdt::GDT_ENTRIES.len() {
+	// 	let data = gdt::GDT_ENTRIES.nth_ptr(i) as *mut u8;
 
-		qemu_print!("GDT[{i}]: ");
+	// 	qemu_print!("GDT[{i}]: ");
 
-		for j in 0..core::mem::size_of::<GDTEntry>() {
-			qemu_print!("{:02x} ", unsafe { data.add(j).read() });
-		}
+	// 	for j in 0..core::mem::size_of::<GDTEntry>() {
+	// 		qemu_print!("{:02x} ", unsafe { data.add(j).read() });
+	// 	}
 
-		noct_logger::qemu_println!();
-	}
+	// 	noct_logger::qemu_println!();
+	// }
 
 	// Fifth index in the GDT: 0x08 * 5 = 0x28.
     unsafe { x86::task::load_tr(SegmentSelector::new(5, Ring::Ring0)) };

@@ -76,6 +76,8 @@ SECTIONS {
         *(.debug_gdb_scripts)
         *(.eh_frame)
     }
+
+    . = ALIGN(4K);
     
     IMAGE_PHYS_END = . - 0xFFFFFFFF80000000;
     IMAGE_VIRT_END = .;

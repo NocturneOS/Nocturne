@@ -90,13 +90,13 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     // Mark all the memory past the kernel (and the kernel region) as used
 
     {
-        let start = noct_sysinfo::info().kernel_end - noct_spec::KERNEL_BASE;
+        let start = (noct_sysinfo::info().kernel_end - noct_spec::KERNEL_BASE) + mem::paging::PAGE_SIZE;
 
         for addr in (0..start).step_by(arch::get_page_size()) {
             noct_physmem_alloc::mark_page(addr, true);
         }
 
-        qemu_log!("Marked {:#x?} - {:#x?} as used.", 0, start);
+        qemu_log!("Marked {:#x?} - {:#x?} as used. (past the kernel)", 0, start);
     }
 
     // Reserve memory for modules we load.

@@ -226,4 +226,9 @@ pub fn init() {
     );
 
     qemu_log!("Bitmap length: {}", bitmap().len());
+
+    let start = bitmap().as_ptr_range().start.addr();
+    let end = bitmap().as_ptr_range().end.addr();
+
+    qemu_log!("Bitmap: [{:#x?} - {:#x?}]", start, end);
 }

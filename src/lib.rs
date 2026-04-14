@@ -26,22 +26,30 @@ extern "C" fn kmain() -> ! {
     
     sched::init();
 
-    {
-        let proc = crate::sched::this_process();
+    // {
+        // qemu_log!("Creating 32 processes...");
 
-        for _ in 0..8 {
-            crate::sched::create_thread(Arc::clone(&proc), move || {
-                let id = crate::sched::this_thread_id();
+        // let procs: [_; 32] = core::array::from_fn(|_| crate::sched::create_process("proc", "?"));
 
-                loop {
-                    qemu_log!("Hi thread #{}", id);
-                    crate::sched::sleep(Duration::from_millis((id * 20) as _));
-                }
-            }, KERNEL_THREAD_DEFAULT_STACK_SIZE, ThreadPriority::Low, ThreadFlags::empty());
-        }
-    }
+        // qemu_log!("32 processes have been created!");
 
-    loop {}
+        // core::mem::drop(procs);
+
+        // let proc = crate::sched::this_process();
+
+        // for _ in 0..32 {
+        //     crate::sched::create_thread(Arc::clone(&proc), move || {
+        //         let id = crate::sched::this_thread_id();
+
+        //         loop {
+        //             qemu_log!("Hi thread #{}", id);
+        //             crate::sched::sleep(Duration::from_millis((id * 40) as _));
+        //         }
+        //     }, KERNEL_THREAD_DEFAULT_STACK_SIZE, ThreadPriority::Low, ThreadFlags::empty());
+        // }
+    // }
+
+    // loop {}
 
     noct_pci::scan();
 

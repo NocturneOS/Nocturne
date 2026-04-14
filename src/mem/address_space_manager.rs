@@ -8,7 +8,7 @@ use noct_spec::{KERNEL_BASE, WORD_SIZE};
 use crate::{
     arch::{
         self,
-        mem::paging::{GlobalPagingArchitecture, Page, PageFlags, map_single_page, unmap_single_page, vaddr2indices},
+        mem::paging::{Page, PageFlags, map_single_page, unmap_single_page},
     }
 };
 
@@ -142,29 +142,37 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
             );
         }
 
-        let (pt_phys, pti) = self.self_map_page(self.page_root_phys, |page_root| {
-            let (pdi, pti) = vaddr2indices(virt_addr);
+        let mut pr = self.page_root_phys;
 
-            if !page_root[pdi].is_present() {
-                let page_table = noct_physmem_alloc::allocate_one().ok_or(())?;
+        for level in 0..PG::LEVELS - 1 {
+            let idx = PG::index_at_level(virt_addr, level);
 
-                self.self_map_page(page_table, |x| {
-                    x.fill(Page::null());
-                });
+            pr = self.self_map_page(pr, |page_table| {
+                let pt_phys: usize;
 
-                page_root[pdi] = Page::new(
-                    page_table,
-                    PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace,
-                );
-            }
+                if !page_table[idx].is_present() {
+                    pt_phys = noct_physmem_alloc::allocate_one().ok_or(())?;
 
-            let pt_phys = page_root[pdi].phys();
+                    self.self_map_page(pt_phys, |x| {
+                        x.fill(Page::null());
+                    });
 
-            Ok((pt_phys, pti))
-        })?;
+                    page_table[idx] = Page::new(
+                        pt_phys,
+                        PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace,
+                    );
+                } else {
+                    pt_phys = page_table[idx].phys();
+                }
 
-        self.self_map_page(pt_phys, |page_table| {
-            page_table[pti] =
+                Ok(pt_phys)
+            })?;
+        }
+
+        let leaf_idx = PG::index_at_level(virt_addr, PG::LEVELS - 1);
+
+        self.self_map_page(pr, |page_table| {
+            page_table[leaf_idx] =
                 Page::new(phys_addr, PageFlags::Present | flags | PageFlags::Userspace);
         });
 
@@ -172,21 +180,29 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
     }
 
     pub fn unmap_single_page(&mut self, virt_addr: usize) {
-        let data: Option<(usize, usize)> = self.self_map_page(self.page_root_phys, |page_root| {
-            let (pdi, pti) = vaddr2indices(virt_addr);
+        let mut pr = Some(self.page_root_phys);
 
-            if !page_root[pdi].is_present() {
-                return None;
-            }
+        for level in 0..PG::LEVELS - 1 {
+            let idx = PG::index_at_level(virt_addr, level);
 
-            Some((page_root[pdi].phys(), pti))
-        });
+            pr = self.self_map_page(pr.unwrap(), |page_table| {
+                if !page_table[idx].is_present() {
+                    return None;
+                }
 
-        if let Some((pt_phys, pti)) = data {
-            self.self_map_page(pt_phys, |page_table| {
-                page_table[pti] = Page::null();
+                Some(page_table[idx].phys())
             });
+
+            if pr.is_none() {
+                return;
+            }
         }
+
+        let leaf_idx = PG::index_at_level(virt_addr, PG::LEVELS - 1);
+
+        self.self_map_page(pr.unwrap(), |page_table| {
+            page_table[leaf_idx] = Page::null();
+        });
     }
 
     pub fn unmap_pages(&mut self, virt_addr: usize, size: usize) {
