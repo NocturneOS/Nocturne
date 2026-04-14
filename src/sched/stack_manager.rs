@@ -2,7 +2,7 @@ use core::alloc::Layout;
 
 use noct_spec::{KERNEL_BASE, WORD_SIZE};
 
-use crate::{arch::{self, mem::{paging::{Page, PageFlags}}}, qemu_log};
+use crate::{arch::{self, mem::paging::{GlobalPagingArchitecture, Page, PageFlags}}, qemu_log};
 use crate::mem::address_space_manager::AddressSpace;
 
 const STACK_ALIGNEMNT: usize = 0x1000;
@@ -46,7 +46,7 @@ impl ThreadStack {
         }
     }
 
-    pub fn new_user(address_space: &mut AddressSpace, size: usize) -> Self {
+    pub fn new_user(address_space: &mut AddressSpace<GlobalPagingArchitecture>, size: usize) -> Self {
         let page_size = crate::arch::get_page_size();
         let base_with_guard = address_space.alloc_virt_region(size + page_size);
         let mapped_base = base_with_guard + page_size; // guard page left unmapped
@@ -77,7 +77,7 @@ impl ThreadStack {
         self.stack_pointer as *mut usize 
     }
 
-    fn push_user(&mut self, address_space: &mut AddressSpace, value: usize) {
+    fn push_user(&mut self, address_space: &mut AddressSpace<GlobalPagingArchitecture>, value: usize) {
         let mut ptr = self.stack_pointer as *mut usize;
 
         ptr = unsafe { ptr.sub(1) };
@@ -87,14 +87,15 @@ impl ThreadStack {
         // 
 
         let index = (self.stack_pointer & 0xfff) / WORD_SIZE;
+        
         // qemu_log!("Stack pointer: {:#x?}; Index: {};", self.stack_pointer, index);
         
-        address_space.self_map_page_from_virt(self.stack_pointer & !0xfff, |data| {
+        address_space.self_map_page_from_virt(self.stack_pointer & !0x3ff, |data| {
             data[index] = value;
         });
     }
 
-    pub unsafe fn push(&mut self, address_space: &mut AddressSpace, value: usize) {
+    pub unsafe fn push(&mut self, address_space: &mut AddressSpace<GlobalPagingArchitecture>, value: usize) {
         if self.stack_pointer <= KERNEL_BASE {
             return self.push_user(address_space, value);
         }

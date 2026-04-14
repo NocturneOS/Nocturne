@@ -42,7 +42,7 @@ impl Page {
     }
 
     pub fn flags(&self) -> PageFlags {
-        PageFlags::from_bits(self.0 & 0x3FF).unwrap()
+        PageFlags::from_bits(self.0 & 0x1FF).unwrap()
     }
 
     pub fn is_present(&self) -> bool {
@@ -71,6 +71,7 @@ pub type GlobalPagingArchitecture = X86Paging;
 impl PagingHierarchy for X86Paging {
     const LEVELS: usize = 2;
     const ENTRIES: usize = 1024;
+    const RECURSIVE_INDEX: usize = 1023;
 
     fn index_at_level(vaddr: usize, level: usize) -> usize {
         match level {
@@ -82,6 +83,10 @@ impl PagingHierarchy for X86Paging {
 
     // 0x0000_0000 - 0xC000_0000
     fn user_root_entry_count() -> usize { 768 }
+
+    fn root() -> &'static [usize] {
+        unsafe { core::slice::from_raw_parts(0xFFFF_F000 as *const usize, 1023) }
+    }
 }
 
 #[inline]

@@ -1,11 +1,12 @@
 #![no_std]
 #![feature(linked_list_retain)]
 
-use core::panic::PanicInfo;
+use core::{panic::PanicInfo, time::Duration};
 
+use alloc::sync::Arc;
 use noct_logger::qemu_log;
 
-use crate::arch::mem::paging::PageFlags;
+use crate::{arch::mem::paging::PageFlags, sched::{KERNEL_THREAD_DEFAULT_STACK_SIZE, thread::{ThreadFlags, ThreadPriority}}};
 
 mod arch;
 mod dev;
@@ -24,6 +25,23 @@ extern "C" fn kmain() -> ! {
     mem::heap::init();
     
     sched::init();
+
+    {
+        let proc = crate::sched::this_process();
+
+        for _ in 0..8 {
+            crate::sched::create_thread(Arc::clone(&proc), move || {
+                let id = crate::sched::this_thread_id();
+
+                loop {
+                    qemu_log!("Hi thread #{}", id);
+                    crate::sched::sleep(Duration::from_millis((id * 20) as _));
+                }
+            }, KERNEL_THREAD_DEFAULT_STACK_SIZE, ThreadPriority::Low, ThreadFlags::empty());
+        }
+    }
+
+    loop {}
 
     noct_pci::scan();
 

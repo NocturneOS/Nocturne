@@ -1,6 +1,7 @@
-use core::alloc::Layout;
+use core::{alloc::Layout, marker::PhantomData};
 
 use alloc::vec::Vec;
+use noct_logger::qemu_log;
 use noct_paging::PagingHierarchy;
 use noct_spec::{KERNEL_BASE, WORD_SIZE};
 
@@ -20,21 +21,25 @@ pub struct AddressSpaceVirtualBlock {
 /// Address space. It's a representation of CR3 paging root, that can be edited.
 /// It uses temporary mappings to access physical regions.
 #[repr(C)]
-pub struct AddressSpace {
+pub struct AddressSpace<PG: PagingHierarchy> {
+    phantom: PhantomData<PG>,
+
     pub page_root_phys: usize,
 
     // Allocator VMA.
     pub(super) used_virt_areas: Vec<AddressSpaceVirtualBlock>,
 }
 
-impl AddressSpace {
+impl<PG: PagingHierarchy> AddressSpace<PG> {
     pub fn new() -> Self {
         let areas = Vec::with_capacity(1024);
-        let root = arch::mem::clone::clone_kernel_page_root();
+        let root = arch::mem::clone::clone_kernel_page_root::<PG>();
 
         Self {
             page_root_phys: root,
             used_virt_areas: areas,
+
+            phantom: PhantomData
         }
     }
 
@@ -42,6 +47,8 @@ impl AddressSpace {
         Self {
             page_root_phys: 0,
             used_virt_areas: Vec::new(),
+
+            phantom: PhantomData
         }
     }
 
@@ -49,6 +56,8 @@ impl AddressSpace {
         Self {
             page_root_phys: phys,
             used_virt_areas: Vec::new(),
+
+            phantom: PhantomData
         }
     }
 
@@ -92,12 +101,10 @@ impl AddressSpace {
         f: impl FnOnce(&mut [usize]) -> T,
     ) -> T {
         let layout = Layout::from_size_align(arch::get_page_size(), 0x1000).unwrap();
-        let mapping_region = unsafe { alloc::alloc::alloc(layout) };
-
-        noct_physmem_alloc::free_one(arch::mem::paging::virt2phys(mapping_region.addr()).unwrap());
+        let mapping_region = unsafe { crate::mem::heap::allocate_no_map(layout) };
 
         // Map paging root and get physical address of virtual one.
-        let phys = self.phys_of_virt::<GlobalPagingArchitecture>(virt_addr).unwrap();
+        let phys = self.phys_of_virt(virt_addr).unwrap();
 
         map_single_page(
             phys,
@@ -141,9 +148,9 @@ impl AddressSpace {
             if !page_root[pdi].is_present() {
                 let page_table = noct_physmem_alloc::allocate_one().ok_or(())?;
 
-                // self.self_map_page(page_table, |x| {
-                //     x.fill(Page::null());
-                // });
+                self.self_map_page(page_table, |x| {
+                    x.fill(Page::null());
+                });
 
                 page_root[pdi] = Page::new(
                     page_table,
@@ -217,11 +224,13 @@ impl AddressSpace {
         Ok(())
     }
 
-    pub fn phys_of_virt<PG: PagingHierarchy>(&self, virt_addr: usize) -> Option<usize> {
+    pub fn phys_of_virt(&self, virt_addr: usize) -> Option<usize> {
         let mut current_table_phys = self.page_root_phys;
 
         for level in 0..PG::LEVELS {
             let idx = PG::index_at_level(virt_addr, level);
+
+            qemu_log!("PG: {virt_addr:08x} level {level} is {idx}");
 
             current_table_phys = self.self_map_page(current_table_phys, |table| {
                 let entry = table[idx];
@@ -234,16 +243,23 @@ impl AddressSpace {
             })?;
         }
 
-        let leaf_idx = PG::index_at_level(virt_addr, PG::LEVELS - 1);
-        self.self_map_page(current_table_phys, |table| {
-            let entry = table[leaf_idx];
+        Some(current_table_phys)
+
+        // qemu_log!("Current table: {:08x}", current_table_phys);
+
+        // let leaf_idx = PG::index_at_level(virt_addr, PG::LEVELS - 1);
+
+        // qemu_log!("LEAF PG: {virt_addr:08x} level {} is {leaf_idx}", PG::LEVELS - 1);
+
+        // self.self_map_page(current_table_phys, |table| {
+        //     let entry = table[leaf_idx];
             
-            if entry.is_present() {
-                Some(entry.phys())
-            } else {
-                None
-            }
-        })
+        //     if entry.is_present() {
+        //         Some(entry.phys())
+        //     } else {
+        //         None
+        //     }
+        // })
     }
 
     pub fn alloc_map_single_page(&mut self, virt_addr: usize, flags: PageFlags) -> Result<(), ()> {
@@ -347,13 +363,13 @@ impl AddressSpace {
     }
 }
 
-impl Drop for AddressSpace {
+impl<PG: PagingHierarchy> Drop for AddressSpace<PG> {
     fn drop(&mut self) {
-        let mut physial_addresses = [0usize; 768];
+        let mut physial_addresses = [0usize; 1024];
 
         self.self_map_page(self.page_root_phys, |page_root| {
-            // This region (0..768) is dedicated to user-space memory.
-            for i in 0..768 {
+            // This region (0..user_root_entry_count) is dedicated to user-space memory.
+            for i in 0..PG::user_root_entry_count() {
                 if page_root[i].is_present() {
                     let real_address = page_root[i].phys();
 

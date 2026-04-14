@@ -1,6 +1,6 @@
-use crate::{arch::get_page_size, mem::physical, qemu_log, tools};
+use crate::{arch::get_page_size, qemu_log};
 use bitflags::bitflags;
-use cfg_if::cfg_if;
+use noct_paging::PagingHierarchy;
 
 pub const PAGE_SIZE: usize = 0x1000;
 
@@ -26,6 +26,7 @@ pub type GlobalPagingArchitecture = X86_64Paging;
 impl PagingHierarchy for X86_64Paging {
     const LEVELS: usize = 4;
     const ENTRIES: usize = 512;
+    const RECURSIVE_INDEX: usize = 510;
 
     fn index_at_level(vaddr: usize, level: usize) -> usize {
         match level {
@@ -39,6 +40,10 @@ impl PagingHierarchy for X86_64Paging {
 
     // 0x0000_0000_0000_0000 - 0x8000_0000_0000_0000
     fn user_root_entry_count() -> usize { 256 }
+
+    fn root() -> &'static [usize] {
+        unsafe { core::slice::from_raw_parts(PML4T as *const usize, 512) }
+    }
 }
 
 const fn indices2vaddr(pml4: u64, pdpt: u64, pd: u64, pt: u64) -> u64 {
@@ -134,7 +139,7 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
                   (flags & PageFlags::Userspace);
 
     if v_pdpt == 0 {
-        let new_pdpt = physical::allocate_one().unwrap();
+        let new_pdpt = noct_physmem_alloc::allocate_one().unwrap();
 
         pml4t_mut()[i_pml4t] = new_pdpt | table_flags.bits();
 
@@ -145,7 +150,7 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
     let v_pdt = pdpt(i_pml4t)[i_pdpt];
 
     if v_pdt == 0 {
-        let new_pdt = physical::allocate_one().unwrap();
+        let new_pdt = noct_physmem_alloc::allocate_one().unwrap();
 
         pdpt_mut(i_pml4t)[i_pdpt] = new_pdt | table_flags.bits();
 
@@ -156,7 +161,7 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
     let v_pd = pd(i_pml4t, i_pdpt)[i_pdt];
 
     if v_pd == 0 {
-        let new_pd = physical::allocate_one().unwrap();
+        let new_pd = noct_physmem_alloc::allocate_one().unwrap();
 
         pd_mut(i_pml4t, i_pdpt)[i_pdt] = new_pd | table_flags.bits();
 
@@ -275,8 +280,8 @@ pub fn is_memory_accessible(addr: usize) -> bool {
 
 
 pub fn preinit(available_memory_size: usize) {
-    let kernel_start = crate::sys::info::info_mut().kernel_start;
-    let kernel_end = crate::sys::info::info_mut().kernel_end;
+    let kernel_start = noct_sysinfo::info_mut().kernel_start;
+    let kernel_end = noct_sysinfo::info_mut().kernel_end;
 
     let kernel_size = kernel_end - kernel_start;
 
@@ -290,12 +295,12 @@ pub fn preinit(available_memory_size: usize) {
     let mut phys_bitmap_size = (available_memory_size / PAGE_SIZE) / 8;
 
     // Align it to usize boundary.
-    if !phys_bitmap_size.is_multiple_of(crate::spec::WORD_SIZE) {
+    if !phys_bitmap_size.is_multiple_of(noct_spec::WORD_SIZE) {
         qemu_log!("Aligning it");
-        phys_bitmap_size = tools::align_value(phys_bitmap_size, crate::spec::WORD_SIZE);
+        phys_bitmap_size = noct_tools::align_value(phys_bitmap_size, noct_spec::WORD_SIZE);
     }
 
-    crate::sys::info::info_mut().physical_memory_bitmap_size = Some(phys_bitmap_size);
+    noct_sysinfo::info_mut().physical_memory_bitmap_size = Some(phys_bitmap_size);
 
     qemu_log!("Physical memory bitmap size: {} bytes", phys_bitmap_size);
 

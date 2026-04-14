@@ -6,7 +6,7 @@ use alloc::ffi::CString;
 use lazy_static::lazy_static;
 use noct_sync::pseudosync::PseudoSync;
 
-use crate::{arch::mem::{paging::PageFlags}, qemu_log};
+use crate::{arch::mem::paging::{GlobalPagingArchitecture, PageFlags}, qemu_log};
 use crate::mem::address_space_manager::AddressSpace;
 
 lazy_static! {
@@ -16,7 +16,7 @@ lazy_static! {
 #[repr(C)]
 pub struct Process {
     pub id: usize,
-    pub address_space: PseudoSync<AddressSpace>,
+    pub address_space: PseudoSync<AddressSpace<GlobalPagingArchitecture>>,
 
     // SAFE ZONE
     pub thread_count: AtomicUsize,
@@ -40,14 +40,18 @@ impl Process {
         let cwd_ptr = CString::new(cwd).unwrap().into_raw();
 
         // TEST SUITE!!!
-        let mut address_space = AddressSpace::new();
+        let mut address_space = AddressSpace::<GlobalPagingArchitecture>::new();
 
-        address_space.map_pages(
-            0x100_000,
-            0x4010_0000,
-            0x20_0000,
-            PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace
-        );
+        // qemu_log!("MAPPING...");
+
+        // address_space.map_pages(
+        //     0x100_000,
+        //     0x4010_0000,
+        //     0x20_0000,
+        //     PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace
+        // );
+
+        // qemu_log!("MAPPED!");
 
         Self {
             id: next_pid(),

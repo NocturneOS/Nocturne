@@ -1,8 +1,10 @@
 use lazy_static::lazy_static;
+use noct_logger::qemu_print;
+use noct_sync::pseudosync::PseudoSync;
 use x86::{Ring, segmentation::SegmentSelector};
 
 use crate::{
-    arch::x86::gdt::{self, GDTEntry}, qemu_log, qemu_print, qemu_println, tools::pseudosync::PseudoSync
+    arch::x86::gdt::{self, GDTEntry}, qemu_log
 };
 
 #[repr(C, packed)]
@@ -68,7 +70,7 @@ pub fn init() {
 			qemu_print!("{:02x} ", unsafe { data.add(j).read() });
 		}
 
-		qemu_println!();
+		noct_logger::qemu_println!();
 	}
 
 	// Fifth index in the GDT: 0x08 * 5 = 0x28.

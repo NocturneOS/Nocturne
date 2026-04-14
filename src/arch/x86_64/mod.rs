@@ -1,17 +1,15 @@
 pub mod mem;
 pub mod tss;
 
-use crate::arch::mem::paging::{PageFlags, map_single_page};
 use crate::arch::x86::multiboot::{MultibootHeader, MultibootMMapType};
 use crate::arch::x86::{gdt, idt, interrupts, sys, timer};
-use crate::spec::KERNEL_BASE;
-use crate::{arch, kmain, qemu_log, tools};
+use crate::{arch, kmain, qemu_log};
 
 #[unsafe(no_mangle)]
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
 
-    let mb = unsafe { &*((multiboot_header_address + KERNEL_BASE) as *const MultibootHeader) };
+    let mb = unsafe { &*((multiboot_header_address + noct_spec::KERNEL_BASE) as *const MultibootHeader) };
 
     qemu_log!("Command line: {:?}", mb.cmdline());
     qemu_log!("Modules count: {}", mb.modules().len());
@@ -59,7 +57,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     mem::paging::preinit(mb.memory().total());
 
-    crate::mem::physical::init();
+    noct_physmem_alloc::init();
 
     tss::init();
 
@@ -69,21 +67,21 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
         .filter(|x| x.ty() != MultibootMMapType::Available)
         .map(|x| (x.addr(), x.length()))
     {
-        let addr_start = tools::align_value(i.0.try_into().unwrap(), arch::get_page_size());
+        let addr_start = noct_tools::align_value(i.0.try_into().unwrap(), arch::get_page_size());
 
         if i.0 + i.1 - 1 >= usize::MAX as _ {
             break;
         }
 
         let addr_end =
-            tools::align_value((i.0 + i.1 - 1).try_into().unwrap(), arch::get_page_size());
+            noct_tools::align_value((i.0 + i.1 - 1).try_into().unwrap(), arch::get_page_size());
 
         if addr_start > mb.memory().total() {
             continue;
         }
 
         for addr in (addr_start..addr_end).step_by(arch::get_page_size()) {
-            crate::mem::physical::mark_page(addr.try_into().unwrap(), true);
+            noct_physmem_alloc::mark_page(addr.try_into().unwrap(), true);
         }
 
         qemu_log!("Marked {:#x?} - {:#x?} as reserved.", addr_start, addr_end);
@@ -92,10 +90,10 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     // Mark all the memory past the kernel (and the kernel region) as used
 
     {
-        let start = crate::sys::info::info().kernel_end - crate::spec::KERNEL_BASE;
+        let start = noct_sysinfo::info().kernel_end - noct_spec::KERNEL_BASE;
 
         for addr in (0..start).step_by(arch::get_page_size()) {
-            crate::mem::physical::mark_page(addr, true);
+            noct_physmem_alloc::mark_page(addr, true);
         }
 
         qemu_log!("Marked {:#x?} - {:#x?} as used.", 0, start);
@@ -106,10 +104,10 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     {
         for (n, i) in mb.modules().iter().enumerate() {
             let start_addr = i.mod_start as usize;
-            let end_addr = tools::align_value(i.mod_end as usize, arch::get_page_size());
+            let end_addr = noct_tools::align_value(i.mod_end as usize, arch::get_page_size());
 
             for addr in (start_addr..end_addr).step_by(arch::get_page_size()) {
-                crate::mem::physical::mark_page(addr, true);
+                noct_physmem_alloc::mark_page(addr, true);
             }
 
             qemu_log!(
@@ -124,8 +122,8 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     // Update info for `kmain`
     {
-        let kernel_end = crate::sys::info::info().kernel_end;
-        let mut info = crate::sys::info::info_mut();
+        let kernel_end = noct_sysinfo::info().kernel_end;
+        let mut info = noct_sysinfo::info_mut();
 
         info.installed_memory = Some(mb.memory().total());
 
@@ -135,7 +133,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
             mb.modules()
                 .last()
                 .map(|x| x.mod_end as usize)
-                .unwrap_or(kernel_end - KERNEL_BASE),
+                .unwrap_or(kernel_end - noct_spec::KERNEL_BASE),
         );
     }
 
