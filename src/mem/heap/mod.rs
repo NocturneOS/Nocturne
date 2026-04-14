@@ -1,7 +1,7 @@
 mod alloc_support;
 
 // Re-export the init function for convenience
-pub use alloc_support::{init, dump, allocate_no_map};
+pub use alloc_support::{init, allocate_no_map};
 use noct_logger::qemu_log;
 use noct_tools::interrupt_locker::InterruptLocker;
 
@@ -11,8 +11,7 @@ use core::usize;
 use spin::{Mutex, MutexGuard};
 
 use crate::arch;
-use crate::arch::mem::paging::{self, PageFlags, map_pages, map_single_page, unmap_single_page};
-use crate::mem::physical;
+use crate::arch::mem::paging::{self, PageFlags, map_single_page, unmap_single_page};
 
 /// Page flags for kernel heap: Present + Writable
 ///
@@ -67,7 +66,7 @@ impl InnerArenaAllocator {
     /// Initialize the allocator with a heap region
     pub fn init(&mut self, heap_start: usize, heap_size: usize) {
         let page =
-            physical::allocate_one().expect("Could not allocate an initial page for the heap!");
+            noct_physmem_alloc::allocate_one().expect("Could not allocate an initial page for the heap!");
 
         map_single_page(page, heap_start, PAGE_FLAGS);
 
@@ -194,7 +193,7 @@ impl InnerArenaAllocator {
         for i in (start_addr..end_addr).step_by(arch::get_page_size()) {
             if !paging::is_memory_accessible(i) {
                 // TODO: Cancel whole operation if page allocation fails and return None.
-                let page = physical::allocate_one()
+                let page = noct_physmem_alloc::allocate_one()
                     .expect("Failed to allocate a physical page during allocation.");
 
                 map_single_page(page, i, PAGE_FLAGS);
@@ -234,7 +233,7 @@ impl InnerArenaAllocator {
             if let Some(free_addr) = paging::virt2phys(i) {
                 unmap_single_page(i);
 
-                physical::free_one(free_addr);
+                noct_physmem_alloc::free_one(free_addr);
             }
         }
     }

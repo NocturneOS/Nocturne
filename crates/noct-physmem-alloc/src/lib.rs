@@ -1,3 +1,5 @@
+#![no_std]
+
 //! Physical memory manager
 
 // Kernel memory layout:
@@ -5,23 +7,26 @@
 // C010_0000: Kernel itself
 // C010_0000 + KERNEL_SIZE: Physical memory bitmap
 
+use noct_logger::qemu_log;
 use noct_spec::{WORD_SIZE, WORD_SIZE_BITS};
 use noct_tools::interrupt_locker::InterruptLocker;
 
-use crate::{
-    arch::{self},
-    qemu_log,
-};
-
 unsafe extern "C" {
     static IMAGE_VIRT_END: *const ();
+}
+
+// FIXME: TEMPORAL!
+mod arch {
+    pub fn get_page_size() -> usize {
+        0x1000
+    }
 }
 
 fn bitmap() -> &'static [usize] {
     let rawptr = (unsafe { &IMAGE_VIRT_END } as *const *const ()).addr() as *const usize;
 
     // Size - in bytes; Length - in items.
-    let size = crate::sys::info::info()
+    let size = noct_sysinfo::info()
         .physical_memory_bitmap_size
         .unwrap();
 
@@ -36,7 +41,7 @@ fn bitmap_mut() -> &'static mut [usize] {
     let rawptr = (unsafe { &IMAGE_VIRT_END } as *const *const ()).addr() as *mut usize;
 
     // Size - in bytes; Length - in items.
-    let size = crate::sys::info::info()
+    let size = noct_sysinfo::info()
         .physical_memory_bitmap_size
         .unwrap();
 

@@ -1,0 +1,10 @@
+[package]
+name = "noct-physmem-alloc"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+noct-spec = { path = "../noct-spec" }
+noct-tools = { path = "../noct-tools" }
+noct-logger = { path = "../noct-logger" }
+noct-sysinfo = { path = "../noct-sysinfo" }

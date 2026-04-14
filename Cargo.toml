@@ -10,7 +10,7 @@ edition = "2024"
 members = [
     "crates/noct-sync",
     "crates/noct-spec",
-    "crates/noct-tools", "crates/noct-cpuregs", "crates/noct-interrupts", "crates/noct-logger", "crates/noct-time", "crates/noct-ps2", "crates/noct-pci", "crates/noct-smbios", "crates/noct-paging",
+    "crates/noct-tools", "crates/noct-cpuregs", "crates/noct-interrupts", "crates/noct-logger", "crates/noct-time", "crates/noct-ps2", "crates/noct-pci", "crates/noct-smbios", "crates/noct-paging", "crates/noct-physmem-alloc", "crates/noct-sysinfo",
 ]
 resolver = "2"
 
@@ -30,8 +30,10 @@ noct-spec = { path = "crates/noct-spec" }
 noct-time = { path = "crates/noct-time" }
 noct-paging = { path = "crates/noct-paging" }
 noct-ps2 = { path = "crates/noct-ps2" }
+noct-physmem-alloc = { path = "crates/noct-physmem-alloc" }
 noct-pci = { path = "crates/noct-pci" }
 noct-smbios = { path = "crates/noct-smbios" }
+noct-sysinfo = { path = "crates/noct-sysinfo" }
 noct-tools = { path = "crates/noct-tools" }
 
 

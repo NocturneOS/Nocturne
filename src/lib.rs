@@ -11,7 +11,6 @@ mod arch;
 mod dev;
 mod mem;
 mod sched;
-mod sys;
 mod time;
 mod unwind;
 

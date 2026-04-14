@@ -21,6 +21,8 @@ bitflags! {
 
 pub struct X86_64Paging;
 
+pub type GlobalPagingArchitecture = X86_64Paging;
+
 impl PagingHierarchy for X86_64Paging {
     const LEVELS: usize = 4;
     const ENTRIES: usize = 512;

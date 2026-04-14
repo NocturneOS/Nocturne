@@ -1,3 +1,5 @@
+#![no_std]
+
 use lazy_static::lazy_static;
 use spin::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 

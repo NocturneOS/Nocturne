@@ -1,4 +1,4 @@
-use core::{alloc::Layout, marker::PhantomData};
+use core::alloc::Layout;
 
 use alloc::vec::Vec;
 use noct_paging::PagingHierarchy;
@@ -7,8 +7,8 @@ use noct_spec::{KERNEL_BASE, WORD_SIZE};
 use crate::{
     arch::{
         self,
-        mem::paging::{Page, PageFlags, map_single_page, unmap_single_page, vaddr2indices},
-    }, mem::physical::{self, allocate_bulk, allocate_one, free_one}
+        mem::paging::{GlobalPagingArchitecture, Page, PageFlags, map_single_page, unmap_single_page, vaddr2indices},
+    }
 };
 
 #[derive(Debug)]
@@ -94,15 +94,10 @@ impl AddressSpace {
         let layout = Layout::from_size_align(arch::get_page_size(), 0x1000).unwrap();
         let mapping_region = unsafe { alloc::alloc::alloc(layout) };
 
-        physical::free_one(arch::mem::paging::virt2phys(mapping_region.addr()).unwrap());
+        noct_physmem_alloc::free_one(arch::mem::paging::virt2phys(mapping_region.addr()).unwrap());
 
         // Map paging root and get physical address of virtual one.
-        let phys = {
-        #[cfg(target_arch="x86")]
-            { self.phys_of_virt::<crate::arch::mem::paging::X86Paging>(virt_addr).unwrap() }
-        #[cfg(target_arch="x86_64")]
-            { self.phys_of_virt::<crate::arch::mem::paging::X86_64Paging>(virt_addr).unwrap() }
-        };
+        let phys = self.phys_of_virt::<GlobalPagingArchitecture>(virt_addr).unwrap();
 
         map_single_page(
             phys,
@@ -144,7 +139,7 @@ impl AddressSpace {
             let (pdi, pti) = vaddr2indices(virt_addr);
 
             if !page_root[pdi].is_present() {
-                let page_table = allocate_one().ok_or(())?;
+                let page_table = noct_physmem_alloc::allocate_one().ok_or(())?;
 
                 // self.self_map_page(page_table, |x| {
                 //     x.fill(Page::null());
@@ -252,7 +247,7 @@ impl AddressSpace {
     }
 
     pub fn alloc_map_single_page(&mut self, virt_addr: usize, flags: PageFlags) -> Result<(), ()> {
-        let page = allocate_one().ok_or(())?;
+        let page = noct_physmem_alloc::allocate_one().ok_or(())?;
 
         self.map_single_page(page, virt_addr, flags)?;
 
@@ -270,7 +265,7 @@ impl AddressSpace {
 
         // Try allocate pages in bulk.
         {
-            let physical = allocate_bulk(page_count);
+            let physical = noct_physmem_alloc::allocate_bulk(page_count);
 
             if let Some(phys) = physical {
                 self.map_pages(phys, virt_addr, size_in_bytes, flags)?;
@@ -285,7 +280,7 @@ impl AddressSpace {
                 // TODO: Handle allocation error. We can't use `?`, because if this happens in the middle ...
                 // ... of the loop, it will remain some pages mapped, but we have to revert this operation completely.
 
-                let page = allocate_one().unwrap();
+                let page = noct_physmem_alloc::allocate_one().unwrap();
 
                 self.map_single_page(page, virt_addr + (i * arch::get_page_size()), flags)
                     .unwrap();
@@ -374,12 +369,12 @@ impl Drop for AddressSpace {
                     // qemu_log!("Checking address: {i:x?}");
 
                     if i.raw() >= 0x1000 && i.is_present() {
-                        free_one(i.phys());
+                        noct_physmem_alloc::free_one(i.phys());
                     }
                 }
             });
 
-            physical::free_one(*real_address);
+            noct_physmem_alloc::free_one(*real_address);
         }
     }
 }

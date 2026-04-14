@@ -78,7 +78,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     mem::paging::preinit(mb.memory().total());
 
-    crate::mem::physical::init();
+    noct_physmem_alloc::init();
 
     tss::init();
 
@@ -103,7 +103,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
         }
 
         for addr in (addr_start..addr_end).step_by(arch::get_page_size()) {
-            crate::mem::physical::mark_page(addr.try_into().unwrap(), true);
+            noct_physmem_alloc::mark_page(addr.try_into().unwrap(), true);
         }
 
         qemu_log!("Marked {:#x?} - {:#x?} as reserved.", addr_start, addr_end);
@@ -114,10 +114,10 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     {
         use noct_spec::KERNEL_BASE;
 
-        let start = crate::sys::info::info().kernel_end - KERNEL_BASE;
+        let start = noct_sysinfo::info().kernel_end - KERNEL_BASE;
 
         for addr in (0..start).step_by(arch::get_page_size()) {
-            crate::mem::physical::mark_page(addr, true);
+            noct_physmem_alloc::mark_page(addr, true);
         }
 
         qemu_log!("Marked {:#x?} - {:#x?} as used.", 0, start);
@@ -131,7 +131,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
             let end_addr = noct_tools::align_value(i.mod_end as usize, arch::get_page_size());
 
             for addr in (start_addr..end_addr).step_by(arch::get_page_size()) {
-                crate::mem::physical::mark_page(addr, true);
+                noct_physmem_alloc::mark_page(addr, true);
             }
 
             qemu_log!(
@@ -148,8 +148,8 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     {
         use noct_spec::KERNEL_BASE;
 
-        let kernel_end = crate::sys::info::info().kernel_end;
-        let mut info = crate::sys::info::info_mut();
+        let kernel_end = noct_sysinfo::info().kernel_end;
+        let mut info = noct_sysinfo::info_mut();
 
         info.installed_memory = Some(mb.memory().total());
 

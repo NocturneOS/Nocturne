@@ -7,8 +7,8 @@ unsafe extern "C" {
 }
 
 pub fn init() {
-    crate::sys::info::info_mut().kernel_start =
+    noct_sysinfo::info_mut().kernel_start =
         unsafe { ((&IMAGE_VIRT_START) as *const *const ()).addr() };
-    crate::sys::info::info_mut().kernel_end =
+    noct_sysinfo::info_mut().kernel_end =
         unsafe { ((&IMAGE_VIRT_END) as *const *const ()).addr() };
 }

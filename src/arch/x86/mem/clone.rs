@@ -1,6 +1,6 @@
 use core::alloc::Layout;
 
-use crate::{arch::{get_page_size, mem::paging::{self, PageFlags}}, mem::physical, qemu_log};
+use crate::{arch::{get_page_size, mem::paging::{self, PageFlags}}};
 
 /// Clones kernel's paging root, it will just copy PDEs (shallow copy)
 pub fn clone_kernel_page_root() -> usize {
@@ -10,11 +10,11 @@ pub fn clone_kernel_page_root() -> usize {
 
     let tb_phys = paging::virt2phys(temporary_block.addr()).unwrap();
 
-    physical::free_one(tb_phys);
+    noct_physmem_alloc::free_one(tb_phys);
 
     paging::unmap_single_page(temporary_block.addr());
 
-    let new_page_directory = crate::mem::physical::allocate_one().unwrap();
+    let new_page_directory = noct_physmem_alloc::allocate_one().unwrap();
 
     paging::map_single_page(new_page_directory, temporary_block.addr(), PageFlags::Writeable | PageFlags::Present);
 

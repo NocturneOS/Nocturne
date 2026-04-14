@@ -1,4 +1,4 @@
-use crate::{arch::get_page_size, mem::physical, qemu_log};
+use crate::{arch::get_page_size, qemu_log};
 use bitflags::bitflags;
 use noct_paging::PagingHierarchy;
 use noct_spec::WORD_SIZE;
@@ -66,6 +66,8 @@ impl PartialEq<usize> for Page {
 
 pub struct X86Paging;
 
+pub type GlobalPagingArchitecture = X86Paging;
+
 impl PagingHierarchy for X86Paging {
     const LEVELS: usize = 2;
     const ENTRIES: usize = 1024;
@@ -124,7 +126,7 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
                   (flags & PageFlags::Userspace);
 
     if pt == 0 {
-        let new_pt = physical::allocate_one().unwrap();
+        let new_pt = noct_physmem_alloc::allocate_one().unwrap();
 
         page_directory_mut()[pdi] = Page(new_pt | table_flags.bits());
 
@@ -214,8 +216,8 @@ pub fn is_memory_accessible(addr: usize) -> bool {
 // C010_0000 + KERNEL_SIZE: Physical memory bitmap
 
 pub fn preinit(available_memory_size: usize) {
-    let kernel_start = crate::sys::info::info_mut().kernel_start;
-    let kernel_end = crate::sys::info::info_mut().kernel_end;
+    let kernel_start = noct_sysinfo::info_mut().kernel_start;
+    let kernel_end = noct_sysinfo::info_mut().kernel_end;
 
     let kernel_size = kernel_end - kernel_start;
 
@@ -234,7 +236,7 @@ pub fn preinit(available_memory_size: usize) {
         phys_bitmap_size = noct_tools::align_value(phys_bitmap_size, WORD_SIZE);
     }
 
-    crate::sys::info::info_mut().physical_memory_bitmap_size = Some(phys_bitmap_size);
+    noct_sysinfo::info_mut().physical_memory_bitmap_size = Some(phys_bitmap_size);
 
     qemu_log!("Physical memory bitmap size: {} bytes", phys_bitmap_size);
 
