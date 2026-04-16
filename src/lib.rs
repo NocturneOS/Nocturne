@@ -9,7 +9,6 @@ use noct_logger::qemu_log;
 use crate::{arch::mem::paging::PageFlags, sched::{KERNEL_THREAD_DEFAULT_STACK_SIZE, thread::{ThreadFlags, ThreadPriority}}};
 
 mod arch;
-mod dev;
 mod mem;
 mod sched;
 mod time;
