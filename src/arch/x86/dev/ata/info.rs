@@ -1,7 +1,5 @@
 use alloc::{boxed::Box, vec::Vec};
 
-use crate::arch::x86::dev::ata::ATADrive;
-
 pub struct ATADriveInfo {
     identity: Box<[u8]>
 }
@@ -9,6 +7,13 @@ pub struct ATADriveInfo {
 impl ATADriveInfo {
     pub fn raw(&self) -> &[u8] {
         &*self.identity
+    }
+
+    pub fn nth_word(&self, word_offset: usize) -> u16 {
+        let low = self.identity[(word_offset * 2) + 1] as u16;
+        let high = self.identity[word_offset * 2] as u16;
+
+        (high << 8) | low
     }
 
     // Offset in bytes
@@ -26,6 +31,35 @@ impl ATADriveInfo {
 
     pub fn serial(&self) -> &str {
         self.name_conv(20, 20).trim()
+    }
+
+    pub fn is_lba_supported(&self) -> bool {
+        (self.nth_word(49) & (1 << 9)) != 0
+    }
+
+    pub fn is_dma_supported(&self) -> bool {
+        (self.nth_word(49) & (1 << 8)) != 0
+    }
+
+    pub fn max_lba(&self) -> u64 {
+        let word1 = self.nth_word(100) as u64;
+        let word2 = self.nth_word(101) as u64;
+        let word3 = self.nth_word(102) as u64;
+        let word4 = self.nth_word(103) as u64;
+
+        (word4 << 48) | (word3 << 32) | (word2 << 16) | word1
+    }
+
+    pub fn is_removable_media_device(&self) -> bool {
+        (self.nth_word(0) & (1 << 7)) != 0
+    }
+
+    pub fn sector_size(&self) -> usize {
+        if self.is_removable_media_device() {
+            2048
+        } else {
+            512
+        }
     }
 }
 
