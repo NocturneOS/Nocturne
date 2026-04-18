@@ -5,3 +5,5 @@
 *.elf
 *.elf.map
 /iso/ramdisk
+*.img
+

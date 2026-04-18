@@ -75,6 +75,8 @@ extern "C" fn kmain() -> ! {
     // clear_screen();
     // test_write();
 
+    crate::arch::x86::dev::ata::init();
+
     qemu_log!("It works!");
 
     loop {

@@ -219,6 +219,15 @@ add_custom_target(
 	DEPENDS ramdisk
 )
 
+add_custom_command(
+    OUTPUT "${CMAKE_SOURCE_DIR}/test_disk.img"
+    COMMAND dd if=/dev/zero of=${CMAKE_SOURCE_DIR}/test_disk.img bs=1K count=64000
+    COMMENT "Making disk..."
+    VERBATIM
+)
+
+add_custom_target(create_disk DEPENDS ${CMAKE_SOURCE_DIR}/test_disk.img)
+
 add_custom_target(
 	run
 	COMMAND ${QEMU} -accel kvm ${QEMU_FLAGS}
@@ -230,7 +239,7 @@ add_custom_target(
 	run_with_disk
 	COMMAND ${QEMU} -accel kvm ${QEMU_FLAGS} -hda ${CMAKE_SOURCE_DIR}/test_disk.img
 	USES_TERMINAL
-	DEPENDS iso
+	DEPENDS iso create_disk
 )
 
 add_custom_target(
