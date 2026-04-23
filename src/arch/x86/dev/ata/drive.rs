@@ -1,7 +1,7 @@
 use x86::io::{inw, outb, outw};
 
 use crate::arch::x86::dev::ata::{
-    ATABus, ATADrive, commands::{ATA_CMD_CACHE_FLUSH_EXT, ATA_CMD_READ_PIO_EXT, ATA_CMD_WRITE_PIO_EXT}, error::{ATAError, ATAIOError, ATAIOResult}, ide_400ns_delay, ide_poll, info::ATADriveInfo, regs::{ATA_REG_COMMAND, ATA_REG_DATA, ATA_REG_HDDEVSEL, ATA_REG_LBA0, ATA_REG_LBA1, ATA_REG_LBA2, ATA_REG_LBA3, ATA_REG_LBA4, ATA_REG_LBA5, ATA_REG_SECCOUNT0}
+    ATABus, ATADrive, commands::{ATA_CMD_CACHE_FLUSH_EXT, ATA_CMD_READ_PIO_EXT, ATA_CMD_WRITE_PIO_EXT}, dma_prdt::PRDT, error::{ATAError, ATAIOError, ATAIOResult}, ide_400ns_delay, ide_poll, info::ATADriveInfo, regs::{ATA_REG_COMMAND, ATA_REG_DATA, ATA_REG_HDDEVSEL, ATA_REG_LBA0, ATA_REG_LBA1, ATA_REG_LBA2, ATA_REG_LBA3, ATA_REG_LBA4, ATA_REG_LBA5, ATA_REG_SECCOUNT0}
 };
 
 pub struct ATAPhysicalDrive {
@@ -9,6 +9,7 @@ pub struct ATAPhysicalDrive {
     pub(super) drive: ATADrive,
     pub(super) is_packet: bool,
     pub(super) identity: ATADriveInfo,
+    pub(super) prdt: Option<PRDT>
 }
 
 impl ATAPhysicalDrive {

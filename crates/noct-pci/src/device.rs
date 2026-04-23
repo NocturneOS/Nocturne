@@ -72,4 +72,10 @@ impl PCIDevice {
     pub fn write(&self, offset: u8, value: u32) {
         crate::write(self.bus, self.slot, self.function, offset, value);
     }
+
+    pub fn enable_bus_mastering(&self) {
+        let command = self.read32(4);
+
+        self.write(4, command | 0x05);
+    }
 }

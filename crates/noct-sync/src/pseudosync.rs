@@ -5,7 +5,7 @@ pub struct PseudoSync<T> {
 }
 
 impl<T> PseudoSync<T> {
-    pub fn new(data: T) -> Self {
+    pub const fn new(data: T) -> Self {
         Self {
             data: UnsafeCell::new(data)
         }

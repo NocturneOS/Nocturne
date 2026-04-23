@@ -1,4 +1,4 @@
-use core::any::Any;
+use core::alloc::Layout;
 
 use alloc::vec;
 use noct_cpuregs::CPURegisters;
@@ -7,20 +7,17 @@ use noct_logger::qemu_log;
 use x86::io::{inb, inw, outb};
 
 use crate::arch::x86::dev::ata::{
-    commands::{ATA_CMD_IDENTIFY, ATA_CMD_IDENTIFY_PACKET, ATA_CMD_PACKET},
-    drive::ATAPhysicalDrive,
-    error::{ATAError, ATAResult},
-    flags::{ATA_SR_BSY, ATA_SR_DF, ATA_SR_DRQ, ATA_SR_ERR},
-    info::ATADriveInfo,
-    regs::{
+    commands::{ATA_CMD_IDENTIFY, ATA_CMD_IDENTIFY_PACKET}, dma_prdt::PRDT, drive::ATAPhysicalDrive, error::{ATAError, ATAResult}, flags::{ATA_SR_BSY, ATA_SR_DF, ATA_SR_DRQ, ATA_SR_ERR}, regs::{
         ATA_REG_ALTSTATUS, ATA_REG_COMMAND, ATA_REG_CONTROL, ATA_REG_DATA, ATA_REG_ERROR,
         ATA_REG_HDDEVSEL, ATA_REG_LBA0, ATA_REG_LBA1, ATA_REG_LBA2, ATA_REG_SECCOUNT0,
         ATA_REG_STATUS,
-    },
+    }
 };
 
 pub mod commands;
 pub mod drive;
+pub mod dma;
+pub mod dma_prdt;
 pub mod error;
 pub mod flags;
 pub mod info;
@@ -37,6 +34,13 @@ impl ATABus {
         match self {
             ATABus::Primary => 0x1F0,
             ATABus::Secondary => 0x170,
+        }
+    }
+
+    pub fn dma_io_offset(&self) -> u16 {
+        match self {
+            ATABus::Primary => 0,
+            ATABus::Secondary => 8,
         }
     }
 }
@@ -80,7 +84,7 @@ fn ide_400ns_delay(io: u16) {
 
 fn ide_poll_drq(io: u16, mut timeout: usize) -> ATAResult<()> {
     loop {
-        let status = unsafe { inb(io + ATA_REG_ALTSTATUS as u16) };
+        let status = unsafe { inb(io + ATA_REG_STATUS as u16) };
 
         if (status & ATA_SR_DRQ) != 0 {
             return Ok(());
@@ -172,11 +176,18 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
                 ide_buf[i + 1] = (word & 0xff) as u8;
             }
 
+            let identity: info::ATADriveInfo = ide_buf.try_into().unwrap();
+
             return Ok(ATAPhysicalDrive {
                 bus,
                 drive,
                 is_packet: true,
-                identity: ide_buf.try_into().unwrap(),
+                prdt: if identity.is_dma_supported() {
+                    Some(PRDT::new())
+                } else {
+                    None
+                },
+                identity,
             });
         }
     }
@@ -191,11 +202,18 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
             ide_buf[i + 1] = (word & 0xff) as u8;
         }
 
+        let identity: info::ATADriveInfo = ide_buf.try_into().unwrap();
+
         return Ok(ATAPhysicalDrive {
             bus,
             drive,
             is_packet: false,
-            identity: ide_buf.try_into().unwrap(),
+            prdt: if identity.is_dma_supported() {
+                Some(PRDT::new())
+            } else {
+                None
+            },
+            identity: identity,
         });
     }
 
@@ -208,7 +226,7 @@ fn check_all() {
             let result = identify(bus, drive);
 
             match result {
-                Ok(drv) => {
+                Ok(mut drv) => {
                     qemu_log!("{bus:?} {drive:?} => OK!");
 
                     qemu_log!(
@@ -219,6 +237,18 @@ fn check_all() {
                     );
 
                     qemu_log!("Sector size: {:?}", drv.info().sector_size());
+
+                    if !drv.is_packet && drv.info().is_dma_supported() {
+                        let mut buffer = vec![0u8; 512];
+                        // let buffer = unsafe { alloc::alloc::alloc(Layout::from_size_align_unchecked(512, 4096)) };
+
+                        // let buf = unsafe { core::slice::from_raw_parts_mut(buffer, 512) };
+
+                        dma::test_read_sector(&mut drv, 0, &mut buffer);
+
+                        qemu_log!("LBA0 = {:?}", unsafe { str::from_utf8_unchecked(&buffer) }.trim_end_matches('\0'));
+                        // qemu_log!("{:?}", buffer);
+                    }
 
                     // if !drv.is_packet {
                     //     let mut buffer = vec![0u8; 512];
@@ -268,5 +298,7 @@ pub fn init() {
     register_interrupt_handler(0x20 + 14, primary_bus_irq);
     register_interrupt_handler(0x20 + 15, secondary_bus_irq);
 
+    dma::init().unwrap();
+    
     check_all();
 }
