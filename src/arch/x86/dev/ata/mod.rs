@@ -20,7 +20,9 @@ pub mod dma;
 pub mod dma_prdt;
 pub mod error;
 pub mod flags;
+pub mod io;
 pub mod info;
+pub mod pio;
 pub mod regs;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -239,15 +241,15 @@ fn check_all() {
                     qemu_log!("Sector size: {:?}", drv.info().sector_size());
 
                     if !drv.is_packet && drv.info().is_dma_supported() {
-                        let mut buffer = vec![0u8; 512];
-                        // let buffer = unsafe { alloc::alloc::alloc(Layout::from_size_align_unchecked(512, 4096)) };
+                        let mut buffer = vec![0u8; 1024];
 
-                        // let buf = unsafe { core::slice::from_raw_parts_mut(buffer, 512) };
+                        drv.read(0, &mut buffer).unwrap();
 
-                        dma::test_read_sector(&mut drv, 0, &mut buffer);
+                        let stem1 = &buffer[0..512];
+                        let stem2 = &buffer[512..1024];
 
-                        qemu_log!("LBA0 = {:?}", unsafe { str::from_utf8_unchecked(&buffer) }.trim_end_matches('\0'));
-                        // qemu_log!("{:?}", buffer);
+                        qemu_log!("LBA0 = {:?}", unsafe { str::from_utf8_unchecked(&stem1) }.trim_end_matches('\0'));
+                        qemu_log!("LBA1 = {:?}", unsafe { str::from_utf8_unchecked(&stem2) }.trim_end_matches('\0'));
                     }
 
                     // if !drv.is_packet {

@@ -12,5 +12,7 @@ pub enum ATAError {
 pub enum ATAIOError {
     InvalidBuffer,
     InvalidLBA,
-    ControllerError(ATAError)
+    ControllerError(ATAError),
+    UnsupportedOperation,
+    DMAControllerNotInitialized
 }

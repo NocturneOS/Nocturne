@@ -1,6 +1,14 @@
 pub struct IOPort(u16);
 
 impl IOPort {
+	pub fn new(port: u16) -> Self {
+		Self(port)
+	}
+
+	pub fn addr(&self) -> u16 {
+		self.0
+	}
+	
 	pub fn offset(&self, offset: u16) -> Self {
 		Self(self.0 + offset)
 	}
