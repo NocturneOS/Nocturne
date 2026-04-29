@@ -1,4 +1,4 @@
-use x86::io::{inw, outb, outw};
+use x86::io::{outb};
 
 use crate::arch::x86::dev::ata::{
     ATADrive,
@@ -41,6 +41,8 @@ impl ATAIO for ATAPIO<'_> {
 
         let is_slave = drv.drive == ATADrive::Slave;
 
+        let io = drv.pio_port();
+
         let max_sectors_per_transfer = 65536;
         let mut current_lba = lba;
 
@@ -67,33 +69,24 @@ impl ATAIO for ATAPIO<'_> {
                 readsize
             };
 
-            unsafe {
-                outb(
-                    drv.bus.io() + ATA_REG_HDDEVSEL as u16,
-                    0x40 + ((is_slave as u8) << 4),
-                );
-                outb(
-                    drv.bus.io() + ATA_REG_SECCOUNT0 as u16,
-                    (controller_read_size >> 8) as u8,
-                );
-                outb(drv.bus.io() + ATA_REG_LBA0 as u16, lbas[3]);
-                outb(drv.bus.io() + ATA_REG_LBA1 as u16, lbas[4]);
-                outb(drv.bus.io() + ATA_REG_LBA2 as u16, lbas[5]);
-                outb(
-                    drv.bus.io() + ATA_REG_SECCOUNT0 as u16,
-                    (controller_read_size & 0xff) as u8,
-                );
-                outb(drv.bus.io() + ATA_REG_LBA0 as u16, lbas[0]);
-                outb(drv.bus.io() + ATA_REG_LBA1 as u16, lbas[1]);
-                outb(drv.bus.io() + ATA_REG_LBA2 as u16, lbas[2]);
-                outb(drv.bus.io() + ATA_REG_COMMAND as u16, ATA_CMD_READ_PIO_EXT);
-            };
+            io.offset(ATA_REG_HDDEVSEL).write8(0x40 + ((is_slave as u8) << 4));
+            io.offset(ATA_REG_SECCOUNT0).write8((controller_read_size >> 8) as u8);
+            io.offset(ATA_REG_LBA0).write8(lbas[3]);
+            io.offset(ATA_REG_LBA1).write8(lbas[4]);
+            io.offset(ATA_REG_LBA2).write8(lbas[5]);
+            io.offset(ATA_REG_SECCOUNT0).write8((controller_read_size & 0xff) as u8);
+            io.offset(ATA_REG_LBA0).write8(lbas[0]);
+            io.offset(ATA_REG_LBA1).write8(lbas[1]);
+            io.offset(ATA_REG_LBA2).write8(lbas[2]);
+            io.offset(ATA_REG_COMMAND).write8(ATA_CMD_READ_PIO_EXT);
+
+            let data = io.offset(ATA_REG_DATA);
 
             for sector in 0..readsize {
-                ide_poll(drv.bus.io()).map_err(ATAIOError::ControllerError)?;
+                ide_poll(io.addr()).map_err(ATAIOError::ControllerError)?;
 
                 for i in (0..512).step_by(2) {
-                    let word = unsafe { inw(drv.bus.io() + ATA_REG_DATA as u16) };
+                    let word = data.read16();
 
                     output[(sector * 512) + i] = word as u8;
                     output[(sector * 512) + i + 1] = (word >> 8) as u8;
@@ -130,6 +123,8 @@ impl ATAIO for ATAPIO<'_> {
 
         let is_slave = drv.drive == ATADrive::Slave;
 
+        let io = drv.pio_port();
+
         let max_sectors_per_transfer = 65536;
         let mut current_lba = lba;
 
@@ -156,47 +151,38 @@ impl ATAIO for ATAPIO<'_> {
                 writesize
             };
 
-            unsafe {
-                outb(
-                    drv.bus.io() + ATA_REG_HDDEVSEL as u16,
-                    0x40 + ((is_slave as u8) << 4),
-                );
-                outb(
-                    drv.bus.io() + ATA_REG_SECCOUNT0 as u16,
-                    (controller_write_size >> 8) as u8,
-                );
-                outb(drv.bus.io() + ATA_REG_LBA0 as u16, lbas[3]);
-                outb(drv.bus.io() + ATA_REG_LBA1 as u16, lbas[4]);
-                outb(drv.bus.io() + ATA_REG_LBA2 as u16, lbas[5]);
-                outb(
-                    drv.bus.io() + ATA_REG_SECCOUNT0 as u16,
-                    (controller_write_size & 0xff) as u8,
-                );
-                outb(drv.bus.io() + ATA_REG_LBA0 as u16, lbas[0]);
-                outb(drv.bus.io() + ATA_REG_LBA1 as u16, lbas[1]);
-                outb(drv.bus.io() + ATA_REG_LBA2 as u16, lbas[2]);
-                outb(drv.bus.io() + ATA_REG_COMMAND as u16, ATA_CMD_WRITE_PIO_EXT);
-            };
+            io.offset(ATA_REG_HDDEVSEL).write8(0x40 + ((is_slave as u8) << 4));
+            io.offset(ATA_REG_SECCOUNT0).write8((controller_write_size >> 8) as u8);
+            io.offset(ATA_REG_LBA0).write8(lbas[3]);
+            io.offset(ATA_REG_LBA1).write8(lbas[4]);
+            io.offset(ATA_REG_LBA2).write8(lbas[5]);
+            io.offset(ATA_REG_SECCOUNT0).write8((controller_write_size & 0xff) as u8);
+            io.offset(ATA_REG_LBA0).write8(lbas[0]);
+            io.offset(ATA_REG_LBA1).write8(lbas[1]);
+            io.offset(ATA_REG_LBA2).write8(lbas[2]);
+            io.offset(ATA_REG_COMMAND).write8(ATA_CMD_WRITE_PIO_EXT);
+
+            let data = io.offset(ATA_REG_DATA);
 
             for _ in 0..writesize {
-                ide_poll(drv.bus.io()).map_err(ATAIOError::ControllerError)?;
+                ide_poll(io.addr()).map_err(ATAIOError::ControllerError)?;
 
                 for v in input.chunks(2) {
-                    ide_400ns_delay(drv.bus.io());
+                    ide_400ns_delay(io.addr());
 
                     let word = ((v[1] as u16) << 8) | v[0] as u16;
 
-                    unsafe { outw(drv.bus.io() + ATA_REG_DATA as u16, word) };
+                    data.write16(word);
                 }
 
                 unsafe {
                     outb(
-                        drv.bus.io() + ATA_REG_COMMAND as u16,
+                        io.addr() + ATA_REG_COMMAND as u16,
                         ATA_CMD_CACHE_FLUSH_EXT,
                     );
                 }
 
-                ide_poll(drv.bus.io()).map_err(ATAIOError::ControllerError)?;
+                ide_poll(io.addr()).map_err(ATAIOError::ControllerError)?;
             }
 
             sector_count -= writesize;

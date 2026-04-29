@@ -11,6 +11,20 @@ pub struct PRDTEntry {
     flags: u16,
 }
 
+impl PRDTEntry {
+    pub fn buffer_phys(&self) -> u32 {
+        self.buffer_phys
+    }
+
+    pub fn transfer_size(&self) -> u16 {
+        self.transfer_size
+    }
+
+    pub fn is_last(&self) -> bool {
+        self.flags & 0x8000 != 0
+    }
+}
+
 pub struct PRDT {
     prdt_virt_addr: Box<[PRDTEntry]>,
     prdt_phys_addr: usize,
@@ -66,6 +80,10 @@ impl PRDT {
         };
 
         Ok(())
+    }
+
+    pub fn get(&self, idx: usize) -> Option<&PRDTEntry> {
+        self.prdt_virt_addr.get(idx)
     }
 
     pub fn phys(&self) -> u32 {

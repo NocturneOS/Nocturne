@@ -245,11 +245,19 @@ fn check_all() {
 
                         drv.read(0, &mut buffer).unwrap();
 
-                        let stem1 = &buffer[0..512];
-                        let stem2 = &buffer[512..1024];
+                        {
+                            let stem1 = &buffer[0..512];
+                            let stem2 = &buffer[512..1024];
 
-                        qemu_log!("LBA0 = {:?}", unsafe { str::from_utf8_unchecked(&stem1) }.trim_end_matches('\0'));
-                        qemu_log!("LBA1 = {:?}", unsafe { str::from_utf8_unchecked(&stem2) }.trim_end_matches('\0'));
+                            qemu_log!("LBA0 = {:?}", unsafe { str::from_utf8_unchecked(&stem1) }.trim_end_matches('\0'));
+                            qemu_log!("LBA1 = {:?}", unsafe { str::from_utf8_unchecked(&stem2) }.trim_end_matches('\0'));
+                        }
+
+                        let stem2 = &mut buffer[512..1024];
+
+                        stem2[100..100 + 13].copy_from_slice(b"Hello, world!");
+
+                        drv.write(1, &stem2).unwrap();
                     }
 
                     // if !drv.is_packet {

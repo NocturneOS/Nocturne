@@ -1,7 +1,5 @@
-use x86::io::{inw, outb, outw};
-
 use crate::arch::x86::{dev::ata::{
-    ATABus, ATADrive, commands::{ATA_CMD_CACHE_FLUSH_EXT, ATA_CMD_READ_PIO_EXT, ATA_CMD_WRITE_PIO_EXT}, dma::DMA_IO_PORT, dma_prdt::PRDT, error::{ATAError, ATAIOError, ATAIOResult}, ide_400ns_delay, ide_poll, info::ATADriveInfo, io::ATAIO, regs::{ATA_REG_COMMAND, ATA_REG_DATA, ATA_REG_HDDEVSEL, ATA_REG_LBA0, ATA_REG_LBA1, ATA_REG_LBA2, ATA_REG_LBA3, ATA_REG_LBA4, ATA_REG_LBA5, ATA_REG_SECCOUNT0}
+    ATABus, ATADrive, dma::DMA_IO_PORT, dma_prdt::PRDT, error::{ATAIOError, ATAIOResult}, info::ATADriveInfo, io::ATAIO
 }, io::IOPort};
 
 pub struct ATAPhysicalDrive {
@@ -29,16 +27,36 @@ impl ATAPhysicalDrive {
 
     pub fn read(&mut self, lba: u64, output: &mut [u8]) -> ATAIOResult<()> {
         if self.identity.is_dma_supported() {
+            if self.identity.is_removable_media_device() {
+                todo!("DMA reading for removable media devices is not yet implemented");
+            }
+
             super::dma::ATADMA { drive: self }.read48(lba, output)
         } else {
+            if self.identity.is_removable_media_device() {
+                todo!("PIO reading for removable media devices is not yet implemented");
+            }
+
             super::pio::ATAPIO { drive: self }.read48(lba, output)
         }
     }
 
     pub fn write(&mut self, lba: u64, input: &[u8]) -> ATAIOResult<()> {
         if self.identity.is_dma_supported() {
+            // Direct writing to removable media devices is not supported,
+            // because to write on a removable medium requires user making the TOC,
+            // other calculations, performing power calibration (OPC), etc. which are not implemented yet.
+            if self.identity.is_removable_media_device() {
+                return Err(ATAIOError::UnsupportedOperation);
+            }
+
             super::dma::ATADMA { drive: self }.write48(lba, input)
         } else {
+            // See comment above.
+            if self.identity.is_removable_media_device() {
+                return Err(ATAIOError::UnsupportedOperation);
+            }
+
             super::pio::ATAPIO { drive: self }.write48(lba, input)
         }
     }
