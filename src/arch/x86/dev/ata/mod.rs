@@ -1,6 +1,6 @@
 use core::alloc::Layout;
 
-use alloc::vec;
+use alloc::{boxed::Box, vec};
 use noct_cpuregs::CPURegisters;
 use noct_interrupts::handler::register_interrupt_handler;
 use noct_logger::qemu_log;
@@ -190,6 +190,7 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
                     None
                 },
                 identity,
+                diskman_id: Some(noct_diskman::generate_new_id("ata"))
             });
         }
     }
@@ -216,6 +217,7 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
                 None
             },
             identity: identity,
+            diskman_id: Some(noct_diskman::generate_new_id("ata"))
         });
     }
 
@@ -240,53 +242,10 @@ fn check_all() {
 
                     qemu_log!("Sector size: {:?}", drv.info().sector_size());
 
-                    if !drv.is_packet && drv.info().is_dma_supported() {
-                        let mut buffer = vec![0u8; 1024];
-
-                        drv.read(0, &mut buffer).unwrap();
-
-                        {
-                            let stem1 = &buffer[0..512];
-                            let stem2 = &buffer[512..1024];
-
-                            qemu_log!("LBA0 = {:?}", unsafe { str::from_utf8_unchecked(&stem1) }.trim_end_matches('\0'));
-                            qemu_log!("LBA1 = {:?}", unsafe { str::from_utf8_unchecked(&stem2) }.trim_end_matches('\0'));
-                        }
-
-                        let stem2 = &mut buffer[512..1024];
-
-                        stem2[100..100 + 13].copy_from_slice(b"Hello, world!");
-
-                        drv.write(1, &stem2).unwrap();
+                    // FIXME: Remove that condition when I make Packet ATA work.
+                    if !drv.info().is_removable_media_device() {
+                        noct_diskman::register_drive(Box::new(drv));
                     }
-
-                    // if !drv.is_packet {
-                    //     let mut buffer = vec![0u8; 512];
-                        
-                    //     {
-                    //         drv.read48(0x0000_0000, 1, &mut buffer).unwrap();
-
-                    //         qemu_log!("LBA0 = {:?}", unsafe { str::from_utf8_unchecked(&buffer) }.trim_end_matches('\0'));
-                    //     }
-
-                    //     {
-                    //         buffer.fill(0);
-
-                    //         drv.read48(0x0000_0001, 1, &mut buffer).unwrap();
-
-                    //         qemu_log!("LBA1 = {:?}", unsafe { str::from_utf8_unchecked(&buffer) }.trim_end_matches('\0'));
-                    //     }
-
-                    //     {
-                    //         buffer.fill(0);
-
-                    //         let data = b"Hello, world!";
-
-                    //         buffer[0..data.len()].copy_from_slice(data);
-
-                    //         drv.write48(0x0000_0002, 1, &buffer).unwrap();
-                    //     }
-                    // }
                 }
                 Err(e) => {
                     qemu_log!("{bus:?} {drive:?} => Err({e:?})!");

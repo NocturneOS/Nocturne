@@ -6,7 +6,13 @@ use core::{panic::PanicInfo, time::Duration};
 use alloc::sync::Arc;
 use noct_logger::qemu_log;
 
-use crate::{arch::mem::paging::PageFlags, sched::{KERNEL_THREAD_DEFAULT_STACK_SIZE, thread::{ThreadFlags, ThreadPriority}}};
+use crate::{
+    arch::mem::paging::PageFlags,
+    sched::{
+        KERNEL_THREAD_DEFAULT_STACK_SIZE,
+        thread::{ThreadFlags, ThreadPriority},
+    },
+};
 
 mod arch;
 mod mem;
@@ -22,30 +28,30 @@ extern "C" fn kmain() -> ! {
     // To make kernel fully initialized we should initialize heap.
 
     mem::heap::init();
-    
+
     sched::init();
 
     // {
-        // qemu_log!("Creating 32 processes...");
+    // qemu_log!("Creating 32 processes...");
 
-        // let procs: [_; 32] = core::array::from_fn(|_| crate::sched::create_process("proc", "?"));
+    // let procs: [_; 32] = core::array::from_fn(|_| crate::sched::create_process("proc", "?"));
 
-        // qemu_log!("32 processes have been created!");
+    // qemu_log!("32 processes have been created!");
 
-        // core::mem::drop(procs);
+    // core::mem::drop(procs);
 
-        // let proc = crate::sched::this_process();
+    // let proc = crate::sched::this_process();
 
-        // for _ in 0..32 {
-        //     crate::sched::create_thread(Arc::clone(&proc), move || {
-        //         let id = crate::sched::this_thread_id();
+    // for _ in 0..32 {
+    //     crate::sched::create_thread(Arc::clone(&proc), move || {
+    //         let id = crate::sched::this_thread_id();
 
-        //         loop {
-        //             qemu_log!("Hi thread #{}", id);
-        //             crate::sched::sleep(Duration::from_millis((id * 40) as _));
-        //         }
-        //     }, KERNEL_THREAD_DEFAULT_STACK_SIZE, ThreadPriority::Low, ThreadFlags::empty());
-        // }
+    //         loop {
+    //             qemu_log!("Hi thread #{}", id);
+    //             crate::sched::sleep(Duration::from_millis((id * 40) as _));
+    //         }
+    //     }, KERNEL_THREAD_DEFAULT_STACK_SIZE, ThreadPriority::Low, ThreadFlags::empty());
+    // }
     // }
 
     // loop {}
@@ -53,7 +59,16 @@ extern "C" fn kmain() -> ! {
     noct_pci::scan();
 
     for i in noct_pci::devices().iter() {
-        qemu_log!("[{}.{}.{}]: ({}:{}): {:04x}:{:04x}", i.bus, i.slot, i.function, i.class, i.subclass, i.vendor, i.device);
+        qemu_log!(
+            "[{}.{}.{}]: ({}:{}): {:04x}:{:04x}",
+            i.bus,
+            i.slot,
+            i.function,
+            i.class,
+            i.subclass,
+            i.vendor,
+            i.device
+        );
     }
 
     {
@@ -77,6 +92,19 @@ extern "C" fn kmain() -> ! {
 
     crate::arch::x86::dev::ata::init();
 
+    for (idx, disk) in noct_diskman::disk_list().iter().enumerate() {
+        qemu_log!(
+            "#{}: id={}, name={}, type={:?}, capacity={} blocks {} bytes each, is_partition={}",
+            idx,
+            disk.id,
+            disk.name,
+            disk.drive_type,
+            disk.capacity.unwrap(),
+            disk.block_size.unwrap(),
+            disk.is_partition
+        );
+    }
+
     qemu_log!("It works!");
 
     loop {
@@ -87,7 +115,7 @@ extern "C" fn kmain() -> ! {
 #[panic_handler]
 fn __panic_handler(info: &PanicInfo) -> ! {
     noct_interrupts::cpu::disable_interrupts();
-    
+
     if let Some(loc) = info.location() {
         qemu_log!(
             "Kernel panicked at {}:{}:{}: {:#?}",
