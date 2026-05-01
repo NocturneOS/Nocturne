@@ -5,13 +5,12 @@ use noct_pci;
 use noct_sync::pseudosync::PseudoSync;
 
 use crate::arch::{
-    mem::paging,
-    x86::dev::ata::{
+    self, mem::paging, x86::dev::ata::{
         ATADrive, commands::{ATA_CMD_READ_DMA_EXT, ATA_CMD_WRITE_DMA_EXT}, drive::ATAPhysicalDrive, error::{ATAIOError, ATAIOResult}, io::ATAIO, regs::{
             ATA_REG_COMMAND, ATA_REG_HDDEVSEL, ATA_REG_LBA0, ATA_REG_LBA1, ATA_REG_LBA2,
             ATA_REG_SECCOUNT0,
         }
-    },
+    }
 };
 use super::dma_prdt::PRDT;
 
@@ -63,13 +62,16 @@ impl ATAIO for ATADMA<'_> {
 pub fn fill_prdt(prdt: &mut PRDT, buffer: &[u8]) {
     prdt.clear();
 
-    let chunks_count = buffer.chunks(65536).count();
+    // TODO: Improvement: Make them extents
+    let chunk_size = arch::get_page_size();
+    let chunks_count = buffer.chunks(chunk_size).count();
 
-    for (i, chunk) in buffer.chunks(65536).enumerate() {
+    for (i, chunk) in buffer.chunks(chunk_size).enumerate() {
+        let buf_virt = chunk.as_ptr().addr();
         let buf_phys =
-            paging::virt2phys(chunk.as_ptr().addr()).unwrap() + (chunk.as_ptr().addr() & 0xfff);
+            paging::virt2phys_precise(buf_virt).unwrap();
 
-        qemu_log!("Phys: {buf_phys:x?}");
+        qemu_log!("V{buf_virt:x?} -> P{buf_phys:x?}");
 
         prdt.set(
             i,
@@ -83,7 +85,7 @@ pub fn fill_prdt(prdt: &mut PRDT, buffer: &[u8]) {
     for i in 0..chunks_count {
         let entry = prdt.get(i).unwrap();
 
-        qemu_log!("PRDT {i}: {:#016x}: {:#016x}; LAST: {}", entry.buffer_phys(), entry.transfer_size(), entry.is_last());
+        qemu_log!("PRDT {i}: {:#010x}: {:#06x}; LAST: {}", entry.buffer_phys(), entry.transfer_size(), entry.is_last());
     }
 }
 

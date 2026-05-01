@@ -217,7 +217,55 @@ pub fn unmap_pages(virt_addr: usize, byte_count: usize) {
     }
 }
 
+/// Converts virtual address to physical address
+/// It doesn't preserve byte offsets from virt_addr, so address is page-size aligned.
 pub fn virt2phys(virt_addr: usize) -> Option<usize> {
+    let (pml4t_i, pdpt_i, pd_i, pt_i) = vaddr2indices(virt_addr & !0xfff);
+
+    if (pml4t()[pml4t_i] & 1) == 0 {
+        return None;
+    }
+
+    if (pml4t()[pml4t_i] & (1 << 7)) != 0 {
+        let page_base = pml4t()[pml4t_i] & !0x3fff_ffff;
+
+        return Some(page_base/* | (virt_addr & 0x3fff_ffff)*/);
+    }
+
+    //
+
+    if (pdpt(pml4t_i)[pdpt_i] & 1) == 0 {
+        return None;
+    }
+
+    if (pdpt(pml4t_i)[pdpt_i] & (1 << 7)) != 0 {
+        let page_base = pdpt(pml4t_i)[pdpt_i] & !0x1f_ffff;
+
+        return Some(page_base/* | (virt_addr & 0x1f_ffff)*/);
+    }
+
+    //
+
+    if (pd(pml4t_i, pdpt_i)[pd_i] & 1) == 0 {
+        return None;
+    }
+
+    if (pd(pml4t_i, pdpt_i)[pd_i] & (1 << 7)) != 0 {
+        return Some(pd(pml4t_i, pdpt_i)[pd_i] & !0xfff);
+    }
+
+    //
+
+    if (pt(pml4t_i, pdpt_i, pd_i)[pt_i] & 1) == 0 {
+        return None;
+    }
+
+    Some(pt(pml4t_i, pdpt_i, pd_i)[pt_i] & !0xfff)
+}
+
+/// Converts virtual address to physical address
+/// It includes a byte offset from virtual address.
+pub fn virt2phys_precise(virt_addr: usize) -> Option<usize> {
     let (pml4t_i, pdpt_i, pd_i, pt_i) = vaddr2indices(virt_addr & !0xfff);
 
     if (pml4t()[pml4t_i] & 1) == 0 {
@@ -249,7 +297,9 @@ pub fn virt2phys(virt_addr: usize) -> Option<usize> {
     }
 
     if (pd(pml4t_i, pdpt_i)[pd_i] & (1 << 7)) != 0 {
-        return Some(pd(pml4t_i, pdpt_i)[pd_i] & !0xfff);
+        let page_base = pd(pml4t_i, pdpt_i)[pd_i] & !0xfff;
+
+        return Some(page_base | (virt_addr & 0x1ff_fff));
     }
 
     //

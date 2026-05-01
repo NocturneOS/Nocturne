@@ -210,6 +210,28 @@ pub fn virt2phys(virt_addr: usize) -> Option<usize> {
     Some(page_table(pdi)[pti].0 & !0x3ff)
 }
 
+pub fn virt2phys_precise(virt_addr: usize) -> Option<usize> {
+    let (pdi, pti) = vaddr2indices(virt_addr & !0xfff);
+
+    // If no page table in page directory, exit.
+    if !page_directory()[pdi].is_present() {
+        return None;
+    }
+
+    // If page directory entry is an extended page, return it.
+    if page_directory()[pdi].is_extended() {
+        return Some(page_directory()[pdi].phys() + (virt_addr & 0xfff_fff));
+    }
+
+    // If page is not mapped in page table, exit.
+    if !page_table(pdi)[pti].is_present() {
+        return None;
+    }
+
+    // Otherwise, get the page table entry and clear service bits.
+    Some((page_table(pdi)[pti].0 & !0x3ff) + (virt_addr & 0xfff))
+}
+
 #[inline]
 pub fn is_memory_accessible(addr: usize) -> bool {
     virt2phys(addr).is_some()
