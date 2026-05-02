@@ -76,6 +76,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-fsman"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+]
+
+[[package]]
 name = "noct-interrupts"
 version = "0.1.0"
 dependencies = [
@@ -177,6 +184,7 @@ dependencies = [
  "lazy_static",
  "noct-cpuregs",
  "noct-diskman",
+ "noct-fsman",
  "noct-interrupts",
  "noct-logger",
  "noct-paging",

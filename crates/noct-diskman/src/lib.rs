@@ -103,7 +103,6 @@ pub fn read_bytes(disk_id: &str, byte_location: u64, buffer: &mut [u8]) -> DiskM
     }
 }
 
-
 /// Write data to disk.
 ///
 /// Returns -1 if disk can't be found.
@@ -122,6 +121,23 @@ pub fn write(disk_id: &str, location: u64, buffer: &[u8]) -> DiskManResult<i64> 
         None => Err(DiskManError::DiskNotFound),
     }
 }
+
+pub fn write_bytes(disk_id: &str, byte_location: u64, buffer: &[u8]) -> DiskManResult<i64> {
+    let drives_handle = DRIVES.read();
+    let disk_handle = drives_handle.iter().find(|x| x.read().get_id() == disk_id);
+
+    match disk_handle {
+        Some(x) => {
+            let mut bind = x.write();
+
+            let mut view = DiskView::new(&mut **bind);
+            
+            view.write_bytes(byte_location, buffer)
+        },
+        None => Err(DiskManError::DiskNotFound),
+    }
+}
+
 
 /// Controls disk/drive.
 ///

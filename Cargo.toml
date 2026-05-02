@@ -12,7 +12,7 @@ members = [
     "crates/noct-spec",
     "crates/noct-tools", "crates/noct-cpuregs", "crates/noct-interrupts", "crates/noct-logger", "crates/noct-time", "crates/noct-ps2", "crates/noct-pci", "crates/noct-smbios", "crates/noct-paging", "crates/noct-physmem-alloc", "crates/noct-sysinfo",
     "crates/noct-mbr",
-    "crates/noct-diskman",
+    "crates/noct-diskman", "crates/noct-fsman",
 ]
 resolver = "2"
 
@@ -38,6 +38,7 @@ noct-smbios = { path = "crates/noct-smbios" }
 noct-sysinfo = { path = "crates/noct-sysinfo" }
 noct-tools = { path = "crates/noct-tools" }
 noct-diskman = { path = "crates/noct-diskman" }
+noct-fsman = { path = "crates/noct-fsman" }
 
 
 # Profiles

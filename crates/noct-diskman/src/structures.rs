@@ -1,7 +1,4 @@
 use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
-
-use crate::{error::DiskManResult, view::DiskView};
 
 #[repr(u32)]
 #[derive(FromPrimitive, Debug, Clone, Copy)]

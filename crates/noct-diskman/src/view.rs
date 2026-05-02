@@ -62,4 +62,56 @@ impl<'a> DiskView<'a> {
 
         Ok(bytes_to_copy as i64)
     }
+
+    pub fn write_bytes(&mut self, byte_offset: u64, buf: &[u8]) -> DiskManResult<i64> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
+
+        let bs = self.block_size as u64;
+        let start_lba = byte_offset / bs;
+        let end_lba = (byte_offset + buf.len() as u64 + bs - 1) / bs;
+        let num_blocks = end_lba - start_lba;
+
+        let buf_align = self.drive.buffer_address_alignment();
+        let layout = Layout::from_size_align((num_blocks * bs) as _, buf_align).unwrap();
+
+        let buffer =
+            unsafe { alloc::alloc::alloc(layout) }
+                as *mut u8;
+
+        if buffer.is_null() {
+            alloc::alloc::handle_alloc_error(layout);
+        }
+
+        // If the write is not block-aligned, we need to read the first and/or last block to preserve the unaffected bytes.
+        if byte_offset % bs != 0 || (byte_offset + buf.len() as u64) % bs != 0 {
+            let read_result = self.drive.read(start_lba, unsafe {
+                core::slice::from_raw_parts_mut(buffer, (num_blocks * bs) as usize)
+            });
+        }
+
+        // Copy input buffer into the correct position within the block-aligned buffer.
+        let offset_within_first_block = (byte_offset % bs) as usize;
+        let bytes_to_copy = buf.len();
+        unsafe {
+            core::ptr::copy_nonoverlapping(
+                buf.as_ptr(),
+                buffer.add(offset_within_first_block),
+                bytes_to_copy,
+            );
+        }
+
+        let write_result = self.drive.write(start_lba, unsafe {
+            core::slice::from_raw_parts(buffer, (num_blocks * bs) as usize)
+        });
+
+        unsafe { alloc::alloc::dealloc(buffer, layout) };
+
+        if let Err(e) = write_result {
+            return Err(e);
+        }
+
+        Ok(bytes_to_copy as i64)
+    }
 }
