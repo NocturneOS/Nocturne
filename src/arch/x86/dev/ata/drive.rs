@@ -1,8 +1,20 @@
-use alloc::string::String;use noct_diskman::structures::Command::{self, GetMediumCapacity};
+use alloc::string::String;
+use noct_diskman::{
+    error::DiskManResult,
+    structures::Command,
+};
 
-use crate::arch::x86::{dev::ata::{
-    ATABus, ATADrive, dma::DMA_IO_PORT, dma_prdt::PRDT, error::{ATAIOError, ATAIOResult}, info::ATADriveInfo, io::ATAIO
-}, io::IOPort};
+use crate::arch::x86::{
+    dev::ata::{
+        ATABus, ATADrive,
+        dma::DMA_IO_PORT,
+        dma_prdt::PRDT,
+        error::{ATAIOError, ATAIOResult},
+        info::ATADriveInfo,
+        io::ATAIO,
+    },
+    io::IOPort,
+};
 
 pub struct ATAPhysicalDrive {
     pub(super) bus: ATABus,
@@ -10,7 +22,7 @@ pub struct ATAPhysicalDrive {
     pub(super) is_packet: bool,
     pub(super) identity: ATADriveInfo,
     pub(super) prdt: Option<PRDT>,
-    pub(super) diskman_id: Option<String>
+    pub(super) diskman_id: Option<String>,
 }
 
 impl ATAPhysicalDrive {
@@ -24,8 +36,11 @@ impl ATAPhysicalDrive {
 
     pub fn dma_io_port(&self) -> Option<IOPort> {
         let offset = self.bus.dma_io_offset();
-        
-        DMA_IO_PORT.get().get().map(|base| IOPort::new(base + offset))
+
+        DMA_IO_PORT
+            .get()
+            .get()
+            .map(|base| IOPort::new(base + offset))
     }
 
     pub fn read(&mut self, lba: u64, output: &mut [u8]) -> ATAIOResult<()> {
@@ -65,7 +80,7 @@ impl ATAPhysicalDrive {
     }
 }
 
-impl noct_diskman::structures::Drive for ATAPhysicalDrive {
+impl noct_diskman::drive::Drive for ATAPhysicalDrive {
     fn get_name(&self) -> &str {
         "ata"
     }
@@ -74,35 +89,46 @@ impl noct_diskman::structures::Drive for ATAPhysicalDrive {
         self.diskman_id.as_deref().unwrap()
     }
 
-    fn read(&mut self, location: u64, buffer: &mut [u8]) -> i64 {
-        self.read(location, buffer).map(|_| buffer.len() as i64).unwrap_or(-1)
+    fn read(&mut self, location: u64, buffer: &mut [u8]) -> DiskManResult<i64> {
+        self.read(location, buffer)
+            .map(|_| buffer.len() as i64)
+            .map_err(|e| panic!("Error: {e:?}"))
     }
 
-    fn write(&mut self, location: u64, buffer: &[u8]) -> i64 {
-        self.write(location, buffer).map(|_| buffer.len() as i64).unwrap_or(-1)
+    fn write(&mut self, location: u64, buffer: &[u8]) -> DiskManResult<i64> {
+        self.write(location, buffer)
+            .map(|_| buffer.len() as i64)
+            .map_err(|e| panic!("Error: {e:?}"))
     }
 
-    fn control(&mut self, command: Command, command_parameters: &[u8], data: &mut [u8]) -> i64 {
+    fn control(
+        &mut self,
+        command: Command,
+        command_parameters: &[u8],
+        data: &mut [u8],
+    ) -> DiskManResult<i64> {
         match command {
-            Command::GetMediumCapacity => {
-                let max_lba = self.info().max_lba();
-                let blocksize = self.info().sector_size() as u32;
-
-                data[..8].copy_from_slice(&max_lba.to_le_bytes());
-                data[8..12].copy_from_slice(&blocksize.to_le_bytes());
-            },
-            Command::GetDriveType => {
-                let drive_type = if self.info().is_removable_media_device() {
-                    noct_diskman::structures::DriveType::RemovableMedia
-                } else {
-                    noct_diskman::structures::DriveType::HardDrive
-                };
-
-                data[..4].copy_from_slice(&(drive_type as u32).to_le_bytes());
-            },
-            cmd => todo!("Unimplemented control command for ATA (issued: {cmd:?})")
+            cmd => todo!("Unimplemented control command for ATA (issued: {cmd:?})"),
         }
+    }
 
-        0
+    fn buffer_address_alignment(&self) -> usize {
+        1
+    }
+
+    fn drive_type(&self) -> noct_diskman::structures::DriveType {
+        if self.info().is_removable_media_device() {
+            noct_diskman::structures::DriveType::RemovableMedia
+        } else {
+            noct_diskman::structures::DriveType::HardDrive
+        }
+    }
+
+    fn capacity(&self) -> Option<u64> {
+        Some(self.info().max_lba())
+    }
+
+    fn block_size(&self) -> Option<u32> {
+        Some(self.info().sector_size() as _)
     }
 }

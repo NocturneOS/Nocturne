@@ -105,6 +105,15 @@ extern "C" fn kmain() -> ! {
         );
     }
 
+    {
+        let mut buffer = [0u8; 6];
+
+        let result = noct_diskman::read_bytes("ata0.2", 7, &mut buffer);
+
+        qemu_log!("Read from disk: {:?}", result);
+        qemu_log!("Data: {:?}", unsafe { str::from_utf8_unchecked(&buffer[..result.unwrap() as usize]) });
+    }
+
     qemu_log!("It works!");
 
     loop {

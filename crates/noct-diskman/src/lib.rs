@@ -2,13 +2,15 @@
 
 extern crate alloc;
 
-pub mod generic_drive;
+pub mod drive;
+pub mod error;
 pub mod partition;
 pub mod structures;
+pub mod view;
 
 use alloc::{
     borrow::ToOwned, boxed::Box, collections::linked_list::LinkedList, format, string::String,
-    vec::Vec,
+    vec::{Vec},
 };
 use noct_mbr::{PartitionRecord, PartitionType};
 use spin::RwLock;
@@ -16,8 +18,7 @@ use spin::RwLock;
 use lazy_static::lazy_static;
 
 use crate::{
-    partition::Partition,
-    structures::{Command, Drive, DriveType},
+    drive::Drive, error::{DiskManError, DiskManResult}, partition::Partition, structures::{Command, DriveType}, view::DiskView
 };
 
 lazy_static! {
@@ -26,28 +27,28 @@ lazy_static! {
     /// RwLock ensures nobody can edit LinkedList during disk operations
     /// (For example prevents disk removal [from software side] during operation)
     /// The second RwLock ensures that one operation at time per disk can be performed to avoid driver fooling and thus undefined behaviour.
-    pub static ref DRIVES: RwLock<LinkedList<RwLock<Box<dyn Drive + Send + Sync + 'static>>>> =
-        RwLock::new(LinkedList::new());
+    pub static ref DRIVES: RwLock<Vec<RwLock<Box<dyn Drive + Send + Sync + 'static>>>> =
+        RwLock::new(Vec::new());
 }
 
-pub fn register_drive(drive: Box<dyn Drive + Send + Sync + 'static>) {
+pub fn register_drive(drive: Box<dyn Drive + Send + Sync + 'static>) -> DiskManResult<()>{
     // Add drive to the manager.
 
     {
         let mut lock = DRIVES.write();
-        lock.push_back(RwLock::new(drive));
+        lock.push(RwLock::new(drive));
     }
 
     // Run partition scanning
 
     let id = {
         let lock = DRIVES.read();
-        let disk_guard = lock.back().unwrap().read();
+        let disk_guard = lock.last().unwrap().read();
 
         disk_guard.get_id().to_owned()
     };
 
-    rescan_disk_for_partitions(&id);
+    rescan_disk_for_partitions(&id)
 }
 
 pub fn generate_new_id(driver_id: &str) -> String {
@@ -71,22 +72,37 @@ pub fn generate_new_id(driver_id: &str) -> String {
 
 /// Read data from disk.
 ///
-/// Returns -1 if disk can't be found.
-///
 /// # Arguments:
 ///
 /// * `disk_id` - ID of the target disk.
-/// * `location` - Exact location in bytes.
+/// * `location` - Exact location in blocks.
 /// * `buffer` - Output buffer where data is being written.
-pub fn read(disk_id: &str, location: u64, buffer: &mut [u8]) -> i64 {
+pub fn read(disk_id: &str, location: u64, buffer: &mut [u8]) -> DiskManResult<i64> {
     let drives_handle = DRIVES.read();
     let disk_handle = drives_handle.iter().find(|x| x.read().get_id() == disk_id);
 
     match disk_handle {
         Some(x) => x.write().read(location, buffer),
-        None => -1,
+        None => Err(DiskManError::DiskNotFound),
     }
 }
+
+pub fn read_bytes(disk_id: &str, byte_location: u64, buffer: &mut [u8]) -> DiskManResult<i64> {
+    let drives_handle = DRIVES.read();
+    let disk_handle = drives_handle.iter().find(|x| x.read().get_id() == disk_id);
+
+    match disk_handle {
+        Some(x) => {
+            let mut bind = x.write();
+
+            let mut view = DiskView::new(&mut **bind);
+            
+            view.read_bytes(byte_location, buffer)
+        },
+        None => Err(DiskManError::DiskNotFound),
+    }
+}
+
 
 /// Write data to disk.
 ///
@@ -95,15 +111,15 @@ pub fn read(disk_id: &str, location: u64, buffer: &mut [u8]) -> i64 {
 /// # Arguments:
 ///
 /// * `disk_id` - ID of the target disk.
-/// * `location` - Exact location in bytes.
+/// * `location` - Exact location in blocks.
 /// * `buffer` - Output buffer where data is being copied from.
-pub fn write(disk_id: &str, location: u64, buffer: &[u8]) -> i64 {
+pub fn write(disk_id: &str, location: u64, buffer: &[u8]) -> DiskManResult<i64> {
     let drives_handle = DRIVES.read();
     let disk_handle = drives_handle.iter().find(|x| x.read().get_id() == disk_id);
 
     match disk_handle {
         Some(x) => x.write().write(location, buffer),
-        None => -1,
+        None => Err(DiskManError::DiskNotFound),
     }
 }
 
@@ -116,13 +132,13 @@ pub fn write(disk_id: &str, location: u64, buffer: &[u8]) -> i64 {
 /// * `command` - A command. Look [crate::structures::Command] for more.
 /// * `command_parameters` - Some parameters for the command (may be empty).
 /// * `data` - Output data buffer (may be empty).
-pub fn control(disk_id: &str, command: Command, command_parameters: &[u8], data: &mut [u8]) -> i64 {
+pub fn control(disk_id: &str, command: Command, command_parameters: &[u8], data: &mut [u8]) -> DiskManResult<i64> {
     let drives_handle = DRIVES.read();
     let disk_handle = drives_handle.iter().find(|x| x.read().get_id() == disk_id);
 
     match disk_handle {
         Some(x) => x.write().control(command, command_parameters, data),
-        None => -1,
+        None => Err(DiskManError::DiskNotFound),
     }
 }
 
@@ -130,9 +146,7 @@ fn remove_partitions(disk_id: &str) {
     let mut drives_handle = DRIVES.write();
 
     drives_handle
-        .extract_if(|x| {
-            // qemu_note!("{disk_id} == {:?}", x.read().get_parent_disk_id());
-
+        .extract_if(.., |x| {
             x.read().get_parent_disk_id() == Some(disk_id)
         })
         .for_each(drop);
@@ -143,11 +157,11 @@ fn scan_partitions(
     block_size: usize,
     container_base: Option<u32>,
     ebr_location: Option<u32>,
-) -> Vec<PartitionRecord> {
-    let mut raw_buffer = [0u8; 512];
-    let read_at = ebr_location.unwrap_or(0) as u64 * block_size as u64;
+) -> DiskManResult<Vec<PartitionRecord>> {
+    let mut raw_buffer = alloc::vec![0u8; 512];
+    let read_at = ebr_location.unwrap_or(0) as u64;// * block_size as u64;
 
-    disk.read(read_at, &mut raw_buffer);
+    disk.read(read_at, &mut raw_buffer)?;
 
     let mut records: Vec<PartitionRecord> = noct_mbr::parse_from_sector(&raw_buffer);
     let mut filtered_records = Vec::new();
@@ -167,12 +181,12 @@ fn scan_partitions(
                     // Primary - add and recurse
                     filtered_records.push(record.clone());
                     let new_base = Some(record.start_sector_lba);
-                    let sub = scan_partitions(disk, block_size, new_base, new_base);
+                    let sub = scan_partitions(disk, block_size, new_base, new_base)?;
                     filtered_records.extend(sub);
                 } else {
                     // Extended - just recurse
                     let next_ebr = Some(record.start_sector_lba);
-                    let sub = scan_partitions(disk, block_size, container_base, next_ebr);
+                    let sub = scan_partitions(disk, block_size, container_base, next_ebr)?;
                     filtered_records.extend(sub);
                 }
             }
@@ -182,10 +196,10 @@ fn scan_partitions(
         }
     }
 
-    filtered_records
+    Ok(filtered_records)
 }
 
-pub fn rescan_disk_for_partitions(disk_id: &str) {
+pub fn rescan_disk_for_partitions(disk_id: &str) -> DiskManResult<()> {
     // qemu_note!("Disk count before removing partitions: {}", DRIVES.read().len());
     remove_partitions(disk_id);
     // qemu_note!("Disk count after removing partitions: {}", DRIVES.read().len());
@@ -200,8 +214,8 @@ pub fn rescan_disk_for_partitions(disk_id: &str) {
 
     match disk_handle {
         Some(x) => {
-            let sector_size = x.write().get_block_size().unwrap();
-            let partitions = scan_partitions(x.write().as_mut(), sector_size as _, None, None);
+            let sector_size = x.read().block_size().unwrap();
+            let partitions = scan_partitions(x.write().as_mut(), sector_size as _, None, None)?;
 
             for (n, i) in partitions.iter().enumerate() {
                 // I thought we need to compute byte-position in MBR (EBR) by multiplying starting
@@ -212,8 +226,8 @@ pub fn rescan_disk_for_partitions(disk_id: &str) {
                 // But I found that in terms of MBR / EBR we should assume that sector size
                 // should be 512 bytes long no matter what.
 
-                let offset_start = i.start_sector_lba as u64 * 512;
-                let offset_end = (i.start_sector_lba + i.num_sectors) as u64 * 512;
+                let offset_start = i.start_sector_lba as u64;
+                let offset_end = (i.start_sector_lba + i.num_sectors) as u64;
 
                 let partition = Partition {
                     parent_disk_name: x.read().get_name().to_owned(),
@@ -235,6 +249,8 @@ pub fn rescan_disk_for_partitions(disk_id: &str) {
     let mut drives_handle = DRIVES.write();
 
     drives_handle.extend(new_partitions);
+
+    Ok(())
 }
 
 pub struct DiskInfo {
@@ -251,7 +267,7 @@ pub fn disk_list() -> Vec<DiskInfo> {
 
     lock.iter()
         .map(|x| {
-            let mut handle = x.write();
+            let handle = x.read();
 
             let name = handle.get_name().to_owned();
             let id = handle.get_id().to_owned();
@@ -261,9 +277,9 @@ pub fn disk_list() -> Vec<DiskInfo> {
                 name,
                 id,
                 is_partition: is_partition,
-                drive_type: handle.get_type(),
-                capacity: handle.get_capacity(),
-                block_size: handle.get_block_size(),
+                drive_type: handle.drive_type(),
+                capacity: handle.capacity(),
+                block_size: handle.block_size(),
             }
         })
         .collect()
