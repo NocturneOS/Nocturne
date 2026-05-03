@@ -39,6 +39,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55dd888a213fc57e957abf2aa305ee3e8a28dbe05687a251f33b637cd46b0070"
 
 [[package]]
+name = "iso9660_simple"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cc261cb14deaa14953a68f11fe742d00b4dd7fd2b0125d71dc1d31c6337a6ee"
+dependencies = [
+ "bitflags 2.10.0",
+ "ucs2",
+ "zerocopy",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -81,6 +92,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags 2.10.0",
  "lazy_static",
+ "noct-time",
 ]
 
 [[package]]
@@ -91,6 +103,18 @@ dependencies = [
  "noct-cpuregs",
  "noct-sync",
  "x86",
+]
+
+[[package]]
+name = "noct-iso9660"
+version = "0.1.0"
+dependencies = [
+ "iso9660_simple",
+ "noct-diskman",
+ "noct-fsman",
+ "noct-logger",
+ "noct-time",
+ "noct-tools",
 ]
 
 [[package]]
@@ -187,6 +211,7 @@ dependencies = [
  "noct-diskman",
  "noct-fsman",
  "noct-interrupts",
+ "noct-iso9660",
  "noct-logger",
  "noct-paging",
  "noct-pci",
@@ -282,6 +307,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ucs2"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df79298e11f316400c57ec268f3c2c29ac3c4d4777687955cd3d4f3a35ce7eba"
+dependencies = [
+ "bit_field",
+]
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -296,4 +330,24 @@ dependencies = [
  "bit_field",
  "bitflags 1.3.2",
  "raw-cpuid",
+]
+
+[[package]]
+name = "zerocopy"
+version = "0.8.48"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eed437bf9d6692032087e337407a86f04cd8d6a16a37199ed57949d415bd68e9"
+dependencies = [
+ "zerocopy-derive",
+]
+
+[[package]]
+name = "zerocopy-derive"
+version = "0.8.48"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70e3cd084b1788766f53af483dd21f93881ff30d7320490ec3ef7526d203bad4"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]

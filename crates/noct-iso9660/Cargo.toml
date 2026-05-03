@@ -1,0 +1,13 @@
+[package]
+name = "noct-iso9660"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+iso9660_simple = { version = "0.2.1", default-features = false }
+
+noct-diskman = { path = "../noct-diskman" }
+noct-fsman = { path = "../noct-fsman" }
+noct-logger = { path = "../noct-logger" }
+noct-tools = { path = "../noct-tools" }
+noct-time = { path = "../noct-time" }

@@ -39,6 +39,7 @@ noct-sysinfo = { path = "crates/noct-sysinfo" }
 noct-tools = { path = "crates/noct-tools" }
 noct-diskman = { path = "crates/noct-diskman" }
 noct-fsman = { path = "crates/noct-fsman" }
+noct-iso9660 = { path = "crates/noct-iso9660" }
 
 
 # Profiles
