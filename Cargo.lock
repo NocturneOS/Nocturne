@@ -92,7 +92,10 @@ version = "0.1.0"
 dependencies = [
  "bitflags 2.10.0",
  "lazy_static",
+ "noct-diskman",
+ "noct-logger",
  "noct-time",
+ "spin 0.10.0",
 ]
 
 [[package]]

@@ -1,17 +1,14 @@
 #![no_std]
 #![feature(linked_list_retain)]
 
-use core::{panic::PanicInfo, time::Duration};
+use core::{panic::PanicInfo};
 
-use alloc::sync::Arc;
+use alloc::{boxed::Box};
+use noct_fsman::handles::file::FileOpenMode;
 use noct_logger::qemu_log;
 
 use crate::{
     arch::mem::paging::PageFlags,
-    sched::{
-        KERNEL_THREAD_DEFAULT_STACK_SIZE,
-        thread::{ThreadFlags, ThreadPriority},
-    },
 };
 
 mod arch;
@@ -103,6 +100,27 @@ extern "C" fn kmain() -> ! {
             disk.block_size.unwrap(),
             disk.is_partition
         );
+    }
+
+    noct_fsman::store::register_filesystem(Box::new(noct_fsman::nullfs::NullFilesystem));
+    noct_fsman::store::register_filesystem(Box::new(noct_fsman::debugfs::DebugFilesystem));
+
+    noct_fsman::probe();
+
+    {
+        let hdl = noct_fsman::mount::get_handle("disk0.1");
+
+        if let Some(hdl) = hdl {
+            qemu_log!("Found mounted disk with debugfs: {}", hdl.fs().name());
+
+            let mut buf = [0u8; 16];
+            let mut file = hdl.open("hello.txt", FileOpenMode::Read | FileOpenMode::Write).unwrap();
+
+            file.read(&mut buf);
+        } else {
+            qemu_log!("Disk with debugfs not found.");
+            
+        }
     }
 
     qemu_log!("It works!");

@@ -5,6 +5,9 @@ edition = "2024"
 
 [dependencies]
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+spin = "0.10.0"
 bitflags = "2.10.0"
 
+noct-diskman = { path = "../noct-diskman" }
+noct-logger = { path = "../noct-logger" }
 noct-time = { path = "../noct-time" }

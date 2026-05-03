@@ -1,9 +1,11 @@
 #[derive(Debug, Clone, Copy)]
 pub enum FilesystemError {
-	NotFound,
 	AlreadyExists,
-	PermissionDenied,
+	DiskNotRecognized,
+	InvalidSeek,
 	IoError,
+	NotFound,
+	PermissionDenied,
 	UnsupportedOperation,
 }
 

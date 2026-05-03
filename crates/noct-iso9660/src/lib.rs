@@ -15,11 +15,11 @@ struct ThatDisk<'disk> {
 }
 
 #[inline]
-fn iso_type_to_fsman_type(entry: &ISODirectoryEntry) -> noct_fsman::EntityType {
+fn iso_type_to_fsman_type(entry: &ISODirectoryEntry) -> noct_fsman::entity::EntityType {
     if entry.is_folder() {
-        noct_fsman::EntityType::Directory
+        noct_fsman::entity::EntityType::Directory
     } else {
-        noct_fsman::EntityType::File
+        noct_fsman::entity::EntityType::File
     }
 }
 

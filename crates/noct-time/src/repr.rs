@@ -46,6 +46,17 @@ impl Time {
         Ok(time)
     }
 
+    pub fn epoch() -> Self {
+        Self {
+            year: 1970,
+            month: 1,
+            day: 1,
+            hour: 0,
+            minute: 0,
+            second: 0,
+        }
+    }
+
     /// Returns `true` if the given year is a leap year in the Gregorian calendar.
     pub fn is_leap_year(&self) -> bool {
         Self::is_leap_year_inner(self.year)

@@ -2,72 +2,46 @@
 
 extern crate alloc;
 
-use alloc::boxed::Box;
-use lazy_static::lazy_static;
+use alloc::{boxed::Box};
 
-use bitflags::bitflags;
+use noct_logger::qemu_log;
 
-use crate::error::FilesystemResult;
+use crate::{error::FilesystemResult, handles::{directory::DirectoryHandle, file::{FileHandle, FileOpenMode, SeekOffset}}};
 
 pub mod error;
-
-/// Filesystem entity type.
-#[derive(Debug, Clone, Copy)]
-pub enum EntityType {
-	Directory,
-	File,
-	// Symlinks, hardlinks and FIFO nodes are not currently planned to support.
-	// I'll add them as I make support from filesystems' side and ...
-	// ... some API endpoints.
-}
+pub mod debugfs;
+pub mod entity;
+pub mod handles;
+pub mod mount;
+pub mod nullfs;
+pub mod store;
 
 /// Alternative to Unix's inode.
 pub type NodeId = u64;
 
-/// A file handle. It is an opaque type that represents an open file.
-/// The actual implementation of the file handle is hidden from the user of the API, ...
-/// ... and it can be implemented in various ways depending on the underlying filesystem.
-/// 
-/// The file handle is used to perform operations on the open file, ...
-/// ... such as reading, writing, seeking, etc.
-pub struct FileHandle {
-	node_id: NodeId,
-	position: u64,
-}
-
-pub struct DirectoryHandle;
-
-bitflags! {
-	#[derive(Clone, Copy)]
-	pub struct FileOpenMode: u32 {
-		const Read = 1 << 0;
-		const Write = 1 << 1;
-		const Truncate = 1 << 2;
-	}
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum SeekOffset {
-	Beginning(u64),
-	Current(u64),
-	End(u64)
-}
-
-pub trait Filesystem {
+pub trait Filesystem: Sync + Send {
 	fn probe(&self, disk_id: &str) -> Option<Box<dyn FilesystemInstance>>;
+	fn name(&self) -> &str;
 }
 
+pub trait FilesystemInstance: Sync + Send {
+	fn fs(&self) -> &dyn Filesystem;
 
-pub trait FilesystemInstance {
-	fn open(&mut self, disk_id: &str, path: &str, mode: FileOpenMode) -> FilesystemResult<()>;
-	fn opendir(&mut self, disk_id: &str, path: &str) -> FilesystemResult<()>;
+	fn open(&self, path: &str, mode: FileOpenMode) -> FilesystemResult<FileHandle>;
+	fn opendir(&self, path: &str) -> FilesystemResult<DirectoryHandle>;
 
-	fn read(&mut self, handle: &mut FileHandle, buffer: &mut [u8]) -> FilesystemResult<u64>;
-	fn write(&mut self, handle: &mut FileHandle, buffer: &[u8]) -> FilesystemResult<u64>;
-	
-	/// Seeks to a new position in the file, returning the new position from the beginning of the file.
-	fn seek(&mut self, handle: &mut FileHandle, offset: SeekOffset) -> FilesystemResult<u64>;
-	fn tell(&mut self, handle: &mut FileHandle) -> FilesystemResult<u64> {
-		self.seek(handle, SeekOffset::Current(0))
+	fn read(&self, handle: &mut FileHandle, buffer: &mut [u8]) -> FilesystemResult<u64>;
+	fn write(&self, handle: &mut FileHandle, buffer: &[u8]) -> FilesystemResult<u64>;
+
+	fn info(&self, path: &str) -> FilesystemResult<crate::entity::EntityInfo>;
+}
+
+pub fn probe() {
+	qemu_log!("FSMan: {} filesystems registered.", crate::store::STORE.lock().len());
+
+	for fs in crate::store::STORE.lock().iter() {
+		qemu_log!(" - {}", fs.name());
 	}
+
+	mount::scan_and_mount();
 }
