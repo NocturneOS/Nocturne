@@ -6,7 +6,7 @@ use alloc::{boxed::Box};
 
 use noct_logger::qemu_log;
 
-use crate::{error::FilesystemResult, handles::{directory::DirectoryHandle, file::{FileHandle, FileOpenMode, SeekOffset}}};
+use crate::{error::FilesystemResult, handles::{directory::{DirectoryHandle, DirectoryEntry}, file::{FileHandle, FileOpenMode, SeekOffset}}};
 
 pub mod error;
 pub mod debugfs;
@@ -28,10 +28,12 @@ pub trait FilesystemInstance: Sync + Send {
 	fn fs(&self) -> &dyn Filesystem;
 
 	fn open(&self, path: &str, mode: FileOpenMode) -> FilesystemResult<FileHandle>;
-	fn opendir(&self, path: &str) -> FilesystemResult<DirectoryHandle>;
 
 	fn read(&self, handle: &mut FileHandle, buffer: &mut [u8]) -> FilesystemResult<u64>;
 	fn write(&self, handle: &mut FileHandle, buffer: &[u8]) -> FilesystemResult<u64>;
+
+	fn opendir(&self, path: &str) -> FilesystemResult<DirectoryHandle>;
+	fn readdir(&self, handle: &mut DirectoryHandle, buffer: &mut [u8]) -> FilesystemResult<DirectoryEntry>;
 
 	fn info(&self, path: &str) -> FilesystemResult<crate::entity::EntityInfo>;
 }
