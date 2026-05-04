@@ -36,6 +36,9 @@ pub trait FilesystemInstance: Sync + Send {
 	fn readdir(&self, handle: &mut DirectoryHandle, buffer: &mut [u8]) -> FilesystemResult<DirectoryEntry>;
 
 	fn info(&self, path: &str) -> FilesystemResult<crate::entity::EntityInfo>;
+
+	fn close(&self, handle: &mut FileHandle) -> FilesystemResult<()>;
+	fn closedir(&self, handle: &mut DirectoryHandle) -> FilesystemResult<()>;
 }
 
 pub fn probe() {
