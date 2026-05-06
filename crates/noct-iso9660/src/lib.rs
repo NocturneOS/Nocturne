@@ -6,13 +6,10 @@ use core::ffi::{c_char, c_void};
 
 use alloc::vec::Vec;
 use iso9660_simple::{helpers::get_directory_entry_by_path, ISODirectoryEntry};
+use noct_fsman::{Filesystem, FilesystemInstance};
 use noct_logger::{qemu_log};
 
 const ISO9660_OEM: [u8; 5] = [67, 68, 48, 48, 49];
-
-struct ThatDisk<'disk> {
-    disk_name: &'disk str,
-}
 
 #[inline]
 fn iso_type_to_fsman_type(entry: &ISODirectoryEntry) -> noct_fsman::entity::EntityType {
@@ -33,6 +30,66 @@ fn iso_datetime_to_fsm(entry: &ISODirectoryEntry) -> noct_time::repr::Time {
         entry.record.datetime.minute as _,
         entry.record.datetime.second as _,
     ).unwrap()
+}
+
+struct ISO9660Filesystem;
+
+impl Filesystem for ISO9660Filesystem {
+    fn probe(&self, disk_id: &str) -> Option<alloc::boxed::Box<dyn noct_fsman::FilesystemInstance>> {
+        let mut buffer = [0u8; 5];
+
+        noct_diskman::read_bytes(disk_id, 0x8001, &mut buffer).ok()?;
+
+        if ISO9660_OEM != buffer {
+            return None;
+        }
+
+        todo!()
+    }
+
+    fn name(&self) -> &str {
+        todo!()
+    }
+}
+
+struct ISO9660FilesystemInstance;
+
+impl FilesystemInstance for ISO9660FilesystemInstance {
+    fn fs(&self) -> &dyn Filesystem {
+        &ISO9660Filesystem
+    }
+
+    fn open(&self, path: &str, mode: noct_fsman::handles::file::FileOpenMode) -> noct_fsman::error::FilesystemResult<noct_fsman::handles::file::FileHandle> {
+        todo!()
+    }
+
+    fn read(&self, handle: &mut noct_fsman::handles::file::FileHandle, buffer: &mut [u8]) -> noct_fsman::error::FilesystemResult<u64> {
+        todo!()
+    }
+
+    fn write(&self, handle: &mut noct_fsman::handles::file::FileHandle, buffer: &[u8]) -> noct_fsman::error::FilesystemResult<u64> {
+        todo!()
+    }
+
+    fn opendir(&self, path: &str) -> noct_fsman::error::FilesystemResult<noct_fsman::handles::directory::DirectoryHandle> {
+        todo!()
+    }
+
+    fn readdir(&self, handle: &mut noct_fsman::handles::directory::DirectoryHandle) -> noct_fsman::error::FilesystemResult<noct_fsman::handles::directory::DirectoryEntry> {
+        todo!()
+    }
+
+    fn info(&self, path: &str) -> noct_fsman::error::FilesystemResult<noct_fsman::entity::EntityInfo> {
+        todo!()
+    }
+
+    fn close(&self, handle: &mut noct_fsman::handles::file::FileHandle) -> noct_fsman::error::FilesystemResult<()> {
+        todo!()
+    }
+
+    fn closedir(&self, handle: &mut noct_fsman::handles::directory::DirectoryHandle) -> noct_fsman::error::FilesystemResult<()> {
+        todo!()
+    }
 }
 
 // unsafe extern "C" fn fun_read(
