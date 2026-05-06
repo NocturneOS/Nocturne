@@ -66,4 +66,19 @@ impl FilesystemInstance for DebugFSInstance {
         qemu_log!("DebugFS: info called with path '{}'", path);
         Err(FilesystemError::NotFound)
     }
+    
+    fn readdir(&self, _handle: &mut DirectoryHandle) -> FilesystemResult<crate::handles::directory::DirectoryEntry> {
+        qemu_log!("DebugFS: readdir called");
+        Err(FilesystemError::NotFound)
+    }
+    
+    fn close(&self, handle: &mut FileHandle) -> FilesystemResult<()> {
+        qemu_log!("DebugFS: close called");
+        Err(FilesystemError::NotFound)
+    }
+    
+    fn closedir(&self, handle: &mut DirectoryHandle) -> FilesystemResult<()> {
+        qemu_log!("DebugFS: closedir called");
+        Err(FilesystemError::NotFound)
+    }
 }

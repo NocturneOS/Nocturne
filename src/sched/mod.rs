@@ -1,6 +1,4 @@
 use core::{
-    alloc::Layout,
-    cell::Cell,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 

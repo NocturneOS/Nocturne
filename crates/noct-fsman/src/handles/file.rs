@@ -2,7 +2,7 @@ use alloc::{string::String, sync::Arc};
 use bitflags::bitflags;
 
 use crate::{
-    NodeId, entity::EntityInfo, error::{FilesystemError, FilesystemResult}
+    entity::EntityInfo, error::{FilesystemError, FilesystemResult}
 };
 
 bitflags! {

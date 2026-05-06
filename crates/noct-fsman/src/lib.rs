@@ -33,7 +33,7 @@ pub trait FilesystemInstance: Sync + Send {
 	fn write(&self, handle: &mut FileHandle, buffer: &[u8]) -> FilesystemResult<u64>;
 
 	fn opendir(&self, path: &str) -> FilesystemResult<DirectoryHandle>;
-	fn readdir(&self, handle: &mut DirectoryHandle, buffer: &mut [u8]) -> FilesystemResult<DirectoryEntry>;
+	fn readdir(&self, handle: &mut DirectoryHandle) -> FilesystemResult<DirectoryEntry>;
 
 	fn info(&self, path: &str) -> FilesystemResult<crate::entity::EntityInfo>;
 
