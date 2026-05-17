@@ -2,14 +2,16 @@
 pub enum FilesystemError {
 	AlreadyExists,
 	DiskNotRecognized,
-	InvalidSeek,
+	EndOfIterator,
 	InvalidEntity,
+	InvalidHandle,
+	InvalidMode,
+	InvalidSeek,
 	IoError,
 	NotFound,
 	PermissionDenied,
+	Unknown,
 	UnsupportedOperation,
-	EndOfIterator,
-	Unknown
 }
 
 pub type FilesystemResult<T> = Result<T, FilesystemError>;

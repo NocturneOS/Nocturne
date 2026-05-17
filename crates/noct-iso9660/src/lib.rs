@@ -108,7 +108,7 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
 
     fn open(&self, path: &str, mode: FileOpenMode) -> FilesystemResult<FileHandle> {
         if mode.contains(FileOpenMode::Truncate) | mode.contains(FileOpenMode::Write) {
-            return Err(FilesystemError::UnsupportedOperation);
+            return Err(FilesystemError::InvalidMode);
         }
 
         let mut inst = self.inst.lock();
