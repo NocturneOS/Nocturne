@@ -1,15 +1,13 @@
 #![no_std]
 #![feature(linked_list_retain)]
 
-use core::{panic::PanicInfo};
+use core::panic::PanicInfo;
 
-use alloc::{boxed::Box};
+use alloc::{boxed::Box, vec::Vec};
 use noct_fsman::handles::file::FileOpenMode;
 use noct_logger::qemu_log;
 
-use crate::{
-    arch::mem::paging::PageFlags,
-};
+use crate::arch::mem::paging::PageFlags;
 
 mod arch;
 mod mem;
@@ -102,9 +100,9 @@ extern "C" fn kmain() -> ! {
         );
     }
 
-    noct_fsman::store::register_filesystem(Box::new(noct_fsman::nullfs::NullFilesystem));
+    // noct_fsman::store::register_filesystem(Box::new(noct_fsman::nullfs::NullFilesystem));
     noct_fsman::store::register_filesystem(Box::new(noct_iso9660::ISO9660Filesystem));
-    noct_fsman::store::register_filesystem(Box::new(noct_fsman::debugfs::DebugFilesystem));
+    // noct_fsman::store::register_filesystem(Box::new(noct_fsman::debugfs::DebugFilesystem));
 
     noct_fsman::probe();
 
@@ -114,41 +112,15 @@ extern "C" fn kmain() -> ! {
         let hdl = noct_fsman::mount::get_handle("ata0");
 
         if let Some(hdl) = hdl {
-            qemu_log!("Found mounted disk with debugfs: {}", hdl.fs().name());
+            let mut dir = hdl.opendir("/").unwrap();
 
-            let mut iter = hdl.opendir("/").unwrap();
-
-            while let Ok(entry) = hdl.readdir(&mut iter) {
-                qemu_log!("Entry: {} (node_id={}, type={:?}, size={}, created_at={:?}, modified_at={:?})",
-                    entry.name,
-                    entry.info.node_id,
-                    entry.info.entity_type,
-                    entry.info.size,
-                    entry.info.created_at,
-                    entry.info.modified_at
-                );
-
+            while let Ok(d) = dir.read() {
+                qemu_log!("{:?}", d.name);
             }
         } else {
-            qemu_log!("Disk is not mounted.");   
+            qemu_log!("Disk is not mounted.");
         }
     }
-
-    // {
-    //     let hdl = noct_fsman::mount::get_handle("disk0.1");
-
-    //     if let Some(hdl) = hdl {
-    //         qemu_log!("Found mounted disk with debugfs: {}", hdl.fs().name());
-
-    //         let mut buf = [0u8; 16];
-    //         let mut file = hdl.open("hello.txt", FileOpenMode::Read | FileOpenMode::Write).unwrap();
-
-    //         file.read(&mut buf);
-    //     } else {
-    //         qemu_log!("Disk with debugfs not found.");
-            
-    //     }
-    // }
 
     qemu_log!("It works!");
 

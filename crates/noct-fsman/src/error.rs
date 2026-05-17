@@ -8,7 +8,8 @@ pub enum FilesystemError {
 	NotFound,
 	PermissionDenied,
 	UnsupportedOperation,
-	EndOfIterator
+	EndOfIterator,
+	Unknown
 }
 
 pub type FilesystemResult<T> = Result<T, FilesystemError>;

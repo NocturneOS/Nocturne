@@ -40,7 +40,9 @@ checksum = "55dd888a213fc57e957abf2aa305ee3e8a28dbe05687a251f33b637cd46b0070"
 
 [[package]]
 name = "iso9660_simple"
-version = "0.2.4"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47fae570bd2747dcfcdd5585afddd99bac13c44331b70df5cb8584b7c89d17cd"
 dependencies = [
  "bitflags 2.10.0",
  "ucs2",

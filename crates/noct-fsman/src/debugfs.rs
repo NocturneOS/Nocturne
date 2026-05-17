@@ -1,5 +1,5 @@
 use alloc::{boxed::Box, string::{String, ToString}, sync::Arc};
-use core::sync::atomic::AtomicUsize;
+use core::sync::atomic::{AtomicUsize, Ordering};
 use noct_logger::qemu_log;
 use noct_time::repr::Time;
 
@@ -48,13 +48,15 @@ impl FilesystemInstance for DebugFSInstance {
             modified_at: Time::epoch(),
         };
 
-        Ok(FileHandle::new(Arc::clone(&self.disk_id), finfo))
+        Ok(FileHandle::new(self.id_arena.fetch_add(1, Ordering::Relaxed) as _, Arc::clone(&self.disk_id), finfo))
     }
     
     fn opendir(&self, path: &str) -> FilesystemResult<DirectoryHandle> {
         qemu_log!("DebugFS: opendir called with path '{}'", path);
+
         Ok(DirectoryHandle {
-            handle_id: self.id_arena.fetch_add(1, core::sync::atomic::Ordering::Relaxed) as _
+            disk_id: self.disk_id.clone(),
+            handle_id: self.id_arena.fetch_add(1, Ordering::Relaxed) as _
         })
     }
     

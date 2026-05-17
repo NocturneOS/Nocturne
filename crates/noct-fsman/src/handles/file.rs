@@ -33,16 +33,19 @@ pub struct FileHandle {
 	// XXX: Like `fh: u64` (file handle)? File handles are handled by filesysten instance.
 	// XXX: Filesystem instance will have a map of file handles to actual file information (like position, node ID, etc.) inside?
 
+    pub file_handle: u64,
+
 	disk_id: Arc<String>,
 
 	file_info: EntityInfo,
 
-    position: u64,
+    pub position: u64,
 }
 
 impl FileHandle {
-    pub fn new(disk_id: Arc<String>, file_info: EntityInfo) -> Self {
+    pub fn new(file_handle: u64, disk_id: Arc<String>, file_info: EntityInfo) -> Self {
         Self {
+            file_handle,
             disk_id,
 			file_info,
             position: 0,
@@ -88,4 +91,15 @@ impl FileHandle {
 	pub fn tell(&mut self) -> FilesystemResult<u64> {
 		Ok(self.position)
 	}
+}
+
+impl Drop for FileHandle {
+    fn drop(&mut self) {
+        let Some(fs) =
+            crate::mount::get_handle(&self.disk_id) else {
+                return
+            };
+
+        fs.close(self).ok();
+    }
 }
