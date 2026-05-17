@@ -94,15 +94,15 @@ impl noct_diskman::drive::Drive for ATAPhysicalDrive {
         self.diskman_id.as_deref().unwrap()
     }
 
-    fn read(&mut self, location: u64, buffer: &mut [u8]) -> DiskManResult<i64> {
+    fn read(&mut self, location: u64, buffer: &mut [u8]) -> DiskManResult<u64> {
         self.read(location, buffer)
-            .map(|_| buffer.len() as i64)
+            .map(|_| buffer.len() as _)
             .map_err(|e| panic!("Error: {e:?}"))
     }
 
-    fn write(&mut self, location: u64, buffer: &[u8]) -> DiskManResult<i64> {
+    fn write(&mut self, location: u64, buffer: &[u8]) -> DiskManResult<u64> {
         self.write(location, buffer)
-            .map(|_| buffer.len() as i64)
+            .map(|_| buffer.len() as _)
             .map_err(|e| panic!("Error: {e:?}"))
     }
 
@@ -111,7 +111,7 @@ impl noct_diskman::drive::Drive for ATAPhysicalDrive {
         command: Command,
         command_parameters: &[u8],
         data: &mut [u8],
-    ) -> DiskManResult<i64> {
+    ) -> DiskManResult<()> {
         match command {
             cmd => todo!("Unimplemented control command for ATA (issued: {cmd:?})"),
         }

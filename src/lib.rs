@@ -106,22 +106,6 @@ extern "C" fn kmain() -> ! {
 
     noct_fsman::probe();
 
-    qemu_log!("Probe finished");
-
-    {
-        let hdl = noct_fsman::mount::get_handle("ata0");
-
-        if let Some(hdl) = hdl {
-            let mut dir = hdl.opendir("/").unwrap();
-
-            while let Ok(d) = dir.read() {
-                qemu_log!("{:?}", d.name);
-            }
-        } else {
-            qemu_log!("Disk is not mounted.");
-        }
-    }
-
     qemu_log!("It works!");
 
     loop {

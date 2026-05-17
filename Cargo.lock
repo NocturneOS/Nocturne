@@ -150,6 +150,13 @@ name = "noct-mbr"
 version = "0.1.0"
 
 [[package]]
+name = "noct-memdisk"
+version = "0.1.0"
+dependencies = [
+ "noct-diskman",
+]
+
+[[package]]
 name = "noct-paging"
 version = "0.1.0"
 

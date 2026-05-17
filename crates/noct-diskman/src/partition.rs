@@ -57,7 +57,7 @@ impl Drive for Partition {
         Some(&self.parent_disk_id)
     }
 
-    fn read(&mut self, location: u64, buffer: &mut [u8]) -> DiskManResult<i64> {
+    fn read(&mut self, location: u64, buffer: &mut [u8]) -> DiskManResult<u64> {
         if location >= self.offset_end {
             return Err(DiskManError::LocationOutOfBounds);
         }
@@ -67,7 +67,7 @@ impl Drive for Partition {
         })
     }
 
-    fn write(&mut self, location: u64, buffer: &[u8]) -> DiskManResult<i64> {
+    fn write(&mut self, location: u64, buffer: &[u8]) -> DiskManResult<u64> {
         self.parent_operation_mut(|parent_drive| {
             parent_drive.write(self.offset_start + location, buffer)
         })
@@ -78,7 +78,7 @@ impl Drive for Partition {
         command: Command,
         command_parameters: &[u8],
         data: &mut [u8],
-    ) -> DiskManResult<i64> {
+    ) -> DiskManResult<()> {
         self.parent_operation_mut(|parent_drive| {
             parent_drive
                 .control(command, command_parameters, data)

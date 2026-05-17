@@ -78,7 +78,7 @@ pub fn generate_new_id(driver_id: &str) -> String {
 /// * `disk_id` - ID of the target disk.
 /// * `location` - Exact location in blocks.
 /// * `buffer` - Output buffer where data is being written.
-pub fn read(disk_id: &str, location: u64, buffer: &mut [u8]) -> DiskManResult<i64> {
+pub fn read(disk_id: &str, location: u64, buffer: &mut [u8]) -> DiskManResult<u64> {
     let drives_handle = DRIVES.read();
     let disk_handle = drives_handle.iter().find(|x| x.read().get_id() == disk_id);
 
@@ -111,7 +111,7 @@ pub fn read_bytes(disk_id: &str, byte_location: u64, buffer: &mut [u8]) -> DiskM
 /// * `disk_id` - ID of the target disk.
 /// * `location` - Exact location in blocks.
 /// * `buffer` - Output buffer where data is being copied from.
-pub fn write(disk_id: &str, location: u64, buffer: &[u8]) -> DiskManResult<i64> {
+pub fn write(disk_id: &str, location: u64, buffer: &[u8]) -> DiskManResult<u64> {
     let drives_handle = DRIVES.read();
     let disk_handle = drives_handle.iter().find(|x| x.read().get_id() == disk_id);
 
@@ -147,7 +147,7 @@ pub fn write_bytes(disk_id: &str, byte_location: u64, buffer: &[u8]) -> DiskManR
 /// * `command` - A command. Look [crate::structures::Command] for more.
 /// * `command_parameters` - Some parameters for the command (may be empty).
 /// * `data` - Output data buffer (may be empty).
-pub fn control(disk_id: &str, command: Command, command_parameters: &[u8], data: &mut [u8]) -> DiskManResult<i64> {
+pub fn control(disk_id: &str, command: Command, command_parameters: &[u8], data: &mut [u8]) -> DiskManResult<()> {
     let drives_handle = DRIVES.read();
     let disk_handle = drives_handle.iter().find(|x| x.read().get_id() == disk_id);
 

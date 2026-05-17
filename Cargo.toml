@@ -12,7 +12,7 @@ members = [
     "crates/noct-spec",
     "crates/noct-tools", "crates/noct-cpuregs", "crates/noct-interrupts", "crates/noct-logger", "crates/noct-time", "crates/noct-ps2", "crates/noct-pci", "crates/noct-smbios", "crates/noct-paging", "crates/noct-physmem-alloc", "crates/noct-sysinfo",
     "crates/noct-mbr",
-    "crates/noct-diskman", "crates/noct-fsman", "crates/noct-tarfs",
+    "crates/noct-diskman", "crates/noct-fsman", "crates/noct-tarfs", "crates/noct-memdisk",
 ]
 resolver = "2"
 

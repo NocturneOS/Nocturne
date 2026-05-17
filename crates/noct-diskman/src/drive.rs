@@ -23,7 +23,7 @@ pub trait Drive {
 
     fn buffer_address_alignment(&self) -> usize;
 
-    fn read(&mut self, location: u64, buffer: &mut [u8]) -> DiskManResult<i64>;
-    fn write(&mut self, location: u64, buffer: &[u8]) -> DiskManResult<i64>;
-    fn control(&mut self, command: Command, command_parameters: &[u8], data: &mut [u8]) -> DiskManResult<i64>;
+    fn read(&mut self, location: u64, buffer: &mut [u8]) -> DiskManResult<u64>;
+    fn write(&mut self, location: u64, buffer: &[u8]) -> DiskManResult<u64>;
+    fn control(&mut self, command: Command, command_parameters: &[u8], data: &mut [u8]) -> DiskManResult<()>;
 }
