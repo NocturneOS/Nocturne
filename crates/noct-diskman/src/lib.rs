@@ -12,6 +12,7 @@ use alloc::{
     borrow::ToOwned, boxed::Box, collections::linked_list::LinkedList, format, string::String,
     vec::{Vec},
 };
+use noct_logger::qemu_log;
 use noct_mbr::{PartitionRecord, PartitionType};
 use spin::RwLock;
 
@@ -105,8 +106,6 @@ pub fn read_bytes(disk_id: &str, byte_location: u64, buffer: &mut [u8]) -> DiskM
 
 /// Write data to disk.
 ///
-/// Returns -1 if disk can't be found.
-///
 /// # Arguments:
 ///
 /// * `disk_id` - ID of the target disk.
@@ -196,7 +195,8 @@ fn scan_partitions(
                 if container_base.is_none() {
                     // Primary - add and recurse
                     filtered_records.push(record.clone());
-                    let new_base = Some(record.start_sector_lba);
+
+                    let new_base = Some(record.start_sector_lba);                    
                     let sub = scan_partitions(disk, block_size, new_base, new_base)?;
                     filtered_records.extend(sub);
                 } else {
@@ -207,6 +207,8 @@ fn scan_partitions(
                 }
             }
             _ => {
+                qemu_log!("Record: start {:?}", record);
+
                 filtered_records.push(record.clone());
             }
         }
@@ -248,7 +250,6 @@ pub fn rescan_disk_for_partitions(disk_id: &str) -> DiskManResult<()> {
                 let partition = Partition {
                     parent_disk_name: x.read().get_name().to_owned(),
                     parent_disk_id: x.read().get_id().to_owned(),
-                    // parition_number: n + 1,
                     internal_id: format!("{}.{}", x.read().get_id().to_owned(), n + 1),
                     offset_start,
                     offset_end,

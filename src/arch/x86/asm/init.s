@@ -45,6 +45,11 @@ __pre_init:
     movl %eax, boot_page_directory - 0xC0000000
     movl %eax, boot_page_directory - 0xC0000000 + (768 * 4)
 
+    addl $0x400000, %eax
+
+    movl %eax, boot_page_directory - 0xC0000000 + 4
+    movl %eax, boot_page_directory - 0xC0000000 + (769 * 4)
+
     movl $(boot_page_directory - 0xC0000000), %eax
     orl $0b11, %eax
 
@@ -70,6 +75,7 @@ __init:
     # Unmap lower part of memory
     xor %eax, %eax
     movl %eax, boot_page_directory - 0xC0000000
+    movl %eax, boot_page_directory - 0xC0000004
 
     mov $stack_top, %esp
 

@@ -15,10 +15,10 @@ pub struct Partition {
     // pub(crate) parition_number: usize,
     pub(crate) internal_id: String,
 
-    /// Starting offset in bytes
+    /// Starting offset in LBA
     pub(crate) offset_start: u64,
 
-    /// Ending offset in bytes
+    /// Ending offset in LBA
     pub(crate) offset_end: u64,
 }
 
@@ -28,7 +28,7 @@ impl Partition {
         let parent_drive = binding
             .iter()
             .find(|x| x.read().get_id() == self.parent_disk_id)
-            .expect("bug: failed to find a parent disk");
+            .expect("bug: failed to find parent disk");
 
         f(parent_drive.read().as_ref())
     }
@@ -38,7 +38,7 @@ impl Partition {
         let parent_drive = binding
             .iter()
             .find(|x| x.read().get_id() == self.parent_disk_id)
-            .expect("bug: failed to find a parent disk");
+            .expect("bug: failed to find parent disk");
 
         f(parent_drive.write().as_mut())
     }

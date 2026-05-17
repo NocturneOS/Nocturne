@@ -103,25 +103,52 @@ extern "C" fn kmain() -> ! {
     }
 
     noct_fsman::store::register_filesystem(Box::new(noct_fsman::nullfs::NullFilesystem));
+    noct_fsman::store::register_filesystem(Box::new(noct_iso9660::ISO9660Filesystem));
     noct_fsman::store::register_filesystem(Box::new(noct_fsman::debugfs::DebugFilesystem));
 
     noct_fsman::probe();
 
+    qemu_log!("Probe finished");
+
     {
-        let hdl = noct_fsman::mount::get_handle("disk0.1");
+        let hdl = noct_fsman::mount::get_handle("ata0");
 
         if let Some(hdl) = hdl {
             qemu_log!("Found mounted disk with debugfs: {}", hdl.fs().name());
 
-            let mut buf = [0u8; 16];
-            let mut file = hdl.open("hello.txt", FileOpenMode::Read | FileOpenMode::Write).unwrap();
+            let mut iter = hdl.opendir("/").unwrap();
 
-            file.read(&mut buf);
+            while let Ok(entry) = hdl.readdir(&mut iter) {
+                qemu_log!("Entry: {} (node_id={}, type={:?}, size={}, created_at={:?}, modified_at={:?})",
+                    entry.name,
+                    entry.info.node_id,
+                    entry.info.entity_type,
+                    entry.info.size,
+                    entry.info.created_at,
+                    entry.info.modified_at
+                );
+
+            }
         } else {
-            qemu_log!("Disk with debugfs not found.");
-            
+            qemu_log!("Disk is not mounted.");   
         }
     }
+
+    // {
+    //     let hdl = noct_fsman::mount::get_handle("disk0.1");
+
+    //     if let Some(hdl) = hdl {
+    //         qemu_log!("Found mounted disk with debugfs: {}", hdl.fs().name());
+
+    //         let mut buf = [0u8; 16];
+    //         let mut file = hdl.open("hello.txt", FileOpenMode::Read | FileOpenMode::Write).unwrap();
+
+    //         file.read(&mut buf);
+    //     } else {
+    //         qemu_log!("Disk with debugfs not found.");
+            
+    //     }
+    // }
 
     qemu_log!("It works!");
 

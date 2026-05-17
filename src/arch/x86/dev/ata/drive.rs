@@ -3,6 +3,7 @@ use noct_diskman::{
     error::DiskManResult,
     structures::Command,
 };
+use noct_logger::qemu_log;
 
 use crate::arch::x86::{
     dev::ata::{
@@ -44,6 +45,8 @@ impl ATAPhysicalDrive {
     }
 
     pub fn read(&mut self, lba: u64, output: &mut [u8]) -> ATAIOResult<()> {
+        // qemu_log!("Reading from drive {} at LBA {} with length {} bytes", self.diskman_id.as_deref().unwrap_or("<unknown>"), lba, output.len());
+
         if self.identity.is_dma_supported() {
             if self.identity.is_removable_media_device() {
                 todo!("DMA reading for removable media devices is not yet implemented");
@@ -60,6 +63,8 @@ impl ATAPhysicalDrive {
     }
 
     pub fn write(&mut self, lba: u64, input: &[u8]) -> ATAIOResult<()> {
+        qemu_log!("Writing to drive {} at LBA {} with length {} bytes", self.diskman_id.as_deref().unwrap_or("<unknown>"), lba, input.len());
+
         if self.identity.is_dma_supported() {
             // Direct writing to removable media devices is not supported,
             // because to write on a removable medium requires user making the TOC,

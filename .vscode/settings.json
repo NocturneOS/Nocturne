@@ -8,4 +8,10 @@
     "rust-analyzer.check.extraEnv": {
         "RUSTUP_TOOLCHAIN": "nightly-2026-01-31"
     },
+    "rust-analyzer.testExplorer": false,
+    "rust-analyzer.diagnostics.styleLints.enable": true,
+    "rust-analyzer.assist.preferSelf": true,
+    "rust-analyzer.cargo.extraEnv": {
+        "RUSTUP_TOOLCHAIN": "nightly-2026-01-31"
+    },
 }

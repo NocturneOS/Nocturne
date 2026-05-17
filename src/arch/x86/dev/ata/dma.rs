@@ -71,7 +71,7 @@ pub fn fill_prdt(prdt: &mut PRDT, buffer: &[u8]) {
         let buf_phys =
             paging::virt2phys_precise(buf_virt).unwrap();
 
-        qemu_log!("V{buf_virt:x?} -> P{buf_phys:x?}");
+        // qemu_log!("V{buf_virt:x?} -> P{buf_phys:x?}");
 
         prdt.set(
             i,
@@ -82,11 +82,11 @@ pub fn fill_prdt(prdt: &mut PRDT, buffer: &[u8]) {
         .unwrap();
     }
 
-    for i in 0..chunks_count {
-        let entry = prdt.get(i).unwrap();
+    // for i in 0..chunks_count {
+    //     let entry = prdt.get(i).unwrap();
 
-        qemu_log!("PRDT {i}: {:#010x}: {:#06x}; LAST: {}", entry.buffer_phys(), entry.transfer_size(), entry.is_last());
-    }
+    //     qemu_log!("PRDT {i}: {:#010x}: {:#06x}; LAST: {}", entry.buffer_phys(), entry.transfer_size(), entry.is_last());
+    // }
 }
 
 pub fn read48(

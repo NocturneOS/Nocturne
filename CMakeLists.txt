@@ -269,3 +269,10 @@ add_custom_target(
     USES_TERMINAL
     DEPENDS iso
 )
+
+add_custom_target(
+	debug_with_disk
+    COMMAND ${QEMU} -accel kvm ${QEMU_FLAGS} -s -S -hda ${CMAKE_SOURCE_DIR}/test_disk.img
+    USES_TERMINAL
+    DEPENDS iso
+)

@@ -1,10 +1,13 @@
 use alloc::string::String;
 
-use crate::entity::EntityInfo;
+use crate::{NodeId, entity::EntityInfo};
 
-pub struct DirectoryHandle;
+pub struct DirectoryHandle {
+	pub handle_id: u64
+}
 
 pub struct DirectoryEntry {
-	name: String,
-	info: EntityInfo
+	pub node_id: NodeId,
+	pub name: String,
+	pub info: EntityInfo
 }

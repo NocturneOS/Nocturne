@@ -40,9 +40,7 @@ checksum = "55dd888a213fc57e957abf2aa305ee3e8a28dbe05687a251f33b637cd46b0070"
 
 [[package]]
 name = "iso9660_simple"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cc261cb14deaa14953a68f11fe742d00b4dd7fd2b0125d71dc1d31c6337a6ee"
+version = "0.2.4"
 dependencies = [
  "bitflags 2.10.0",
  "ucs2",
@@ -118,6 +116,7 @@ dependencies = [
  "noct-logger",
  "noct-time",
  "noct-tools",
+ "spin 0.10.0",
 ]
 
 [[package]]

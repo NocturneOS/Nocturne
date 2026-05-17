@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-iso9660_simple = { version = "0.2.1", default-features = false }
+# iso9660_simple = { version = "0.2.4", default-features = false }
+iso9660_simple = { path = "/home/ndraey/src/iso9660_simple", default-features = false }
+
+spin = "0.10.0"
 
 noct-diskman = { path = "../noct-diskman" }
 noct-fsman = { path = "../noct-fsman" }
