@@ -75,8 +75,8 @@ __pre_init:
 __init:
     # Unmap lower part of memory
     xor %eax, %eax
-    movl %eax, boot_page_directory - 0xC0000000
-    #movl %eax, boot_page_directory - 0xC0000000 + 4
+    movl %eax, boot_page_directory + 4
+    movl %eax, boot_page_directory
 
     mov $stack_top, %esp
 

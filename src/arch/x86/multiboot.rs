@@ -68,33 +68,6 @@ pub struct MultibootModule {
 }
 
 impl MultibootHeader {
-    // pub fn memory(&self) -> MemorySize {
-    //     let low = self.mem_lower;
-    //     let high = self.mem_upper;
-
-    //     MemorySize {
-    //         low: low as _,
-    //         high: high as _,
-    //     }
-    // }
-
-    // pub fn cmdline(&self) -> &str {
-    //     unsafe {
-    //         CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char)
-    //             .to_str()
-    //             .unwrap()
-    //     }
-    // }
-
-    // pub fn modules(&self) -> &[MultibootModule] {
-    //     unsafe {
-    //         core::slice::from_raw_parts(
-    //             (self.mods_addr as usize + KERNEL_BASE) as _,
-    //             self.mods_count as _,
-    //         )
-    //     }
-    // }
-
     pub fn mmap(&self) -> &[MultibootMMapEntry] {
         unsafe {
             core::slice::from_raw_parts(
@@ -104,28 +77,6 @@ impl MultibootHeader {
         }
     }
 }
-
-// impl MultibootModule {
-//     pub fn cmdline(&self) -> &str {
-//         unsafe {
-//             let cstr = CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char);
-
-//             cstr.to_str().unwrap()
-//         }
-//     }
-
-//     pub fn start(&self) -> usize {
-//         let start = self.mod_start;
-
-//         start as usize
-//     }
-
-//     pub fn end(&self) -> usize {
-//         let end = self.mod_end;
-
-//         end as usize
-//     }
-// }
 
 impl MultibootMMapEntry {
     pub fn addr(&self) -> u64 {

@@ -686,7 +686,7 @@ unsafe extern "C" fn thread_trampoline() -> ! {
     );
 }
 
-
+#[cfg(target_arch = "x86_64")]
 #[unsafe(naked)]
 unsafe extern "C" fn thread_trampoline64() -> ! {
     core::arch::naked_asm!(
