@@ -83,6 +83,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-boot"
+version = "0.1.0"
+
+[[package]]
 name = "noct-cpuregs"
 version = "0.1.0"
 dependencies = [
@@ -246,12 +250,14 @@ dependencies = [
  "cfg-if",
  "elf",
  "lazy_static",
+ "noct-boot",
  "noct-cpuregs",
  "noct-diskman",
  "noct-fsman",
  "noct-interrupts",
  "noct-iso9660",
  "noct-logger",
+ "noct-memdisk",
  "noct-paging",
  "noct-pci",
  "noct-physmem-alloc",

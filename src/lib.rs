@@ -4,10 +4,10 @@
 use core::panic::PanicInfo;
 
 use alloc::{boxed::Box, vec::Vec};
-use noct_fsman::handles::file::FileOpenMode;
+use noct_boot::{BootInfo, Module};
 use noct_logger::qemu_log;
 
-use crate::arch::mem::paging::PageFlags;
+use crate::arch::{mem::paging::PageFlags, x86::multiboot::MultibootModule};
 
 mod arch;
 mod mem;
@@ -18,7 +18,7 @@ mod unwind;
 extern crate alloc;
 
 // This entry point is called from `arch_init`.
-extern "C" fn kmain() -> ! {
+fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     // Now `__arch_init` initialized paging and PMM for us.
     // To make kernel fully initialized we should initialize heap.
 
@@ -80,6 +80,8 @@ extern "C" fn kmain() -> ! {
         arch::mem::paging::unmap_pages(0xf_0000, 0x1_0000);
     }
 
+    
+
     noct_ps2::init();
 
     // clear_screen();
@@ -105,6 +107,10 @@ extern "C" fn kmain() -> ! {
     // noct_fsman::store::register_filesystem(Box::new(noct_fsman::debugfs::DebugFilesystem));
 
     noct_fsman::probe();
+
+    for i in boot_info.modules() {
+        qemu_log!("Would make disk from module: {:X} - {:X} ({:#?})", i.start(), i.end(), i.cmdline());
+    }
 
     qemu_log!("It works!");
 

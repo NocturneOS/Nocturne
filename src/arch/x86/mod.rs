@@ -21,6 +21,8 @@ use crate::{
 #[cfg(target_arch = "x86")]
 #[unsafe(no_mangle)]
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
+    use noct_boot::BootInfo;
+
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
 
     let mb = unsafe {
@@ -29,12 +31,14 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     };
 
     qemu_log!("Command line: {:?}", mb.cmdline());
-    qemu_log!("Modules count: {}", mb.modules().len());
+    qemu_log!("Modules count: {}", mb.modules().count());
 
     for i in mb.modules() {
+        use noct_boot::Module;
+
         qemu_log!(
             "- {:?} <{:#x?} - {:#x?}>",
-            i.cmdline().as_ptr(),
+            i.cmdline().unwrap(),
             i.start() as *const usize,
             i.end() as *const usize
         );
@@ -42,8 +46,8 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     qemu_log!(
         "Memory: {} KB (lower) / {} KB (upper)",
-        mb.memory().low() >> 10,
-        mb.memory().high() >> 10
+        mb.memory().lower() >> 10,
+        mb.memory().higher() >> 10
     );
 
     for i in mb.mmap() {
@@ -127,7 +131,9 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     // Reserve memory for modules we load.
 
     {
-        for (n, i) in mb.modules().iter().enumerate() {
+        for (n, i) in mb.modules().enumerate() {
+            use noct_boot::Module;
+
             let start_addr = i.mod_start as usize;
             let end_addr = noct_tools::align_value(i.mod_end as usize, arch::get_page_size());
 
@@ -168,5 +174,5 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     unsafe { x86::irq::enable() };
 
-    kmain()
+    kmain(mb)
 }

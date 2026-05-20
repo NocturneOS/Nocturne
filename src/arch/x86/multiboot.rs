@@ -1,5 +1,6 @@
 use core::ffi::{CStr, c_char};
 
+use noct_boot::{MemoryInfo, ModuleIterator};
 use noct_spec::KERNEL_BASE;
 
 #[repr(C, packed)]
@@ -57,7 +58,7 @@ pub enum MultibootMMapType {
     BadRAM,
 }
 
-#[repr(C, packed)]
+#[repr(C, packed(1))]
 #[derive(Debug, Copy, Clone)]
 pub struct MultibootModule {
     pub mod_start: u32,
@@ -66,55 +67,33 @@ pub struct MultibootModule {
     pub reserved: u32,
 }
 
-pub struct MemorySize {
-    low: usize,
-    high: usize,
-}
-
-impl MemorySize {
-    #[inline]
-    pub fn low(&self) -> usize {
-        self.low << 10
-    }
-
-    #[inline]
-    pub fn high(&self) -> usize {
-        self.high << 10
-    }
-
-    #[inline]
-    pub fn total(&self) -> usize {
-        self.low() + self.high()
-    }
-}
-
 impl MultibootHeader {
-    pub fn memory(&self) -> MemorySize {
-        let low = self.mem_lower;
-        let high = self.mem_upper;
+    // pub fn memory(&self) -> MemorySize {
+    //     let low = self.mem_lower;
+    //     let high = self.mem_upper;
 
-        MemorySize {
-            low: low as _,
-            high: high as _,
-        }
-    }
+    //     MemorySize {
+    //         low: low as _,
+    //         high: high as _,
+    //     }
+    // }
 
-    pub fn cmdline(&self) -> &str {
-        unsafe {
-            CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char)
-                .to_str()
-                .unwrap()
-        }
-    }
+    // pub fn cmdline(&self) -> &str {
+    //     unsafe {
+    //         CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char)
+    //             .to_str()
+    //             .unwrap()
+    //     }
+    // }
 
-    pub fn modules(&self) -> &[MultibootModule] {
-        unsafe {
-            core::slice::from_raw_parts(
-                (self.mods_addr as usize + KERNEL_BASE) as _,
-                self.mods_count as _,
-            )
-        }
-    }
+    // pub fn modules(&self) -> &[MultibootModule] {
+    //     unsafe {
+    //         core::slice::from_raw_parts(
+    //             (self.mods_addr as usize + KERNEL_BASE) as _,
+    //             self.mods_count as _,
+    //         )
+    //     }
+    // }
 
     pub fn mmap(&self) -> &[MultibootMMapEntry] {
         unsafe {
@@ -126,27 +105,27 @@ impl MultibootHeader {
     }
 }
 
-impl MultibootModule {
-    pub fn cmdline(&self) -> &str {
-        unsafe {
-            let cstr = CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char);
+// impl MultibootModule {
+//     pub fn cmdline(&self) -> &str {
+//         unsafe {
+//             let cstr = CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char);
 
-            cstr.to_str().unwrap()
-        }
-    }
+//             cstr.to_str().unwrap()
+//         }
+//     }
 
-    pub fn start(&self) -> usize {
-        let start = self.mod_start;
+//     pub fn start(&self) -> usize {
+//         let start = self.mod_start;
 
-        start as usize
-    }
+//         start as usize
+//     }
 
-    pub fn end(&self) -> usize {
-        let end = self.mod_end;
+//     pub fn end(&self) -> usize {
+//         let end = self.mod_end;
 
-        end as usize
-    }
-}
+//         end as usize
+//     }
+// }
 
 impl MultibootMMapEntry {
     pub fn addr(&self) -> u64 {
@@ -168,5 +147,46 @@ impl MultibootMMapEntry {
             5 => MultibootMMapType::BadRAM,
             _ => todo!("Invalid MMAP type: 0x{:x}", ty),
         }
+    }
+}
+
+impl noct_boot::BootInfo for MultibootHeader {
+    type ModuleType = MultibootModule;
+
+    fn memory(&self) -> noct_boot::MemoryInfo {
+        MemoryInfo::new((self.mem_lower << 10) as _, (self.mem_upper << 10) as _)
+    }
+
+    fn cmdline(&self) -> &str {
+        unsafe {
+            CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char)
+                .to_str()
+                .unwrap()
+        }
+    }
+
+    fn modules(&self) -> noct_boot::ModuleIterator<Self::ModuleType> {
+        ModuleIterator::new(
+            (self.mods_addr as usize + KERNEL_BASE) as _,
+            self.mods_count as _,
+        )
+    }
+}
+
+impl noct_boot::Module for MultibootModule {
+    fn cmdline(&self) -> Option<&str> {
+        unsafe {
+            let cstr = CStr::from_ptr((self.cmdline as usize + KERNEL_BASE) as *const c_char);
+
+            cstr.to_str().ok()
+        }
+    }
+
+    fn start(&self) -> usize {
+        self.mod_start as _
+    }
+
+    fn end(&self) -> usize {
+        self.mod_end as _
     }
 }
