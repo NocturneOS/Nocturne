@@ -75,6 +75,7 @@ __pre_init:
 __init:
     # Unmap lower part of memory
     xor %eax, %eax
+    
     movl %eax, boot_page_directory + 4
     movl %eax, boot_page_directory
 

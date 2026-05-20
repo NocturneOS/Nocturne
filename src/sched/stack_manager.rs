@@ -2,7 +2,7 @@ use core::alloc::Layout;
 
 use noct_spec::{KERNEL_BASE, WORD_SIZE};
 
-use crate::{arch::{self, mem::paging::{GlobalPagingArchitecture, Page, PageFlags}}, qemu_log};
+use crate::{arch::{mem::paging::{GlobalPagingArchitecture, PageFlags}}, qemu_log};
 use crate::mem::address_space_manager::AddressSpace;
 
 const STACK_ALIGNEMNT: usize = 0x1000;

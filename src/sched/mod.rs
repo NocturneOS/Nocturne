@@ -12,8 +12,7 @@ use noct_tools::interrupt_locker::InterruptLocker;
 use spin::{Mutex, MutexGuard};
 
 use crate::{
-    arch::{self, x86::tss::get_tss_stack_addr},
-    mem::address_space_manager::AddressSpace,
+    arch,
     qemu_log,
     sched::{
         archspec::ArchitectureSpecificRegion, process::Process, stack_manager::ThreadStack, thread::{Thread, ThreadFlags, ThreadPriority, ThreadState}
@@ -53,6 +52,7 @@ pub struct Scheduler {
 }
 
 unsafe extern "C" {
+    #[allow(improper_ctypes)]
     pub unsafe fn __context_switch(
         this_process: *const Process,
         this_thread: *mut Thread,
