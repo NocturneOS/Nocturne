@@ -163,6 +163,13 @@ dependencies = [
 [[package]]
 name = "noct-paging"
 version = "0.1.0"
+dependencies = [
+ "bitflags 2.10.0",
+ "cfg-if",
+ "noct-physmem-alloc",
+ "noct-spec",
+ "x86",
+]
 
 [[package]]
 name = "noct-pci"

@@ -2,8 +2,10 @@ use core::alloc::Layout;
 
 use noct_spec::{KERNEL_BASE, WORD_SIZE};
 
-use crate::{arch::{mem::paging::{GlobalPagingArchitecture, PageFlags}}, qemu_log};
+use crate::qemu_log;
 use crate::mem::address_space_manager::AddressSpace;
+
+use noct_paging::{GlobalPagingArchitecture, PageFlags};
 
 const STACK_ALIGNEMNT: usize = 0x1000;
 
@@ -35,7 +37,7 @@ impl ThreadStack {
         let pointer = unsafe { allocation.byte_add(real_stack_size) };
 
         // Unmap the first page.
-        crate::arch::mem::paging::unmap_single_page(allocation.addr());
+        noct_paging::unmap_single_page(allocation.addr());
 
         qemu_log!("Allocated a stack at: {allocation:?} with size: {real_stack_size:#x?} (ptr: {pointer:?})");
 

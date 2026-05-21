@@ -6,8 +6,9 @@ use core::panic::PanicInfo;
 use alloc::{boxed::Box, vec::Vec};
 use noct_boot::{BootInfo, Module};
 use noct_logger::qemu_log;
+use noct_paging::PageFlags;
 
-use crate::arch::{mem::paging::PageFlags, x86::multiboot::MultibootModule};
+use crate::arch::x86::multiboot::MultibootModule;
 
 mod arch;
 mod mem;
@@ -67,7 +68,7 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     }
 
     {
-        arch::mem::paging::map_pages(0xf_0000, 0xf_0000, 0x1_0000, PageFlags::Present);
+        noct_paging::map_pages(0xf_0000, 0xf_0000, 0x1_0000, PageFlags::Present);
 
         if let Some(smbios) = noct_smbios::find_smbios() {
             let values = smbios.scan();
@@ -77,7 +78,7 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
             }
         }
 
-        arch::mem::paging::unmap_pages(0xf_0000, 0x1_0000);
+        noct_paging::unmap_pages(0xf_0000, 0x1_0000);
     }
 
     

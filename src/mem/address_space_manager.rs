@@ -6,11 +6,10 @@ use noct_paging::PagingHierarchy;
 use noct_spec::{KERNEL_BASE, WORD_SIZE};
 
 use crate::{
-    arch::{
-        self,
-        mem::paging::{Page, PageFlags, map_single_page, unmap_single_page},
-    }
+    arch
 };
+
+use noct_paging::{Page, PageFlags, map_single_page, unmap_single_page};
 
 #[derive(Debug)]
 pub struct AddressSpaceVirtualBlock {

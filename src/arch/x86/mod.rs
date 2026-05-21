@@ -119,7 +119,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     {
         use noct_spec::KERNEL_BASE;
 
-        let start = (noct_sysinfo::info().kernel_end - KERNEL_BASE) + mem::paging::PAGE_SIZE;
+        let start = (noct_sysinfo::info().kernel_end - KERNEL_BASE) + noct_paging::PAGE_SIZE;
 
         for addr in (0..start).step_by(arch::get_page_size()) {
             noct_physmem_alloc::mark_page(addr, true);

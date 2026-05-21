@@ -1,10 +1,10 @@
 use core::alloc::Layout;
 
-use noct_paging::PagingHierarchy;
+use noct_paging::{PageFlags, PagingHierarchy};
 
 use crate::arch::{
     get_page_size,
-    mem::paging::{self, PageFlags},
+    mem::paging,
 };
 
 /// Clones kernel's paging root, it will just copy PDEs (shallow copy)
@@ -15,7 +15,7 @@ pub fn clone_kernel_page_root<PG: PagingHierarchy>() -> usize {
 
     let new_page_directory = noct_physmem_alloc::allocate_one().unwrap();
 
-    paging::map_single_page(
+    noct_paging::map_single_page(
         new_page_directory,
         temporary_block.addr(),
         PageFlags::Writeable | PageFlags::Present,
@@ -47,7 +47,7 @@ pub fn clone_kernel_page_root<PG: PagingHierarchy>() -> usize {
     }
 
     // Clean up mappings.
-    paging::unmap_single_page(temporary_block.addr());
+    noct_paging::unmap_single_page(temporary_block.addr());
 
     unsafe { alloc::alloc::dealloc(temporary_block, layout) };
 

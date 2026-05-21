@@ -11,7 +11,9 @@ use core::usize;
 use spin::{Mutex, MutexGuard};
 
 use crate::arch;
-use crate::arch::mem::paging::{self, PageFlags, map_single_page, unmap_single_page};
+use crate::arch::mem::paging;
+
+use noct_paging::{PageFlags, map_single_page, unmap_single_page};
 
 /// Page flags for kernel heap: Present + Writable
 ///
@@ -193,7 +195,7 @@ impl InnerArenaAllocator {
         let end_addr = noct_tools::align_value(addr + size, arch::get_page_size());
 
         for i in (start_addr..end_addr).step_by(arch::get_page_size()) {
-            if !paging::is_memory_accessible(i) {
+            if !noct_paging::is_memory_accessible(i) {
                 // TODO: Cancel whole operation if page allocation fails and return None.
                 let page = noct_physmem_alloc::allocate_one()
                     .expect("Failed to allocate a physical page during allocation.");
@@ -232,7 +234,7 @@ impl InnerArenaAllocator {
         }
     
         for i in (lower_bound..upper_bound).step_by(page_size) {
-            if let Some(free_addr) = paging::virt2phys(i) {
+            if let Some(free_addr) = noct_paging::virt2phys(i) {
                 unmap_single_page(i);
 
                 noct_physmem_alloc::free_one(free_addr);

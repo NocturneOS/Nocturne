@@ -46,7 +46,7 @@ impl PRDT {
         };
 
         let virt = unsafe { Box::from_raw(virt) };
-        let phys = crate::arch::mem::paging::virt2phys(virt.as_ptr().addr()).unwrap();
+        let phys = noct_paging::virt2phys(virt.as_ptr().addr()).unwrap();
 
         Self {
             prdt_virt_addr: virt,
