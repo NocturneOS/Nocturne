@@ -89,4 +89,19 @@ impl FilesystemInstance for DebugFSInstance {
         qemu_log!("DebugFS: closedir called");
         Err(FilesystemError::NotFound)
     }
+    
+    fn mkfile(&self, path: &str) -> FilesystemResult<()> {
+        qemu_log!("DebugFS: mkfile called ({path:?})");
+        Ok(())
+    }
+    
+    fn mkdir(&self, path: &str) -> FilesystemResult<()> {
+        qemu_log!("DebugFS: mkfile called ({path:?})");
+        Ok(())
+    }
+    
+    fn remove(&self, path: &str) -> FilesystemResult<()> {
+        qemu_log!("DebugFS: remove called ({path:?})");
+        Ok(())
+    }
 }

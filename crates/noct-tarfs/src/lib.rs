@@ -184,4 +184,16 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
 
         Ok(())
     }
+    
+    fn mkfile(&self, _path: &str) -> FilesystemResult<()> {
+        Err(FilesystemError::ReadOnly)
+    }
+    
+    fn mkdir(&self, _path: &str) -> FilesystemResult<()> {
+        Err(FilesystemError::ReadOnly)
+    }
+    
+    fn remove(&self, _path: &str) -> FilesystemResult<()> {
+        Err(FilesystemError::ReadOnly)
+    }
 }

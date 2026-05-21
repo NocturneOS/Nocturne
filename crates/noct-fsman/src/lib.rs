@@ -39,6 +39,11 @@ pub trait FilesystemInstance: Sync + Send {
 
 	fn close(&self, handle: &mut FileHandle) -> FilesystemResult<()>;
 	fn closedir(&self, handle: &mut DirectoryHandle) -> FilesystemResult<()>;
+
+	fn mkfile(&self, path: &str) -> FilesystemResult<()>;
+	fn mkdir(&self, path: &str) -> FilesystemResult<()>;
+
+	fn remove(&self, path: &str) -> FilesystemResult<()>;
 }
 
 pub fn probe() {

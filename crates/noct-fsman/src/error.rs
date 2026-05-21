@@ -10,6 +10,7 @@ pub enum FilesystemError {
 	IoError,
 	NotFound,
 	PermissionDenied,
+	ReadOnly,
 	Unknown,
 	UnsupportedOperation,
 }

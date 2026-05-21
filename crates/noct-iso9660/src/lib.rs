@@ -153,7 +153,7 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
     }
 
     fn write(&self, _handle: &mut FileHandle, _buffer: &[u8]) -> FilesystemResult<u64> {
-        Err(FilesystemError::UnsupportedOperation)
+        Err(FilesystemError::ReadOnly)
     }
 
     fn opendir(&self, path: &str) -> FilesystemResult<DirectoryHandle> {
@@ -247,5 +247,17 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
             .retain(|x| x.id as u64 != handle.handle_id);
 
         Ok(())
+    }
+    
+    fn mkfile(&self, _path: &str) -> FilesystemResult<()> {
+        Err(FilesystemError::ReadOnly)
+    }
+    
+    fn mkdir(&self, _path: &str) -> FilesystemResult<()> {
+        Err(FilesystemError::ReadOnly)
+    }
+    
+    fn remove(&self, _path: &str) -> FilesystemResult<()> {
+        Err(FilesystemError::ReadOnly)
     }
 }
