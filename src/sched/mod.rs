@@ -270,8 +270,6 @@ impl Scheduler {
             let address_space = &thread.process.address_space;
             let stack_addr = thread.stack.stack_addr;
 
-            // address_space.get_mut().
-
             // Count guard page in.
             let addr = stack_addr - noct_mem::paging::PAGE_SIZE;
 
@@ -311,6 +309,7 @@ impl Scheduler {
         self.current_thread.as_ref().unwrap()
     }
 
+    /// Puts current thread into sleep state.
     fn sleep_this(&mut self, wakeup_time_ticks: u128) {
         self.current_thread
             .as_ref()

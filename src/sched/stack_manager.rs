@@ -3,9 +3,8 @@ use core::alloc::Layout;
 use noct_spec::{KERNEL_BASE, WORD_SIZE};
 
 use crate::qemu_log;
-use crate::mem::address_space_manager::AddressSpace;
 
-use noct_mem::paging::{GlobalPagingArchitecture, PageFlags};
+use noct_mem::{addrspace_manager::AddressSpace, paging::{GlobalPagingArchitecture, PageFlags}};
 
 const STACK_ALIGNEMNT: usize = 0x1000;
 

@@ -2,14 +2,10 @@ use core::{alloc::Layout, marker::PhantomData};
 
 use alloc::vec::Vec;
 use noct_logger::qemu_log;
-use noct_mem::paging::PagingHierarchy;
+use crate::{heap, paging::{self, PagingHierarchy}};
 use noct_spec::{KERNEL_BASE, WORD_SIZE};
 
-use crate::{
-    arch
-};
-
-use noct_mem::paging::{Page, PageFlags, map_single_page, unmap_single_page};
+use crate::paging::{Page, PageFlags, map_single_page, unmap_single_page};
 
 #[derive(Debug)]
 pub struct AddressSpaceVirtualBlock {
@@ -32,7 +28,7 @@ pub struct AddressSpace<PG: PagingHierarchy> {
 impl<PG: PagingHierarchy> AddressSpace<PG> {
     pub fn new() -> Self {
         let areas = Vec::with_capacity(1024);
-        let root = noct_mem::paging::clone::clone_kernel_page_root::<PG>();
+        let root = paging::clone::clone_kernel_page_root::<PG>();
 
         Self {
             page_root_phys: root,
@@ -69,8 +65,8 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
     }
 
     pub fn self_map_page<T>(&self, phys_addr: usize, f: impl FnOnce(&mut [Page]) -> T) -> T {
-        let layout = Layout::from_size_align(arch::get_page_size(), 0x1000).unwrap();
-        let mapping_region = unsafe { noct_mem::heap::allocate_no_map(layout) };
+        let layout = Layout::from_size_align(crate::paging::PAGE_SIZE, 0x1000).unwrap();
+        let mapping_region = unsafe { heap::allocate_no_map(layout) };
 
         map_single_page(
             phys_addr,
@@ -81,7 +77,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         let slice = unsafe {
             core::slice::from_raw_parts_mut(
                 mapping_region as *mut Page,
-                arch::get_page_size() / WORD_SIZE,
+                crate::paging::PAGE_SIZE / WORD_SIZE,
             )
         };
 
@@ -99,8 +95,8 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         virt_addr: usize,
         f: impl FnOnce(&mut [usize]) -> T,
     ) -> T {
-        let layout = Layout::from_size_align(arch::get_page_size(), 0x1000).unwrap();
-        let mapping_region = unsafe { noct_mem::heap::allocate_no_map(layout) };
+        let layout = Layout::from_size_align(crate::paging::PAGE_SIZE, 0x1000).unwrap();
+        let mapping_region = unsafe { heap::allocate_no_map(layout) };
 
         // Map paging root and get physical address of virtual one.
         let phys = self.phys_of_virt(virt_addr).unwrap();
@@ -114,7 +110,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         let slice = unsafe {
             core::slice::from_raw_parts_mut(
                 mapping_region as *mut usize,
-                arch::get_page_size() / WORD_SIZE,
+                crate::paging::PAGE_SIZE / WORD_SIZE,
             )
         };
 
@@ -205,13 +201,13 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
     }
 
     pub fn unmap_pages(&mut self, virt_addr: usize, size: usize) {
-        assert!(virt_addr.is_multiple_of(arch::get_page_size()));
+        assert!(virt_addr.is_multiple_of(crate::paging::PAGE_SIZE));
 
-        let page_count = size.div_ceil(arch::get_page_size());
+        let page_count = size.div_ceil(crate::paging::PAGE_SIZE);
 
         for i in 0..page_count {
             self.unmap_single_page(
-                virt_addr + (i * arch::get_page_size()),
+                virt_addr + (i * crate::paging::PAGE_SIZE),
             );
         }
     }
@@ -223,15 +219,15 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         size: usize,
         flags: PageFlags,
     ) -> Result<(), ()> {
-        assert!(phys_addr.is_multiple_of(arch::get_page_size()));
-        assert!(virt_addr.is_multiple_of(arch::get_page_size()));
+        assert!(phys_addr.is_multiple_of(crate::paging::PAGE_SIZE));
+        assert!(virt_addr.is_multiple_of(crate::paging::PAGE_SIZE));
 
-        let page_count = size.div_ceil(arch::get_page_size());
+        let page_count = size.div_ceil(crate::paging::PAGE_SIZE);
 
         for i in 0..page_count {
             self.map_single_page(
-                phys_addr + (i * arch::get_page_size()),
-                virt_addr + (i * arch::get_page_size()),
+                phys_addr + (i * crate::paging::PAGE_SIZE),
+                virt_addr + (i * crate::paging::PAGE_SIZE),
                 flags,
             )?;
         }
@@ -292,7 +288,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         size_in_bytes: usize,
         flags: PageFlags,
     ) -> Result<(), ()> {
-        let page_count = size_in_bytes.div_ceil(arch::get_page_size());
+        let page_count = size_in_bytes.div_ceil(crate::paging::PAGE_SIZE);
 
         // Try allocate pages in bulk.
         {
@@ -313,7 +309,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
 
                 let page = noct_physmem_alloc::allocate_one().unwrap();
 
-                self.map_single_page(page, virt_addr + (i * arch::get_page_size()), flags)
+                self.map_single_page(page, virt_addr + (i * crate::paging::PAGE_SIZE), flags)
                     .unwrap();
             }
         }

@@ -1,4 +1,4 @@
-use core::{cell::Cell, sync::atomic::{AtomicPtr, AtomicUsize}};
+use core::sync::atomic::AtomicUsize;
 
 use bitflags::bitflags;
 

@@ -11,7 +11,6 @@ use noct_mem::paging::PageFlags;
 use crate::{arch::x86::multiboot::MultibootModule, sched::{KERNEL_THREAD_DEFAULT_STACK_SIZE, thread::{ThreadFlags, ThreadPriority}}};
 
 mod arch;
-mod mem;
 mod sched;
 mod time;
 mod unwind;
