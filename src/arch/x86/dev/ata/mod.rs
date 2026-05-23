@@ -230,7 +230,7 @@ fn check_all() {
             let result = identify(bus, drive);
 
             match result {
-                Ok(mut drv) => {
+                Ok(drv) => {
                     qemu_log!("{bus:?} {drive:?} => OK!");
 
                     qemu_log!(
@@ -244,7 +244,7 @@ fn check_all() {
 
                     // FIXME: Remove that condition when I make Packet ATA work.
                     if !drv.info().is_removable_media_device() {
-                        noct_diskman::register_drive(Box::new(drv));
+                        noct_diskman::register_drive(Box::new(drv)).ok();
                     }
                 }
                 Err(e) => {
