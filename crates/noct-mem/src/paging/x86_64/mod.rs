@@ -1,9 +1,6 @@
-use crate::paging::PageFlags;
+// use crate::paging::PageFlags;
 use noct_logger::qemu_log;
-use crate::paging::PagingHierarchy;
-
-// Re-export cloning module since it's universal
-pub use crate::paging::x86::clone;
+use crate::paging::{PageFlags, PagingHierarchy};
 
 pub const PAGE_SIZE: usize = 0x1000;
 
@@ -163,7 +160,7 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
 
     unsafe { x86::tlb::flush(virtual_address) };
 
-    core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
+    core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::Acquire);
 }
 
 pub fn unmap_single_page(virtual_address: usize) {
@@ -192,7 +189,7 @@ pub fn unmap_single_page(virtual_address: usize) {
 
     unsafe { x86::tlb::flush(virtual_address) };
     
-    core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
+    core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::Acquire);
 }
 
 pub fn map_pages(phys_addr: usize, virt_addr: usize, byte_count: usize, flags: PageFlags) {

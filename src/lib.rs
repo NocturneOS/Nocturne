@@ -1,5 +1,4 @@
 #![no_std]
-#![feature(linked_list_retain)]
 
 use core::{panic::PanicInfo, time::Duration};
 
@@ -8,10 +7,9 @@ use noct_boot::{BootInfo, Module};
 use noct_logger::qemu_log;
 use noct_mem::{heap, paging::PageFlags};
 
-use crate::{arch::x86::multiboot::MultibootModule, sched::{KERNEL_THREAD_DEFAULT_STACK_SIZE, thread::{ThreadFlags, ThreadPriority}}};
+use crate::arch::x86::multiboot::MultibootModule;
 
 mod arch;
-mod sched;
 mod time;
 mod unwind;
 
@@ -24,32 +22,38 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
     heap::init();
 
-    sched::init();
+    noct_sched::init();
 
-    // {
-    // qemu_log!("Creating 32 processes...");
+    {
+        qemu_log!("Creating 32 processes...");
 
-    // let procs: [_; 32] = core::array::from_fn(|_| crate::sched::create_process("proc", "?"));
+        let procs: [_; 32] = core::array::from_fn(|_| noct_sched::create_process("proc", "?"));
 
-    // qemu_log!("32 processes have been created!");
+        qemu_log!("32 processes have been created!");
 
-    // core::mem::drop(procs);
+        core::mem::drop(procs);
 
-    // let proc = crate::sched::this_process();
+        let proc = noct_sched::this_process();
 
-    // for _ in 0..32 {
-    //     crate::sched::create_thread(Arc::clone(&proc), move || {
-    //         let id = crate::sched::this_thread_id();
+        for _ in 0..32 {
+            noct_sched::create_thread(
+                Arc::clone(&proc),
+                move || {
+                    let id = noct_sched::this_thread_id();
 
-    //         loop {
-    //             qemu_log!("Hi thread #{}", id);
-    //             crate::sched::sleep(Duration::from_millis((id * 40) as _));
-    //         }
-    //     }, KERNEL_THREAD_DEFAULT_STACK_SIZE, ThreadPriority::Low, ThreadFlags::empty());
-    // }
-    // }
+                    loop {
+                        qemu_log!("Hi thread #{}", id);
+                        noct_sched::sleep(Duration::from_millis((id * 40) as _));
+                    }
+                },
+                noct_sched::KERNEL_THREAD_DEFAULT_STACK_SIZE,
+                noct_sched::thread::ThreadPriority::Low,
+                noct_sched::thread::ThreadFlags::empty(),
+            );
+        }
+    }
 
-    // loop {}
+    loop {}
 
     noct_pci::scan();
 
@@ -80,8 +84,6 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
         noct_mem::paging::unmap_pages(0xf_0000, 0x1_0000);
     }
 
-    
-
     noct_ps2::init();
 
     // clear_screen();
@@ -109,7 +111,12 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     noct_fsman::probe();
 
     for i in boot_info.modules() {
-        qemu_log!("Would make disk from module: {:X} - {:X} ({:#?})", i.start(), i.end(), i.cmdline());
+        qemu_log!(
+            "Would make disk from module: {:X} - {:X} ({:#?})",
+            i.start(),
+            i.end(),
+            i.cmdline()
+        );
     }
 
     qemu_log!("It works!");

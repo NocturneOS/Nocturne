@@ -32,7 +32,7 @@ const _: &[()] = &[
 ];
 
 fn next_pid() -> usize {
-    GLOBAL_PID.fetch_add(1, Ordering::SeqCst)
+    GLOBAL_PID.fetch_add(1, Ordering::Release)
 }
 
 impl Process {

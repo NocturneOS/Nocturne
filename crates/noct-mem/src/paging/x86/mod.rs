@@ -1,8 +1,8 @@
-use bitflags::bitflags;
+use core::sync::atomic::Ordering;
 
+use crate::paging::Page;
+use crate::paging::PageFlags;
 use crate::paging::PagingHierarchy;
-
-pub mod clone;
 
 pub struct X86Paging;
 
@@ -17,12 +17,14 @@ impl PagingHierarchy for X86Paging {
         match level {
             0 => vaddr >> 22,
             1 => (vaddr >> 12) & 0x3FF,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
     // 0x0000_0000 - 0xC000_0000
-    fn user_root_entry_count() -> usize { 768 }
+    fn user_root_entry_count() -> usize {
+        768
+    }
 
     fn root() -> &'static [usize] {
         unsafe { core::slice::from_raw_parts(0xFFFF_F000 as *const usize, 1023) }
@@ -30,65 +32,6 @@ impl PagingHierarchy for X86Paging {
 }
 
 pub const PAGE_SIZE: usize = 0x1000;
-
-bitflags! {
-    #[derive(Copy, Clone)]
-    pub struct PageFlags : usize {
-        const Present = 1 << 0;
-        const Writeable = 1 << 1;
-        const Userspace = 1 << 2;
-        const WriteThrough = 1 << 3;
-        const CacheDisable = 1 << 4;
-        const Accessed = 1 << 5;
-        const Dirty = 1 << 6;
-        const Extended = 1 << 7;
-        const Global = 1 << 8;
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
-pub struct Page(usize);
-
-impl Page {
-    pub fn new(phys_addr: usize, flags: PageFlags) -> Self {
-        Self(phys_addr | flags.bits())
-    }
-
-    pub fn null() -> Self {
-        Self(0)
-    }
-
-    pub fn raw(&self) -> usize {
-        self.0
-    }
-
-    pub fn phys(&self) -> usize {
-        self.0 & !0xfff
-    }
-
-    pub fn flags(&self) -> PageFlags {
-        PageFlags::from_bits(self.0 & 0x1FF).unwrap()
-    }
-
-    pub fn is_present(&self) -> bool {
-        self.flags().contains(PageFlags::Present)
-    }
-
-    pub fn is_writeable(&self) -> bool {
-        self.flags().contains(PageFlags::Writeable)
-    }
-
-    pub fn is_extended(&self) -> bool {
-        self.flags().contains(PageFlags::Extended)
-    }
-}
-
-impl PartialEq<usize> for Page {
-    fn eq(&self, other: &usize) -> bool {
-        self.0 == *other
-    }
-}
 
 #[inline]
 pub fn page_directory() -> &'static [Page] {
@@ -128,8 +71,7 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
     let (pdi, pti) = vaddr2indices(virtual_address);
     let pt = page_directory()[pdi];
 
-    let table_flags = PageFlags::Present | PageFlags::Writeable | 
-                  (flags & PageFlags::Userspace);
+    let table_flags = PageFlags::Present | PageFlags::Writeable | (flags & PageFlags::Userspace);
 
     if pt == 0 {
         let new_pt = noct_physmem_alloc::allocate_one().unwrap();
@@ -146,7 +88,7 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
 
     unsafe { x86::tlb::flush(virtual_address) };
 
-    core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
+    core::sync::atomic::compiler_fence(Ordering::Acquire);
 }
 
 pub fn unmap_single_page(virtual_address: usize) {
@@ -164,7 +106,7 @@ pub fn unmap_single_page(virtual_address: usize) {
 
     unsafe { x86::tlb::flush(virtual_address) };
 
-    core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
+    core::sync::atomic::compiler_fence(Ordering::Acquire);
 }
 
 pub fn map_pages(phys_addr: usize, virt_addr: usize, byte_count: usize, flags: PageFlags) {

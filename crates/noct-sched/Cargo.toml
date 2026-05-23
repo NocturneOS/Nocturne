@@ -1,0 +1,21 @@
+[package]
+name = "noct-sched"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+spin = "0.10.0"
+lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
+bitflags = "2.10.0"
+
+noct-interrupts = { path = "../noct-interrupts" }
+noct-logger = { path = "../noct-logger" }
+noct-mem = { path = "../noct-mem" }
+noct-cpu = { path = "../noct-cpu" }
+noct-spec = { path = "../noct-spec" }
+noct-tools = { path = "../noct-tools" }
+noct-time = { path = "../noct-time" }
+noct-sync = { path = "../noct-sync" }
+
+[target.'cfg(any(target_arch = "x86", target_arch = "x86_64"))'.dependencies]
+x86 = "0.52.0"

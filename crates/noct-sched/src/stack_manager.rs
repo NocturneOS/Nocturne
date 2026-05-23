@@ -17,7 +17,7 @@ pub struct ThreadStack {
 
 impl ThreadStack {
     pub fn new(size: usize) -> Self {
-        let page_size = crate::arch::get_page_size();
+        let page_size = noct_mem::paging::PAGE_SIZE;
 
         // We need a stack of size: requested_size + one page.
         // That one page will be a guard page, we'll unmap the first page of stack.
@@ -48,7 +48,7 @@ impl ThreadStack {
     }
 
     pub fn new_user(address_space: &mut AddressSpace<GlobalPagingArchitecture>, size: usize) -> Self {
-        let page_size = crate::arch::get_page_size();
+        let page_size = noct_mem::paging::PAGE_SIZE;
         let base_with_guard = address_space.alloc_virt_region(size + page_size);
         let mapped_base = base_with_guard + page_size; // guard page left unmapped
 

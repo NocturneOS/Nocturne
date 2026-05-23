@@ -1,4 +1,4 @@
-use core::arch::asm;
+use core::{arch::asm, sync::atomic::Ordering};
 
 use noct_logger::qemu_log;
 use x86::io::{inb, outb};
@@ -30,8 +30,7 @@ pub unsafe extern "C" fn write_configuration_byte(byte: u8) {
 fn in_wait_until_empty() {
     while (unsafe { inb(PS2_STATE_REG) } & (1 << 1)) != 0 {
         unsafe {
-            core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
-            asm!("nop");
+            asm!("pause");
         }
     }
 }
@@ -40,7 +39,9 @@ fn in_wait_until_empty() {
 /// It uses IO ports
 fn out_wait_until_full() {
     while (unsafe { inb(PS2_STATE_REG) } & 1) == 0 {
-        core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
+        unsafe {
+            asm!("pause");
+        }
     }
 }
 

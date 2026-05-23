@@ -60,7 +60,7 @@ fn common_fault_entry(regs: &mut CPURegisters) {
     //     qemu_println!("Scheduler was disabled (or not initialized)");
     // }
 
-    qemu_println!("Fault on TID: {}", crate::sched::this_thread_id());
+    qemu_println!("Fault on TID: {}", noct_sched::this_thread_id());
 
     qemu_println!("{:x?}", regs);
 

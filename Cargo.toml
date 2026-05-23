@@ -25,7 +25,7 @@ members = [
     "crates/noct-fsman",
     "crates/noct-tarfs",
     "crates/noct-memdisk",
-    "crates/noct-boot", "crates/noct-mem"]
+    "crates/noct-boot", "crates/noct-mem", "crates/noct-sched"]
 resolver = "2"
 
 [dependencies]
@@ -55,6 +55,7 @@ noct-sysinfo = { path = "crates/noct-sysinfo" }
 noct-tarfs = { path = "crates/noct-tarfs" }
 noct-time = { path = "crates/noct-time" }
 noct-tools = { path = "crates/noct-tools" }
+noct-sched = { path = "crates/noct-sched" }
 
 
 # Profiles

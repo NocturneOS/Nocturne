@@ -2,7 +2,7 @@ use core::sync::atomic::AtomicUsize;
 
 use bitflags::bitflags;
 
-use crate::sched::{archspec::ArchitectureSpecificRegion, stack_manager::ThreadStack};
+use crate::{archspec::ArchitectureSpecificRegion, stack_manager::ThreadStack};
 
 bitflags! {
     #[derive(Copy, Clone, PartialEq, Eq)]
@@ -21,7 +21,7 @@ pub enum ThreadState {
     Sleeping,
     Waiting,
     Paused,
-    Dead
+    Dead,
 }
 
 impl From<usize> for ThreadState {
@@ -33,7 +33,10 @@ impl From<usize> for ThreadState {
             3 => ThreadState::Waiting,
             4 => ThreadState::Paused,
             5 => ThreadState::Dead,
-            _ => panic!("Conversion from `usize` to `ThreadState` failed! (value was: {})", value)
+            _ => panic!(
+                "Conversion from `usize` to `ThreadState` failed! (value was: {})",
+                value
+            ),
         }
     }
 }
@@ -44,7 +47,7 @@ pub enum ThreadPriority {
     High,
     #[default]
     Medium,
-    Low
+    Low,
 }
 
 impl ThreadPriority {
@@ -72,11 +75,10 @@ pub struct Thread {
     pub arch_specific_region: ArchitectureSpecificRegion,
 
     // SAFE ZONE: Add or remove fields here, it won't change the scheduler behaviour.
-
     pub last_error: AtomicUsize,
 
     pub priority: ThreadPriority,
-    pub time_quantum: AtomicUsize
+    pub time_quantum: AtomicUsize,
 }
 
 // Assert that offsets are valid for our assembly code.

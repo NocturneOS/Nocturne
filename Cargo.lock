@@ -210,6 +210,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-sched"
+version = "0.1.0"
+dependencies = [
+ "bitflags 2.10.0",
+ "lazy_static",
+ "noct-cpu",
+ "noct-interrupts",
+ "noct-logger",
+ "noct-mem",
+ "noct-spec",
+ "noct-sync",
+ "noct-time",
+ "noct-tools",
+ "spin 0.10.0",
+ "x86",
+]
+
+[[package]]
 name = "noct-smbios"
 version = "0.1.0"
 
@@ -277,6 +295,7 @@ dependencies = [
  "noct-pci",
  "noct-physmem-alloc",
  "noct-ps2",
+ "noct-sched",
  "noct-smbios",
  "noct-spec",
  "noct-sync",

@@ -1,3 +1,8 @@
+#![no_std]
+#![feature(linked_list_retain)]
+
+extern crate alloc;
+
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use alloc::{
@@ -61,7 +66,7 @@ unsafe extern "C" {
 }
 
 fn next_tid() -> usize {
-    GLOBAL_TID.fetch_add(1, Ordering::SeqCst)
+    GLOBAL_TID.fetch_add(1, Ordering::Acquire)
 }
 
 impl Scheduler {
@@ -134,7 +139,7 @@ impl Scheduler {
 
         self.working_queue.push_back(kernel_thread);
 
-        IS_SCHEDULER_INITIALIZED.store(true, Ordering::SeqCst);
+        IS_SCHEDULER_INITIALIZED.store(true, Ordering::Release);
     }
 
     pub fn kernel_process(&self) -> &SharedProcess {
@@ -237,7 +242,7 @@ impl Scheduler {
 
         // qemu_log!("STACK: {:08x?}; ESP: {:08x?}", stack.addr(), writeable_sp.addr());
 
-        process.thread_count.fetch_add(1, Ordering::SeqCst);
+        process.thread_count.fetch_add(1, Ordering::Release);
 
         let tcb = Thread {
             id,
@@ -299,7 +304,7 @@ impl Scheduler {
 
         (*thread.process)
             .thread_count
-            .fetch_sub(1, Ordering::SeqCst);
+            .fetch_sub(1, Ordering::Release);
 
         drop(thread);
     }
@@ -315,7 +320,7 @@ impl Scheduler {
             .as_ref()
             .unwrap()
             .state
-            .store(ThreadState::Sleeping as usize, Ordering::SeqCst);
+            .store(ThreadState::Sleeping as usize, Ordering::Release);
 
         self.working_queue
             .retain(|x| x.id != self.current_thread.as_ref().unwrap().id);
@@ -346,7 +351,7 @@ impl Scheduler {
 
             if noct_time::systemclock::get_uptime_ticks() > *wakeup_time {
                 task.state
-                    .store(ThreadState::Ready as usize, Ordering::SeqCst);
+                    .store(ThreadState::Ready as usize, Ordering::Release);
 
                 self.working_queue.push_front(Arc::clone(task));
 
@@ -424,15 +429,15 @@ impl Scheduler {
             if state == ThreadState::Ready || state == ThreadState::Running {
                 // If we DIDN'T ran out of quantum, decrement and continue.
                 if this.time_quantum.load(Ordering::Relaxed) != 0 {
-                    this.time_quantum.fetch_sub(1, Ordering::SeqCst);
+                    this.time_quantum.fetch_sub(1, Ordering::Relaxed);
                     return;
                 }
 
                 // Reload ammo.
                 this.time_quantum
-                    .store(this.priority.to_ticks().into(), Ordering::SeqCst);
+                    .store(this.priority.to_ticks().into(), Ordering::Release);
 
-                this.state.store(ThreadState::Ready as _, Ordering::SeqCst);
+                this.state.store(ThreadState::Ready as _, Ordering::Release);
 
                 self.working_queue.push_back(Arc::clone(&this));
             }
@@ -441,7 +446,7 @@ impl Scheduler {
         let next = self.next_task();
 
         this.state
-            .store(ThreadState::Running as _, Ordering::SeqCst);
+            .store(ThreadState::Running as _, Ordering::Release);
 
         // If next task is a current task, do not switch contexts.
         if this.id == next.id {
@@ -476,7 +481,7 @@ impl Scheduler {
 }
 
 pub fn is_intiialized() -> bool {
-    IS_SCHEDULER_INITIALIZED.load(Ordering::SeqCst)
+    IS_SCHEDULER_INITIALIZED.load(Ordering::Acquire)
 }
 
 pub fn this() -> MutexGuard<'static, Scheduler> {
@@ -670,7 +675,7 @@ pub fn thread_exit() -> ! {
 
         thread
             .state
-            .store(thread::ThreadState::Dead as _, Ordering::SeqCst);
+            .store(thread::ThreadState::Dead as _, Ordering::Release);
 
         {
             let mut lock = this();

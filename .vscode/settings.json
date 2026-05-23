@@ -1,7 +1,7 @@
 {
     "rust-analyzer.cargo.allTargets": false,
-    // "rust-analyzer.cargo.target": "./src/arch/x86/i686-unknown-none.json",
-    "rust-analyzer.cargo.target": "./src/arch/x86_64/x86_64-unknown-none.json",
+    "rust-analyzer.cargo.target": "./src/arch/x86/i686-unknown-none.json",
+    // "rust-analyzer.cargo.target": "./src/arch/x86_64/x86_64-unknown-none.json",
     "rust-analyzer.check.extraArgs": [
         "-Zbuild-std=core,alloc,compiler_builtins"
     ],
