@@ -87,10 +87,11 @@ name = "noct-boot"
 version = "0.1.0"
 
 [[package]]
-name = "noct-cpuregs"
+name = "noct-cpu"
 version = "0.1.0"
 dependencies = [
  "cfg-if",
+ "x86",
 ]
 
 [[package]]
@@ -122,7 +123,7 @@ name = "noct-interrupts"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
- "noct-cpuregs",
+ "noct-cpu",
  "noct-sync",
  "x86",
 ]
@@ -198,7 +199,7 @@ dependencies = [
 name = "noct-ps2"
 version = "0.1.0"
 dependencies = [
- "noct-cpuregs",
+ "noct-cpu",
  "noct-interrupts",
  "noct-logger",
  "x86",
@@ -261,7 +262,7 @@ dependencies = [
  "elf",
  "lazy_static",
  "noct-boot",
- "noct-cpuregs",
+ "noct-cpu",
  "noct-diskman",
  "noct-fsman",
  "noct-interrupts",

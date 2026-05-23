@@ -1,6 +1,6 @@
 use crate::eoi;
 
-use noct_cpuregs::CPURegisters;
+use noct_cpu::CPURegisters;
 use noct_sync::pseudosync::PseudoSync;
 
 

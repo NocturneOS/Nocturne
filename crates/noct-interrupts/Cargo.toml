@@ -8,5 +8,5 @@ lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
 x86 = "0.52.0"
 
 
-noct-cpuregs = { path = "../noct-cpuregs" }
+noct-cpu = { path = "../noct-cpu" }
 noct-sync = { path = "../noct-sync" }

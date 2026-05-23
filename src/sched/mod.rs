@@ -1,6 +1,4 @@
-use core::{
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
-};
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use alloc::{
     collections::{linked_list::LinkedList, vec_deque::VecDeque},
@@ -11,12 +9,13 @@ use noct_spec::KERNEL_BASE;
 use noct_tools::interrupt_locker::InterruptLocker;
 use spin::{Mutex, MutexGuard};
 
-use crate::{
-    arch,
-    qemu_log,
-    sched::{
-        archspec::ArchitectureSpecificRegion, process::Process, stack_manager::ThreadStack, thread::{Thread, ThreadFlags, ThreadPriority, ThreadState}
-    },
+use noct_logger::qemu_log;
+
+use self::{
+    archspec::ArchitectureSpecificRegion,
+    process::Process,
+    stack_manager::ThreadStack,
+    thread::{Thread, ThreadFlags, ThreadPriority, ThreadState},
 };
 
 mod archspec;
@@ -80,7 +79,7 @@ impl Scheduler {
             current_process: None,
             current_thread: None,
 
-            kernel_process: None
+            kernel_process: None,
         }
     }
 
@@ -175,12 +174,21 @@ impl Scheduler {
 
         #[cfg(target_arch = "x86")]
         unsafe {
-            stack.push(process.address_space.get_mut(), thread_exit as *const () as usize);
+            stack.push(
+                process.address_space.get_mut(),
+                thread_exit as *const () as usize,
+            );
 
             if is_user_proc {
-                stack.push(process.address_space.get_mut(), thread_trampoline_usermode as *const () as usize);
+                stack.push(
+                    process.address_space.get_mut(),
+                    thread_trampoline_usermode as *const () as usize,
+                );
             } else {
-                stack.push(process.address_space.get_mut(), thread_trampoline as *const () as usize);
+                stack.push(
+                    process.address_space.get_mut(),
+                    thread_trampoline as *const () as usize,
+                );
             }
 
             stack.push(process.address_space.get_mut(), 0x202); // IF=1, IOPL=0
@@ -202,7 +210,10 @@ impl Scheduler {
                 todo!("Usermode trampoline for x86_64")
                 // stack.push(process.address_space.get_mut(), thread_trampoline_usermode64 as *const () as usize);
             } else {
-                stack.push(process.address_space.get_mut(), thread_trampoline64 as *const () as usize);
+                stack.push(
+                    process.address_space.get_mut(),
+                    thread_trampoline64 as *const () as usize,
+                );
             }
 
             stack.push(process.address_space.get_mut(), 0x202); // IF=1, IOPL=0
@@ -264,9 +275,13 @@ impl Scheduler {
             // Count guard page in.
             let addr = stack_addr - noct_mem::paging::PAGE_SIZE;
 
-            unsafe { address_space.get_mut().unmap_pages(stack_addr, thread.stack.stack_size) };
+            unsafe {
+                address_space
+                    .get_mut()
+                    .unmap_pages(stack_addr, thread.stack.stack_size)
+            };
             unsafe { address_space.get_mut().free_virt_region(addr) };
-            
+
             // todo!("Free user thread's stack!");
         }
 
@@ -531,7 +546,7 @@ pub fn create_thread(
 
     {
         let mut binding = this();
-        
+
         binding.create_thread(process, entry, stack_size, priority, flags);
     }
 
@@ -609,7 +624,7 @@ pub fn this_thread_id() -> usize {
 
 pub fn in_kernel_context<T>(f: impl FnOnce() -> T) -> T {
     let il = InterruptLocker::lock();
-    
+
     if !is_intiialized() {
         return f();
     }
@@ -624,7 +639,7 @@ pub fn in_kernel_context<T>(f: impl FnOnce() -> T) -> T {
     unsafe { x86::controlregs::cr3_write(this_cr3 as _) };
 
     drop(il);
-    
+
     result
 }
 
@@ -714,13 +729,12 @@ unsafe extern "C" fn thread_trampoline_usermode() -> ! {
         "push 0x202",
         "push 0x1B",
         "push ebx",
-
         "iretd",
     );
 }
 
 fn idle_task() {
     loop {
-        arch::halt();
+        noct_cpu::halt::halt();
     }
 }

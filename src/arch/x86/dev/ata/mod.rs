@@ -1,7 +1,7 @@
 use core::alloc::Layout;
 
 use alloc::{boxed::Box, vec};
-use noct_cpuregs::CPURegisters;
+use noct_cpu::CPURegisters;
 use noct_interrupts::handler::register_interrupt_handler;
 use noct_logger::qemu_log;
 use x86::io::{inb, inw, outb};
