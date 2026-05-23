@@ -6,7 +6,7 @@ use core::{panic::PanicInfo, time::Duration};
 use alloc::{boxed::Box, sync::Arc, vec::Vec};
 use noct_boot::{BootInfo, Module};
 use noct_logger::qemu_log;
-use noct_mem::paging::PageFlags;
+use noct_mem::{heap, paging::PageFlags};
 
 use crate::{arch::x86::multiboot::MultibootModule, sched::{KERNEL_THREAD_DEFAULT_STACK_SIZE, thread::{ThreadFlags, ThreadPriority}}};
 
@@ -22,7 +22,7 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     // Now `__arch_init` initialized paging and PMM for us.
     // To make kernel fully initialized we should initialize heap.
 
-    noct_mem::heap::init();
+    heap::init();
 
     sched::init();
 

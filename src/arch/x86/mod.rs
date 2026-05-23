@@ -1,13 +1,10 @@
 pub mod dev;
-pub mod gdt;
-pub mod idt;
 pub mod interrupts;
 pub mod io;
 pub mod mem;
 pub mod multiboot;
 pub mod sys;
 pub mod timer;
-pub mod tss;
 pub mod video;
 
 use crate::{
@@ -22,6 +19,7 @@ use crate::{
 #[unsafe(no_mangle)]
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     use noct_boot::BootInfo;
+use noct_cpu::{gdt, idt, tss};
 
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
 

@@ -5,7 +5,7 @@ use noct_pci;
 use noct_sync::pseudosync::PseudoSync;
 
 use crate::arch::{
-    self, mem::paging, x86::dev::ata::{
+    self, x86::dev::ata::{
         ATADrive, commands::{ATA_CMD_READ_DMA_EXT, ATA_CMD_WRITE_DMA_EXT}, drive::ATAPhysicalDrive, error::{ATAIOError, ATAIOResult}, io::ATAIO, regs::{
             ATA_REG_COMMAND, ATA_REG_HDDEVSEL, ATA_REG_LBA0, ATA_REG_LBA1, ATA_REG_LBA2,
             ATA_REG_SECCOUNT0,

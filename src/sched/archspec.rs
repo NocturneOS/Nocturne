@@ -9,7 +9,7 @@ pub struct ArchitectureSpecificRegion {
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-use crate::arch::x86::tss::TSS_KERNEL_STACK_SIZE;
+use noct_cpu::tss::TSS_KERNEL_STACK_SIZE;
 
 impl ArchitectureSpecificRegion {
     pub fn new() -> Self {
@@ -39,7 +39,7 @@ impl ArchitectureSpecificRegion {
 
         Self { 
             fxsave_region: fxsave_region.into(),
-            tss_kernel_stack: unsafe { stack_pointer as *mut u8 }.into()
+            tss_kernel_stack: (stack_pointer as *mut u8).into()
         }
     }
 }

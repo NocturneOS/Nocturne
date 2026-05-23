@@ -91,6 +91,9 @@ name = "noct-cpu"
 version = "0.1.0"
 dependencies = [
  "cfg-if",
+ "lazy_static",
+ "noct-sync",
+ "spin 0.10.0",
  "x86",
 ]
 
@@ -163,6 +166,7 @@ dependencies = [
  "noct-logger",
  "noct-physmem-alloc",
  "noct-spec",
+ "noct-sysinfo",
  "noct-tools",
  "spin 0.10.0",
  "x86",

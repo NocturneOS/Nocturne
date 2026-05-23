@@ -1,8 +1,8 @@
-pub mod mem;
-pub mod tss;
+use noct_cpu::{gdt, idt, tss};
+use noct_mem::paging;
 
 use crate::arch::x86::multiboot::{MultibootHeader, MultibootMMapType};
-use crate::arch::x86::{gdt, idt, interrupts, sys, timer};
+use crate::arch::x86::{interrupts, sys, timer};
 use crate::{arch, kmain, qemu_log};
 
 use noct_boot::{BootInfo, Module};
@@ -57,7 +57,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     interrupts::exceptions::register_exceptions();
     interrupts::pic::init();
 
-    mem::paging::preinit(mb.memory().total());
+    paging::preinit(mb.memory().total());
 
     noct_physmem_alloc::init();
 
@@ -92,7 +92,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     // Mark all the memory past the kernel (and the kernel region) as used
 
     {
-        let start = (noct_sysinfo::info().kernel_end - noct_spec::KERNEL_BASE) + mem::paging::PAGE_SIZE;
+        let start = (noct_sysinfo::info().kernel_end - noct_spec::KERNEL_BASE) + paging::PAGE_SIZE;
 
         for addr in (0..start).step_by(arch::get_page_size()) {
             noct_physmem_alloc::mark_page(addr, true);

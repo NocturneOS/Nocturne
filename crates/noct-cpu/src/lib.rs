@@ -8,9 +8,9 @@ cfg_if! {
         pub use x86::*;
     } else if #[cfg(target_arch = "x86_64")] {
         mod x86_64;
-        pub use x86_64::CPURegisters;
+        pub use x86_64::*;
 
         mod x86;
-        pub use x86::halt;
+        pub use x86::{gdt, idt, halt};
     }
 }

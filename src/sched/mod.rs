@@ -93,7 +93,7 @@ impl Scheduler {
         self.kernel_process = Some(Arc::clone(&kernel_process));
 
         let arch_specific_region =
-            ArchitectureSpecificRegion::with_tss_stack(crate::arch::x86::tss::get_tss_stack_addr());
+            ArchitectureSpecificRegion::with_tss_stack(noct_cpu::tss::get_tss_stack_addr());
 
         let kernel_thread = Thread {
             id: next_tid(),

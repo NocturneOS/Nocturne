@@ -1,11 +1,8 @@
 use lazy_static::lazy_static;
-use noct_logger::qemu_print;
 use noct_sync::pseudosync::PseudoSync;
 use x86::{Ring, segmentation::SegmentSelector};
 
-use crate::{
-    arch::x86::gdt::{self, GDTEntry}, qemu_log
-};
+use crate::x86::gdt;
 
 #[repr(C, packed)]
 pub struct TSSEntry {
@@ -42,7 +39,7 @@ pub fn init() {
     let base = (BSP_TSS.get() as *const TSSEntry).addr();
     let limit = core::mem::size_of::<TSSEntry>() - 1;
 
-    qemu_log!("TSS BASE: {base:#x?}; TSS LIMIT: {limit:#x?}");
+    // qemu_log!("TSS BASE: {base:#x?}; TSS LIMIT: {limit:#x?}");
 
     *gdt::GDT_ENTRIES.nth(5) = gdt::GDTEntry::new(
         base as u32,
@@ -60,18 +57,6 @@ pub fn init() {
 		upper_part.add(0).write((base >> 32) as u32);
 		upper_part.add(1).write(0);
 	}
-
-	// for i in 0..gdt::GDT_ENTRIES.len() {
-	// 	let data = gdt::GDT_ENTRIES.nth_ptr(i) as *mut u8;
-
-	// 	qemu_print!("GDT[{i}]: ");
-
-	// 	for j in 0..core::mem::size_of::<GDTEntry>() {
-	// 		qemu_print!("{:02x} ", unsafe { data.add(j).read() });
-	// 	}
-
-	// 	noct_logger::qemu_println!();
-	// }
 
 	// Fifth index in the GDT: 0x08 * 5 = 0x28.
     unsafe { x86::task::load_tr(SegmentSelector::new(5, Ring::Ring0)) };

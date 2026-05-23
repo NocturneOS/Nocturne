@@ -1,4 +1,9 @@
+pub mod gdt;
+pub mod idt;
 pub mod halt;
+
+#[cfg(target_arch = "x86")]
+pub mod tss;
 
 use core::fmt::Debug;
 
