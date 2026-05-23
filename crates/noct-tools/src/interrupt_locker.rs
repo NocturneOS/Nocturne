@@ -1,5 +1,5 @@
 pub struct InterruptLocker {
-    interrupt_state_enabled: bool
+    interrupt_state_enabled: bool,
 }
 
 impl InterruptLocker {
@@ -9,7 +9,7 @@ impl InterruptLocker {
         noct_interrupts::cpu::disable_interrupts();
 
         Self {
-            interrupt_state_enabled: interrupt_state
+            interrupt_state_enabled: interrupt_state,
         }
     }
 }

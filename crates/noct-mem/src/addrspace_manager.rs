@@ -1,8 +1,11 @@
 use core::{alloc::Layout, marker::PhantomData};
 
+use crate::{
+    heap,
+    paging::{self, PagingHierarchy},
+};
 use alloc::vec::Vec;
 use noct_logger::qemu_log;
-use crate::{heap, paging::{self, PagingHierarchy}};
 use noct_spec::{KERNEL_BASE, WORD_SIZE};
 
 use crate::paging::{Page, PageFlags, map_single_page, unmap_single_page};
@@ -34,7 +37,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
             page_root_phys: root,
             used_virt_areas: areas,
 
-            phantom: PhantomData
+            phantom: PhantomData,
         }
     }
 
@@ -43,7 +46,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
             page_root_phys: 0,
             used_virt_areas: Vec::new(),
 
-            phantom: PhantomData
+            phantom: PhantomData,
         }
     }
 
@@ -52,7 +55,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
             page_root_phys: phys,
             used_virt_areas: Vec::new(),
 
-            phantom: PhantomData
+            phantom: PhantomData,
         }
     }
 
@@ -206,9 +209,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         let page_count = size.div_ceil(crate::paging::PAGE_SIZE);
 
         for i in 0..page_count {
-            self.unmap_single_page(
-                virt_addr + (i * crate::paging::PAGE_SIZE),
-            );
+            self.unmap_single_page(virt_addr + (i * crate::paging::PAGE_SIZE));
         }
     }
 
@@ -245,7 +246,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
 
             current_table_phys = self.self_map_page(current_table_phys, |table| {
                 let entry = table[idx];
-                
+
                 if entry.is_present() {
                     Some(entry.phys())
                 } else {
@@ -264,7 +265,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
 
         // self.self_map_page(current_table_phys, |table| {
         //     let entry = table[leaf_idx];
-            
+
         //     if entry.is_present() {
         //         Some(entry.phys())
         //     } else {
@@ -321,38 +322,55 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
     pub fn alloc_virt_region(&mut self, size: usize) -> usize {
         if self.used_virt_areas.is_empty() {
             let addr = KERNEL_BASE - size;
-            self.used_virt_areas.push(AddressSpaceVirtualBlock { address: addr, size });
+            self.used_virt_areas.push(AddressSpaceVirtualBlock {
+                address: addr,
+                size,
+            });
             return addr;
         }
-    
+
         // Check the gap between KERNEL_BASE and the topmost block.
         {
             let first = &self.used_virt_areas[0];
             let gap = KERNEL_BASE - (first.address + first.size);
             if gap >= size {
                 let addr = KERNEL_BASE - size;
-                self.used_virt_areas.insert(0, AddressSpaceVirtualBlock { address: addr, size });
+                self.used_virt_areas.insert(
+                    0,
+                    AddressSpaceVirtualBlock {
+                        address: addr,
+                        size,
+                    },
+                );
                 return addr;
             }
         }
-    
+
         // Scan gaps between consecutive blocks (list is high-low).
         for i in 0..self.used_virt_areas.len() - 1 {
             let upper_addr = self.used_virt_areas[i].address;
-            let lower_end  = self.used_virt_areas[i + 1].address
-                           + self.used_virt_areas[i + 1].size;
+            let lower_end = self.used_virt_areas[i + 1].address + self.used_virt_areas[i + 1].size;
             let gap = upper_addr - lower_end;
-    
+
             if gap >= size {
                 let addr = upper_addr - size;
-                self.used_virt_areas.insert(i + 1, AddressSpaceVirtualBlock { address: addr, size });
+                self.used_virt_areas.insert(
+                    i + 1,
+                    AddressSpaceVirtualBlock {
+                        address: addr,
+                        size,
+                    },
+                );
                 return addr;
             }
         }
-    
+
         // No gap found - extend below the lowest block.
         let addr = self.used_virt_areas.last().unwrap().address - size;
-        self.used_virt_areas.push(AddressSpaceVirtualBlock { address: addr, size });
+        self.used_virt_areas.push(AddressSpaceVirtualBlock {
+            address: addr,
+            size,
+        });
         addr
     }
 

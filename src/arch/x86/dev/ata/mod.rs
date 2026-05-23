@@ -7,21 +7,26 @@ use noct_logger::qemu_log;
 use x86::io::{inb, inw, outb};
 
 use crate::arch::x86::dev::ata::{
-    commands::{ATA_CMD_IDENTIFY, ATA_CMD_IDENTIFY_PACKET}, dma_prdt::PRDT, drive::ATAPhysicalDrive, error::{ATAError, ATAResult}, flags::{ATA_SR_BSY, ATA_SR_DF, ATA_SR_DRQ, ATA_SR_ERR}, regs::{
+    commands::{ATA_CMD_IDENTIFY, ATA_CMD_IDENTIFY_PACKET},
+    dma_prdt::PRDT,
+    drive::ATAPhysicalDrive,
+    error::{ATAError, ATAResult},
+    flags::{ATA_SR_BSY, ATA_SR_DF, ATA_SR_DRQ, ATA_SR_ERR},
+    regs::{
         ATA_REG_ALTSTATUS, ATA_REG_COMMAND, ATA_REG_CONTROL, ATA_REG_DATA, ATA_REG_ERROR,
         ATA_REG_HDDEVSEL, ATA_REG_LBA0, ATA_REG_LBA1, ATA_REG_LBA2, ATA_REG_SECCOUNT0,
         ATA_REG_STATUS,
-    }
+    },
 };
 
 pub mod commands;
-pub mod drive;
 pub mod dma;
 pub mod dma_prdt;
+pub mod drive;
 pub mod error;
 pub mod flags;
-pub mod io;
 pub mod info;
+pub mod io;
 pub mod pio;
 pub mod regs;
 
@@ -57,7 +62,7 @@ fn soft_reset(io: u16) {
     unsafe { outb(io + ATA_REG_CONTROL as u16, 0x04) };
 
     ide_400ns_delay(io);
-    
+
     unsafe { outb(io + ATA_REG_CONTROL as u16, 0) };
 }
 
@@ -190,7 +195,7 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
                     None
                 },
                 identity,
-                diskman_id: Some(noct_diskman::generate_new_id("ata"))
+                diskman_id: Some(noct_diskman::generate_new_id("ata")),
             });
         }
     }
@@ -217,7 +222,7 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
                 None
             },
             identity: identity,
-            diskman_id: Some(noct_diskman::generate_new_id("ata"))
+            diskman_id: Some(noct_diskman::generate_new_id("ata")),
         });
     }
 
@@ -268,6 +273,6 @@ pub fn init() {
     register_interrupt_handler(0x20 + 15, secondary_bus_irq);
 
     dma::init().unwrap();
-    
+
     check_all();
 }

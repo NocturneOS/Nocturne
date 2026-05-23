@@ -1,4 +1,4 @@
-use x86::io::{outb};
+use x86::io::outb;
 
 use crate::arch::x86::dev::ata::{
     ATADrive,
@@ -69,12 +69,15 @@ impl ATAIO for ATAPIO<'_> {
                 readsize
             };
 
-            io.offset(ATA_REG_HDDEVSEL).write8(0x40 + ((is_slave as u8) << 4));
-            io.offset(ATA_REG_SECCOUNT0).write8((controller_read_size >> 8) as u8);
+            io.offset(ATA_REG_HDDEVSEL)
+                .write8(0x40 + ((is_slave as u8) << 4));
+            io.offset(ATA_REG_SECCOUNT0)
+                .write8((controller_read_size >> 8) as u8);
             io.offset(ATA_REG_LBA0).write8(lbas[3]);
             io.offset(ATA_REG_LBA1).write8(lbas[4]);
             io.offset(ATA_REG_LBA2).write8(lbas[5]);
-            io.offset(ATA_REG_SECCOUNT0).write8((controller_read_size & 0xff) as u8);
+            io.offset(ATA_REG_SECCOUNT0)
+                .write8((controller_read_size & 0xff) as u8);
             io.offset(ATA_REG_LBA0).write8(lbas[0]);
             io.offset(ATA_REG_LBA1).write8(lbas[1]);
             io.offset(ATA_REG_LBA2).write8(lbas[2]);
@@ -102,7 +105,7 @@ impl ATAIO for ATAPIO<'_> {
 
     fn write48(&mut self, lba: u64, input: &[u8]) -> ATAIOResult<()> {
         let drv = &self.drive;
-        
+
         if input.len() % 512 != 0 {
             return Err(ATAIOError::InvalidBuffer);
         }
@@ -151,12 +154,15 @@ impl ATAIO for ATAPIO<'_> {
                 writesize
             };
 
-            io.offset(ATA_REG_HDDEVSEL).write8(0x40 + ((is_slave as u8) << 4));
-            io.offset(ATA_REG_SECCOUNT0).write8((controller_write_size >> 8) as u8);
+            io.offset(ATA_REG_HDDEVSEL)
+                .write8(0x40 + ((is_slave as u8) << 4));
+            io.offset(ATA_REG_SECCOUNT0)
+                .write8((controller_write_size >> 8) as u8);
             io.offset(ATA_REG_LBA0).write8(lbas[3]);
             io.offset(ATA_REG_LBA1).write8(lbas[4]);
             io.offset(ATA_REG_LBA2).write8(lbas[5]);
-            io.offset(ATA_REG_SECCOUNT0).write8((controller_write_size & 0xff) as u8);
+            io.offset(ATA_REG_SECCOUNT0)
+                .write8((controller_write_size & 0xff) as u8);
             io.offset(ATA_REG_LBA0).write8(lbas[0]);
             io.offset(ATA_REG_LBA1).write8(lbas[1]);
             io.offset(ATA_REG_LBA2).write8(lbas[2]);
@@ -176,10 +182,7 @@ impl ATAIO for ATAPIO<'_> {
                 }
 
                 unsafe {
-                    outb(
-                        io.addr() + ATA_REG_COMMAND as u16,
-                        ATA_CMD_CACHE_FLUSH_EXT,
-                    );
+                    outb(io.addr() + ATA_REG_COMMAND as u16, ATA_CMD_CACHE_FLUSH_EXT);
                 }
 
                 ide_poll(io.addr()).map_err(ATAIOError::ControllerError)?;

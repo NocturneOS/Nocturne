@@ -3,5 +3,5 @@
 extern crate alloc;
 
 pub mod addrspace_manager;
-pub mod paging;
 pub mod heap;
+pub mod paging;

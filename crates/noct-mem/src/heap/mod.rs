@@ -1,7 +1,7 @@
 mod alloc_support;
 
 // Re-export the init function for convenience
-pub use alloc_support::{init, allocate_no_map};
+pub use alloc_support::{allocate_no_map, init};
 use noct_logger::qemu_log;
 use noct_tools::interrupt_locker::InterruptLocker;
 
@@ -29,7 +29,10 @@ impl ArenaAllocator {
     }
 
     pub fn init(&self, heap_start: usize, heap_size: usize) {
-        self.inner.try_lock().expect("Failed to acquire lock on heap initialization!").init(heap_start, heap_size)
+        self.inner
+            .try_lock()
+            .expect("Failed to acquire lock on heap initialization!")
+            .init(heap_start, heap_size)
     }
 
     fn inner<'t>(&'t self) -> MutexGuard<'t, InnerArenaAllocator> {
@@ -64,8 +67,8 @@ impl InnerArenaAllocator {
 
     /// Initialize the allocator with a heap region
     pub fn init(&mut self, heap_start: usize, heap_size: usize) {
-        let page =
-            noct_physmem_alloc::allocate_one().expect("Could not allocate an initial page for the heap!");
+        let page = noct_physmem_alloc::allocate_one()
+            .expect("Could not allocate an initial page for the heap!");
 
         paging::map_single_page(page, heap_start, PAGE_FLAGS);
 
@@ -104,7 +107,7 @@ impl InnerArenaAllocator {
             if i.address == 0 {
                 break;
             }
-    
+
             qemu_log!("#{n}: {:x?} - ({})", i.address, i.size);
         }
     }
@@ -124,8 +127,11 @@ impl InnerArenaAllocator {
                 a
             } else {
                 self.dump();
-                
-                panic!("Failed to `+` {:#x?} and {} (index = {index})", this_block.address, this_block.size);
+
+                panic!(
+                    "Failed to `+` {:#x?} and {} (index = {index})",
+                    this_block.address, this_block.size
+                );
             };
 
             let aligned_new_block_addr = noct_tools::align_value(this_block_end, layout.align());
@@ -209,27 +215,27 @@ impl InnerArenaAllocator {
     fn delicate_unmap_and_free(&self, addr: usize, size: usize, is_last_block: bool) {
         let page_size = crate::paging::PAGE_SIZE;
         let page_mask = page_size - 1;
-    
+
         // Start freeing from the first page boundary at or after addr (if addr is page-aligned)
         let lower_bound = if addr & page_mask == 0 {
             addr
         } else {
-            (addr + page_mask) & !page_mask  // rounding up
+            (addr + page_mask) & !page_mask // rounding up
         };
-    
+
         // End freeing at the last page boundary before or at addr + size
         let end_addr = addr + size;
         let mut upper_bound = if end_addr & page_mask == 0 && !is_last_block {
-            end_addr  // Page-aligned end, but exclude this page (next block might start here)
+            end_addr // Page-aligned end, but exclude this page (next block might start here)
         } else {
-            noct_tools::align_down(end_addr, page_size) 
+            noct_tools::align_down(end_addr, page_size)
         };
-    
+
         // For last block, we can safely include the final page if end is page-aligned
         if is_last_block && (end_addr & page_mask == 0) {
             upper_bound = end_addr;
         }
-    
+
         for i in (lower_bound..upper_bound).step_by(page_size) {
             if let Some(free_addr) = paging::virt2phys(i) {
                 paging::unmap_single_page(i);
@@ -238,7 +244,7 @@ impl InnerArenaAllocator {
             }
         }
     }
-    
+
     #[inline]
     fn is_last_block(&self, idx: usize) -> bool {
         idx == self.alloc_count - 1
@@ -311,7 +317,10 @@ impl InnerArenaAllocator {
 
     /// Allocate memory with the given layout without mapping it
     pub fn allocate_no_map(&mut self, layout: Layout) -> Option<NonNull<u8>> {
-        debug_assert!(layout.align().is_multiple_of(crate::paging::PAGE_SIZE), "Non-mapping allocation must be PAGESIZE-multiple aligned.");
+        debug_assert!(
+            layout.align().is_multiple_of(crate::paging::PAGE_SIZE),
+            "Non-mapping allocation must be PAGESIZE-multiple aligned."
+        );
 
         self.ensure_arena_available();
 
@@ -329,7 +338,7 @@ impl InnerArenaAllocator {
         };
 
         self.remove_block(idx);
-        
+
         let is_last_block = self.is_last_block(idx);
 
         // if is_last_block {
@@ -346,7 +355,8 @@ unsafe impl GlobalAlloc for ArenaAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let il = InterruptLocker::lock();
 
-        let block: *mut u8 = self.inner()
+        let block: *mut u8 = self
+            .inner()
             .allocate(layout)
             .map(|ptr| ptr.as_ptr())
             .unwrap_or(ptr::null_mut());

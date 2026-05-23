@@ -5,8 +5,8 @@ extern crate alloc;
 use core::ffi::CStr;
 
 use crate::alloc::borrow::ToOwned;
-use crate::alloc::vec::Vec;
 use crate::alloc::string::String;
+use crate::alloc::vec::Vec;
 
 const SMBIOS_32_ANCHOR: &[u8] = b"_SM_";
 

@@ -1,7 +1,7 @@
 use alloc::{boxed::Box, vec::Vec};
 
 pub struct ATADriveInfo {
-    identity: Box<[u8]>
+    identity: Box<[u8]>,
 }
 
 impl ATADriveInfo {
@@ -18,7 +18,7 @@ impl ATADriveInfo {
 
     // Offset in bytes
     fn name_conv(&self, offset: usize, length: usize) -> &str {
-        unsafe { str::from_utf8_unchecked(&self.identity[offset..offset+length]) }
+        unsafe { str::from_utf8_unchecked(&self.identity[offset..offset + length]) }
     }
 
     pub fn model_name(&self) -> &str {

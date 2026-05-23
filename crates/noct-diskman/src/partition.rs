@@ -80,33 +80,23 @@ impl Drive for Partition {
         data: &mut [u8],
     ) -> DiskManResult<()> {
         self.parent_operation_mut(|parent_drive| {
-            parent_drive
-                .control(command, command_parameters, data)
+            parent_drive.control(command, command_parameters, data)
         })
     }
 
     fn buffer_address_alignment(&self) -> usize {
-        self.parent_operation(|parent_drive| {
-            parent_drive
-                .buffer_address_alignment()
-        })
+        self.parent_operation(|parent_drive| parent_drive.buffer_address_alignment())
     }
-    
+
     fn drive_type(&self) -> crate::structures::DriveType {
-        self.parent_operation(|parent_drive| {
-            parent_drive
-                .drive_type()
-        })
+        self.parent_operation(|parent_drive| parent_drive.drive_type())
     }
-    
+
     fn capacity(&self) -> Option<u64> {
         Some(self.offset_end - self.offset_start)
     }
-    
+
     fn block_size(&self) -> Option<u32> {
-        self.parent_operation(|parent_drive| {
-            parent_drive
-                .block_size()
-        })
+        self.parent_operation(|parent_drive| parent_drive.block_size())
     }
 }

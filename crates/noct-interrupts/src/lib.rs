@@ -7,8 +7,8 @@ use noct_sync::pseudosync::PseudoSync;
 
 use crate::store::ICStore;
 
-pub mod store;
 pub mod handler;
+pub mod store;
 
 pub mod cpu;
 

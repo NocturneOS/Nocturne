@@ -35,7 +35,7 @@ impl IDTEntry {
             #[cfg(target_arch = "x86_64")]
             base_higher: ((base >> 32) & 0xffffffff) as u32,
             #[cfg(target_arch = "x86_64")]
-            reserved_2: 0
+            reserved_2: 0,
         }
     }
 

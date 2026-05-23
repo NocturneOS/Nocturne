@@ -1,7 +1,4 @@
-use crate::{
-    arch::halt_forever,
-    unwind,
-};
+use crate::{arch::halt_forever, unwind};
 
 use noct_cpu::CPURegisters;
 use noct_interrupts::handler::register_interrupt_handler;
@@ -66,23 +63,30 @@ fn common_fault_entry(regs: &mut CPURegisters) {
 
     let sp = {
         #[cfg(target_arch = "x86")]
-        { regs.esp }
+        {
+            regs.esp
+        }
         #[cfg(target_arch = "x86_64")]
-        { regs.rsp }
+        {
+            regs.rsp
+        }
     };
 
     if sp != 0 {
         #[cfg(target_arch = "x86")]
-        unsafe { unwind::backtrace_extern(regs.ebp as _) };
+        unsafe {
+            unwind::backtrace_extern(regs.ebp as _)
+        };
         #[cfg(target_arch = "x86_64")]
-        unsafe { unwind::backtrace_extern(regs.rbp as _) };
+        unsafe {
+            unwind::backtrace_extern(regs.rbp as _)
+        };
     } else {
         qemu_println!("Stack pointer is NULL. Cannot unwind. Check the scheduler.");
     }
 
     halt_forever();
 }
-
 
 pub fn register_exceptions() {
     register_interrupt_handler(0, division_by_zero);

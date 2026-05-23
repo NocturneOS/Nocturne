@@ -5,7 +5,7 @@ pub type ATAIOResult<T> = Result<T, ATAIOError>;
 pub enum ATAError {
     TimedOut,
     NoDrive,
-    ErrorSet(u8)
+    ErrorSet(u8),
 }
 
 #[derive(Debug, Clone)]
@@ -14,5 +14,5 @@ pub enum ATAIOError {
     InvalidLBA,
     ControllerError(ATAError),
     UnsupportedOperation,
-    DMAControllerNotInitialized
+    DMAControllerNotInitialized,
 }

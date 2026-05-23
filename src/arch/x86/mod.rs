@@ -19,7 +19,7 @@ use crate::{
 #[unsafe(no_mangle)]
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     use noct_boot::BootInfo;
-use noct_cpu::{gdt, idt, tss};
+    use noct_cpu::{gdt, idt, tss};
 
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
 

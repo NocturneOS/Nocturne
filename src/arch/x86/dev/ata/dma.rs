@@ -4,15 +4,21 @@ use noct_logger::qemu_log;
 use noct_pci;
 use noct_sync::pseudosync::PseudoSync;
 
+use super::dma_prdt::PRDT;
 use crate::arch::{
-    self, x86::dev::ata::{
-        ATADrive, commands::{ATA_CMD_READ_DMA_EXT, ATA_CMD_WRITE_DMA_EXT}, drive::ATAPhysicalDrive, error::{ATAIOError, ATAIOResult}, io::ATAIO, regs::{
+    self,
+    x86::dev::ata::{
+        ATADrive,
+        commands::{ATA_CMD_READ_DMA_EXT, ATA_CMD_WRITE_DMA_EXT},
+        drive::ATAPhysicalDrive,
+        error::{ATAIOError, ATAIOResult},
+        io::ATAIO,
+        regs::{
             ATA_REG_COMMAND, ATA_REG_HDDEVSEL, ATA_REG_LBA0, ATA_REG_LBA1, ATA_REG_LBA2,
             ATA_REG_SECCOUNT0,
-        }
-    }
+        },
+    },
 };
-use super::dma_prdt::PRDT;
 
 const PCI_VENDOR: u16 = 0x8086;
 const PCI_DEVICE: u16 = 0x7010;
@@ -68,8 +74,7 @@ pub fn fill_prdt(prdt: &mut PRDT, buffer: &[u8]) {
 
     for (i, chunk) in buffer.chunks(chunk_size).enumerate() {
         let buf_virt = chunk.as_ptr().addr();
-        let buf_phys =
-            noct_mem::paging::virt2phys_precise(buf_virt).unwrap();
+        let buf_phys = noct_mem::paging::virt2phys_precise(buf_virt).unwrap();
 
         // qemu_log!("V{buf_virt:x?} -> P{buf_phys:x?}");
 
@@ -89,11 +94,7 @@ pub fn fill_prdt(prdt: &mut PRDT, buffer: &[u8]) {
     // }
 }
 
-pub fn read48(
-    drv: &mut ATAPhysicalDrive,
-    lba: u64,
-    output: &mut [u8],
-) -> ATAIOResult<()> {
+pub fn read48(drv: &mut ATAPhysicalDrive, lba: u64, output: &mut [u8]) -> ATAIOResult<()> {
     if output.len() % drv.info().sector_size() != 0 {
         return Err(ATAIOError::InvalidBuffer);
     }
@@ -152,12 +153,15 @@ pub fn read48(
             dma.offset(2).write8(6);
             dma.offset(4).write32(prdt.phys());
 
-            pio.offset(ATA_REG_HDDEVSEL).write8(0x40 + ((matches!(drv.drive, ATADrive::Slave) as u8) << 4));
-            pio.offset(ATA_REG_SECCOUNT0).write8((controller_read_size >> 8) as u8);
+            pio.offset(ATA_REG_HDDEVSEL)
+                .write8(0x40 + ((matches!(drv.drive, ATADrive::Slave) as u8) << 4));
+            pio.offset(ATA_REG_SECCOUNT0)
+                .write8((controller_read_size >> 8) as u8);
             pio.offset(ATA_REG_LBA0).write8(lbas[3]);
             pio.offset(ATA_REG_LBA1).write8(lbas[4]);
             pio.offset(ATA_REG_LBA2).write8(lbas[5]);
-            pio.offset(ATA_REG_SECCOUNT0).write8((controller_read_size & 0xff) as u8);
+            pio.offset(ATA_REG_SECCOUNT0)
+                .write8((controller_read_size & 0xff) as u8);
             pio.offset(ATA_REG_LBA0).write8(lbas[0]);
             pio.offset(ATA_REG_LBA1).write8(lbas[1]);
             pio.offset(ATA_REG_LBA2).write8(lbas[2]);
@@ -189,11 +193,7 @@ pub fn read48(
     Ok(())
 }
 
-pub fn write48(
-    drv: &mut ATAPhysicalDrive,
-    lba: u64,
-    input: &[u8],
-) -> ATAIOResult<()> {
+pub fn write48(drv: &mut ATAPhysicalDrive, lba: u64, input: &[u8]) -> ATAIOResult<()> {
     if input.len() % drv.info().sector_size() != 0 {
         return Err(ATAIOError::InvalidBuffer);
     }
@@ -252,12 +252,15 @@ pub fn write48(
             dma.offset(2).write8(6);
             dma.offset(4).write32(prdt.phys());
 
-            pio.offset(ATA_REG_HDDEVSEL).write8(0x40 + ((matches!(drv.drive, ATADrive::Slave) as u8) << 4));
-            pio.offset(ATA_REG_SECCOUNT0).write8((controller_read_size >> 8) as u8);
+            pio.offset(ATA_REG_HDDEVSEL)
+                .write8(0x40 + ((matches!(drv.drive, ATADrive::Slave) as u8) << 4));
+            pio.offset(ATA_REG_SECCOUNT0)
+                .write8((controller_read_size >> 8) as u8);
             pio.offset(ATA_REG_LBA0).write8(lbas[3]);
             pio.offset(ATA_REG_LBA1).write8(lbas[4]);
             pio.offset(ATA_REG_LBA2).write8(lbas[5]);
-            pio.offset(ATA_REG_SECCOUNT0).write8((controller_read_size & 0xff) as u8);
+            pio.offset(ATA_REG_SECCOUNT0)
+                .write8((controller_read_size & 0xff) as u8);
             pio.offset(ATA_REG_LBA0).write8(lbas[0]);
             pio.offset(ATA_REG_LBA1).write8(lbas[1]);
             pio.offset(ATA_REG_LBA2).write8(lbas[2]);

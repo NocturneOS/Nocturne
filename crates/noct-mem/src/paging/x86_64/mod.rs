@@ -1,6 +1,6 @@
 // use crate::paging::PageFlags;
-use noct_logger::qemu_log;
 use crate::paging::{PageFlags, PagingHierarchy};
+use noct_logger::qemu_log;
 
 pub const PAGE_SIZE: usize = 0x1000;
 
@@ -19,12 +19,14 @@ impl PagingHierarchy for X86_64Paging {
             1 => (vaddr >> 30) & 0x1FF,
             2 => (vaddr >> 21) & 0x1FF,
             3 => (vaddr >> 12) & 0x1FF,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
     // 0x0000_0000_0000_0000 - 0x8000_0000_0000_0000
-    fn user_root_entry_count() -> usize { 256 }
+    fn user_root_entry_count() -> usize {
+        256
+    }
 
     fn root() -> &'static [usize] {
         unsafe { core::slice::from_raw_parts(PML4T as *const usize, 512) }
@@ -48,10 +50,10 @@ const fn vaddr2indices(addr: usize) -> (usize, usize, usize, usize) {
 
 // Recursive paging addresses.
 
-const PML4T: usize = 0xFFFF_FF7F_BFDF_E000;  // (510, 510, 510, 510)
-const PDPT: usize = 0xFFFF_FF7F_BFC0_0000;   // (510, 510, 510, 0)
-const PDT: usize = 0xFFFF_FF7F_8000_0000;    // (510, 510, 0, 0)
-const PT: usize = 0xFFFF_FF00_0000_0000;     // (510, 0, 0, 0)
+const PML4T: usize = 0xFFFF_FF7F_BFDF_E000; // (510, 510, 510, 510)
+const PDPT: usize = 0xFFFF_FF7F_BFC0_0000; // (510, 510, 510, 0)
+const PDT: usize = 0xFFFF_FF7F_8000_0000; // (510, 510, 0, 0)
+const PT: usize = 0xFFFF_FF00_0000_0000; // (510, 0, 0, 0)
 
 #[inline]
 pub fn pml4t() -> &'static [usize] {
@@ -114,14 +116,19 @@ pub fn pt_mut(pml4t_idx: usize, pdpt_idx: usize, pd_idx: usize) -> &'static mut 
 }
 
 pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: PageFlags) {
-    debug_assert!(physical_address % PAGE_SIZE == 0, "Physical address not page-aligned");
-    debug_assert!(virtual_address % PAGE_SIZE == 0, "Virtual address not page-aligned");
+    debug_assert!(
+        physical_address % PAGE_SIZE == 0,
+        "Physical address not page-aligned"
+    );
+    debug_assert!(
+        virtual_address % PAGE_SIZE == 0,
+        "Virtual address not page-aligned"
+    );
 
     let (i_pml4t, i_pdpt, i_pdt, i_pt) = vaddr2indices(virtual_address);
     let v_pdpt = pml4t()[i_pml4t];
 
-    let table_flags = PageFlags::Present | PageFlags::Writeable | 
-                  (flags & PageFlags::Userspace);
+    let table_flags = PageFlags::Present | PageFlags::Writeable | (flags & PageFlags::Userspace);
 
     if v_pdpt == 0 {
         let new_pdpt = noct_physmem_alloc::allocate_one().unwrap();
@@ -188,7 +195,7 @@ pub fn unmap_single_page(virtual_address: usize) {
     page_table[i_pt] = 0;
 
     unsafe { x86::tlb::flush(virtual_address) };
-    
+
     core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::Acquire);
 }
 
@@ -226,7 +233,7 @@ pub fn virt2phys(virt_addr: usize) -> Option<usize> {
     if (pml4t()[pml4t_i] & (1 << 7)) != 0 {
         let page_base = pml4t()[pml4t_i] & !0x3fff_ffff;
 
-        return Some(page_base/* | (virt_addr & 0x3fff_ffff)*/);
+        return Some(page_base /* | (virt_addr & 0x3fff_ffff)*/);
     }
 
     //
@@ -238,7 +245,7 @@ pub fn virt2phys(virt_addr: usize) -> Option<usize> {
     if (pdpt(pml4t_i)[pdpt_i] & (1 << 7)) != 0 {
         let page_base = pdpt(pml4t_i)[pdpt_i] & !0x1f_ffff;
 
-        return Some(page_base/* | (virt_addr & 0x1f_ffff)*/);
+        return Some(page_base /* | (virt_addr & 0x1f_ffff)*/);
     }
 
     //
@@ -312,7 +319,6 @@ pub fn virt2phys_precise(virt_addr: usize) -> Option<usize> {
 pub fn is_memory_accessible(addr: usize) -> bool {
     virt2phys(addr).is_some()
 }
-
 
 pub fn preinit(available_memory_size: usize) {
     let kernel_start = noct_sysinfo::info_mut().kernel_start;

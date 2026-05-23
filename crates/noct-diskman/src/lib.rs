@@ -10,7 +10,7 @@ pub mod view;
 
 use alloc::{
     borrow::ToOwned, boxed::Box, collections::linked_list::LinkedList, format, string::String,
-    vec::{Vec},
+    vec::Vec,
 };
 use noct_logger::qemu_log;
 use noct_mbr::{PartitionRecord, PartitionType};
@@ -19,7 +19,11 @@ use spin::RwLock;
 use lazy_static::lazy_static;
 
 use crate::{
-    drive::Drive, error::{DiskManError, DiskManResult}, partition::Partition, structures::{Command, DriveType}, view::DiskView
+    drive::Drive,
+    error::{DiskManError, DiskManResult},
+    partition::Partition,
+    structures::{Command, DriveType},
+    view::DiskView,
 };
 
 lazy_static! {
@@ -32,7 +36,7 @@ lazy_static! {
         RwLock::new(Vec::new());
 }
 
-pub fn register_drive(drive: Box<dyn Drive + Send + Sync + 'static>) -> DiskManResult<()>{
+pub fn register_drive(drive: Box<dyn Drive + Send + Sync + 'static>) -> DiskManResult<()> {
     // Add drive to the manager.
 
     {
@@ -97,9 +101,9 @@ pub fn read_bytes(disk_id: &str, byte_location: u64, buffer: &mut [u8]) -> DiskM
             let mut bind = x.write();
 
             let mut view = DiskView::new(&mut **bind);
-            
+
             view.read_bytes(byte_location, buffer)
-        },
+        }
         None => Err(DiskManError::DiskNotFound),
     }
 }
@@ -130,13 +134,12 @@ pub fn write_bytes(disk_id: &str, byte_location: u64, buffer: &[u8]) -> DiskManR
             let mut bind = x.write();
 
             let mut view = DiskView::new(&mut **bind);
-            
+
             view.write_bytes(byte_location, buffer)
-        },
+        }
         None => Err(DiskManError::DiskNotFound),
     }
 }
-
 
 /// Controls disk/drive.
 ///
@@ -147,7 +150,12 @@ pub fn write_bytes(disk_id: &str, byte_location: u64, buffer: &[u8]) -> DiskManR
 /// * `command` - A command. Look [crate::structures::Command] for more.
 /// * `command_parameters` - Some parameters for the command (may be empty).
 /// * `data` - Output data buffer (may be empty).
-pub fn control(disk_id: &str, command: Command, command_parameters: &[u8], data: &mut [u8]) -> DiskManResult<()> {
+pub fn control(
+    disk_id: &str,
+    command: Command,
+    command_parameters: &[u8],
+    data: &mut [u8],
+) -> DiskManResult<()> {
     let drives_handle = DRIVES.read();
     let disk_handle = drives_handle.iter().find(|x| x.read().get_id() == disk_id);
 
@@ -161,9 +169,7 @@ fn remove_partitions(disk_id: &str) {
     let mut drives_handle = DRIVES.write();
 
     drives_handle
-        .extract_if(.., |x| {
-            x.read().get_parent_disk_id() == Some(disk_id)
-        })
+        .extract_if(.., |x| x.read().get_parent_disk_id() == Some(disk_id))
         .for_each(drop);
 }
 
@@ -174,7 +180,7 @@ fn scan_partitions(
     ebr_location: Option<u32>,
 ) -> DiskManResult<Vec<PartitionRecord>> {
     let mut raw_buffer = alloc::vec![0u8; 512];
-    let read_at = ebr_location.unwrap_or(0) as u64;// * block_size as u64;
+    let read_at = ebr_location.unwrap_or(0) as u64; // * block_size as u64;
 
     disk.read(read_at, &mut raw_buffer)?;
 
@@ -196,7 +202,7 @@ fn scan_partitions(
                     // Primary - add and recurse
                     filtered_records.push(record.clone());
 
-                    let new_base = Some(record.start_sector_lba);                    
+                    let new_base = Some(record.start_sector_lba);
                     let sub = scan_partitions(disk, block_size, new_base, new_base)?;
                     filtered_records.extend(sub);
                 } else {

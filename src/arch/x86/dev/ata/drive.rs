@@ -1,8 +1,5 @@
 use alloc::string::String;
-use noct_diskman::{
-    error::DiskManResult,
-    structures::Command,
-};
+use noct_diskman::{error::DiskManResult, structures::Command};
 use noct_logger::qemu_log;
 
 use crate::arch::x86::{
@@ -63,7 +60,12 @@ impl ATAPhysicalDrive {
     }
 
     pub fn write(&mut self, lba: u64, input: &[u8]) -> ATAIOResult<()> {
-        qemu_log!("Writing to drive {} at LBA {} with length {} bytes", self.diskman_id.as_deref().unwrap_or("<unknown>"), lba, input.len());
+        qemu_log!(
+            "Writing to drive {} at LBA {} with length {} bytes",
+            self.diskman_id.as_deref().unwrap_or("<unknown>"),
+            lba,
+            input.len()
+        );
 
         if self.identity.is_dma_supported() {
             // Direct writing to removable media devices is not supported,

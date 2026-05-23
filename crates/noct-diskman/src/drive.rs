@@ -1,4 +1,7 @@
-use crate::{error::DiskManResult, structures::{Command, DriveType}};
+use crate::{
+    error::DiskManResult,
+    structures::{Command, DriveType},
+};
 
 pub trait Drive {
     fn get_name(&self) -> &str;
@@ -25,5 +28,10 @@ pub trait Drive {
 
     fn read(&mut self, location: u64, buffer: &mut [u8]) -> DiskManResult<u64>;
     fn write(&mut self, location: u64, buffer: &[u8]) -> DiskManResult<u64>;
-    fn control(&mut self, command: Command, command_parameters: &[u8], data: &mut [u8]) -> DiskManResult<()>;
+    fn control(
+        &mut self,
+        command: Command,
+        command_parameters: &[u8],
+        data: &mut [u8],
+    ) -> DiskManResult<()>;
 }

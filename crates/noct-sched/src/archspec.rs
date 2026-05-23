@@ -16,16 +16,17 @@ impl ArchitectureSpecificRegion {
         let fxsave_region =
             unsafe { alloc::alloc::alloc_zeroed(Layout::from_size_align_unchecked(512, 16)) };
 
-        let tss_kernel_stack =
-            unsafe { alloc::alloc::alloc_zeroed(Layout::from_size_align_unchecked(TSS_KERNEL_STACK_SIZE, 16)) };
+        let tss_kernel_stack = unsafe {
+            alloc::alloc::alloc_zeroed(Layout::from_size_align_unchecked(TSS_KERNEL_STACK_SIZE, 16))
+        };
 
         unsafe {
             asm!("fxsave ({})", in(reg) fxsave_region.addr(), options(att_syntax, nostack));
         }
 
-        Self { 
+        Self {
             fxsave_region: fxsave_region.into(),
-            tss_kernel_stack: unsafe { tss_kernel_stack.byte_add(TSS_KERNEL_STACK_SIZE) }.into()
+            tss_kernel_stack: unsafe { tss_kernel_stack.byte_add(TSS_KERNEL_STACK_SIZE) }.into(),
         }
     }
 
@@ -37,9 +38,9 @@ impl ArchitectureSpecificRegion {
             asm!("fxsave ({})", in(reg) fxsave_region.addr(), options(att_syntax, nostack));
         }
 
-        Self { 
+        Self {
             fxsave_region: fxsave_region.into(),
-            tss_kernel_stack: (stack_pointer as *mut u8).into()
+            tss_kernel_stack: (stack_pointer as *mut u8).into(),
         }
     }
 }
@@ -48,12 +49,15 @@ impl Drop for ArchitectureSpecificRegion {
     fn drop(&mut self) {
         unsafe {
             alloc::alloc::dealloc(
-                self.fxsave_region.load(core::sync::atomic::Ordering::Relaxed),
+                self.fxsave_region
+                    .load(core::sync::atomic::Ordering::Relaxed),
                 Layout::from_size_align_unchecked(512, 16),
             );
 
             alloc::alloc::dealloc(
-                self.tss_kernel_stack.load(core::sync::atomic::Ordering::Relaxed).byte_sub(TSS_KERNEL_STACK_SIZE),
+                self.tss_kernel_stack
+                    .load(core::sync::atomic::Ordering::Relaxed)
+                    .byte_sub(TSS_KERNEL_STACK_SIZE),
                 Layout::from_size_align_unchecked(TSS_KERNEL_STACK_SIZE, 16),
             )
         };

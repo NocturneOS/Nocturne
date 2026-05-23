@@ -4,7 +4,10 @@ use noct_spec::{KERNEL_BASE, WORD_SIZE};
 
 use crate::qemu_log;
 
-use noct_mem::{addrspace_manager::AddressSpace, paging::{GlobalPagingArchitecture, PageFlags}};
+use noct_mem::{
+    addrspace_manager::AddressSpace,
+    paging::{GlobalPagingArchitecture, PageFlags},
+};
 
 const STACK_ALIGNEMNT: usize = 0x1000;
 
@@ -38,7 +41,9 @@ impl ThreadStack {
         // Unmap the first page.
         noct_mem::paging::unmap_single_page(allocation.addr());
 
-        qemu_log!("Allocated a stack at: {allocation:?} with size: {real_stack_size:#x?} (ptr: {pointer:?})");
+        qemu_log!(
+            "Allocated a stack at: {allocation:?} with size: {real_stack_size:#x?} (ptr: {pointer:?})"
+        );
 
         Self {
             stack_pointer: pointer as usize,
@@ -47,17 +52,23 @@ impl ThreadStack {
         }
     }
 
-    pub fn new_user(address_space: &mut AddressSpace<GlobalPagingArchitecture>, size: usize) -> Self {
+    pub fn new_user(
+        address_space: &mut AddressSpace<GlobalPagingArchitecture>,
+        size: usize,
+    ) -> Self {
         let page_size = noct_mem::paging::PAGE_SIZE;
         let base_with_guard = address_space.alloc_virt_region(size + page_size);
         let mapped_base = base_with_guard + page_size; // guard page left unmapped
 
         // qemu_log!("Map from: {mapped_base:#x} to {:#x}", mapped_base + size);
 
-        address_space.alloc_map_multiple_pages(
-            mapped_base, size,
-            PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace,
-        ).expect("stack mapping failed");
+        address_space
+            .alloc_map_multiple_pages(
+                mapped_base,
+                size,
+                PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace,
+            )
+            .expect("stack mapping failed");
 
         Self {
             stack_pointer: mapped_base + size, // top of stack
@@ -75,28 +86,36 @@ impl ThreadStack {
     }
 
     pub unsafe fn pointer(&self) -> *mut usize {
-        self.stack_pointer as *mut usize 
+        self.stack_pointer as *mut usize
     }
 
-    fn push_user(&mut self, address_space: &mut AddressSpace<GlobalPagingArchitecture>, value: usize) {
+    fn push_user(
+        &mut self,
+        address_space: &mut AddressSpace<GlobalPagingArchitecture>,
+        value: usize,
+    ) {
         let mut ptr = self.stack_pointer as *mut usize;
 
         ptr = unsafe { ptr.sub(1) };
 
         self.stack_pointer = ptr.addr();
 
-        // 
+        //
 
         let index = (self.stack_pointer & 0xfff) / WORD_SIZE;
-        
+
         // qemu_log!("Stack pointer: {:#x?}; Index: {};", self.stack_pointer, index);
-        
+
         address_space.self_map_page_from_virt(self.stack_pointer & !0x3ff, |data| {
             data[index] = value;
         });
     }
 
-    pub unsafe fn push(&mut self, address_space: &mut AddressSpace<GlobalPagingArchitecture>, value: usize) {
+    pub unsafe fn push(
+        &mut self,
+        address_space: &mut AddressSpace<GlobalPagingArchitecture>,
+        value: usize,
+    ) {
         if self.stack_pointer <= KERNEL_BASE {
             return self.push_user(address_space, value);
         }

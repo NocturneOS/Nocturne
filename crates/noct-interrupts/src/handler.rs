@@ -3,10 +3,10 @@ use crate::eoi;
 use noct_cpu::CPURegisters;
 use noct_sync::pseudosync::PseudoSync;
 
-
 pub type InterruptCallback = fn(&mut CPURegisters) -> ();
 
-static INTERRUPT_VECTORS: PseudoSync<[Option<InterruptCallback>; 256]> = unsafe { core::mem::zeroed() };
+static INTERRUPT_VECTORS: PseudoSync<[Option<InterruptCallback>; 256]> =
+    unsafe { core::mem::zeroed() };
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn isr_handler(mut regs: CPURegisters) {

@@ -5,7 +5,7 @@ pub struct Time {
     day: u8,
     hour: u8,
     minute: u8,
-    second: u8
+    second: u8,
 }
 
 impl Time {
@@ -65,7 +65,6 @@ impl Time {
     fn is_leap_year_inner(year: u16) -> bool {
         (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
     }
-
 
     /// Returns the number of days in a given month (1‑based) for a specific year.
     fn days_in_month_inner(month: u8, year: u16) -> Result<u32, TimeError> {

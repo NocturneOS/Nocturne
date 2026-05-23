@@ -11,7 +11,9 @@ use noct_boot::{BootInfo, Module};
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
 
-    let mb = unsafe { &*((multiboot_header_address + noct_spec::KERNEL_BASE) as *const MultibootHeader) };
+    let mb = unsafe {
+        &*((multiboot_header_address + noct_spec::KERNEL_BASE) as *const MultibootHeader)
+    };
 
     qemu_log!("Command line: {:?}", mb.cmdline());
     qemu_log!("Modules count: {}", mb.modules().count());
@@ -98,7 +100,11 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
             noct_physmem_alloc::mark_page(addr, true);
         }
 
-        qemu_log!("Marked {:#x?} - {:#x?} as used. (past the kernel)", 0, start);
+        qemu_log!(
+            "Marked {:#x?} - {:#x?} as used. (past the kernel)",
+            0,
+            start
+        );
     }
 
     // Reserve memory for modules we load.

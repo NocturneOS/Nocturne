@@ -1,9 +1,17 @@
-use alloc::{boxed::Box, string::{String, ToString}, sync::Arc};
+use alloc::{
+    boxed::Box,
+    string::{String, ToString},
+    sync::Arc,
+};
 use core::sync::atomic::{AtomicUsize, Ordering};
 use noct_logger::qemu_log;
 use noct_time::repr::Time;
 
-use crate::{DirectoryHandle, FileHandle, FileOpenMode, Filesystem, FilesystemInstance, entity::{EntityInfo, EntityType}, error::{FilesystemError, FilesystemResult}};
+use crate::{
+    DirectoryHandle, FileHandle, FileOpenMode, Filesystem, FilesystemInstance,
+    entity::{EntityInfo, EntityType},
+    error::{FilesystemError, FilesystemResult},
+};
 
 pub struct DebugFilesystem;
 
@@ -38,7 +46,11 @@ impl FilesystemInstance for DebugFSInstance {
     }
 
     fn open(&self, path: &str, mode: FileOpenMode) -> FilesystemResult<FileHandle> {
-        qemu_log!("DebugFS: open called with path '{}' and mode {:?}", path, mode);
+        qemu_log!(
+            "DebugFS: open called with path '{}' and mode {:?}",
+            path,
+            mode
+        );
 
         let finfo = EntityInfo {
             node_id: 0,
@@ -48,58 +60,73 @@ impl FilesystemInstance for DebugFSInstance {
             modified_at: Time::epoch(),
         };
 
-        Ok(FileHandle::new(self.id_arena.fetch_add(1, Ordering::Relaxed) as _, Arc::clone(&self.disk_id), finfo))
+        Ok(FileHandle::new(
+            self.id_arena.fetch_add(1, Ordering::Relaxed) as _,
+            Arc::clone(&self.disk_id),
+            finfo,
+        ))
     }
-    
+
     fn opendir(&self, path: &str) -> FilesystemResult<DirectoryHandle> {
         qemu_log!("DebugFS: opendir called with path '{}'", path);
 
         Ok(DirectoryHandle {
             disk_id: self.disk_id.clone(),
-            handle_id: self.id_arena.fetch_add(1, Ordering::Relaxed) as _
+            handle_id: self.id_arena.fetch_add(1, Ordering::Relaxed) as _,
         })
     }
-    
+
     fn read(&self, handle: &mut FileHandle, buffer: &mut [u8]) -> FilesystemResult<u64> {
-        qemu_log!("DebugFS: read called with handle {:?} and buffer of length {}", handle, buffer.len());
+        qemu_log!(
+            "DebugFS: read called with handle {:?} and buffer of length {}",
+            handle,
+            buffer.len()
+        );
         Ok(0)
     }
-    
+
     fn write(&self, handle: &mut FileHandle, buffer: &[u8]) -> FilesystemResult<u64> {
-        qemu_log!("DebugFS: write called with handle {:?} and buffer of length {}", handle, buffer.len());
+        qemu_log!(
+            "DebugFS: write called with handle {:?} and buffer of length {}",
+            handle,
+            buffer.len()
+        );
         Ok(0)
     }
-    
+
     fn info(&self, path: &str) -> FilesystemResult<crate::entity::EntityInfo> {
         qemu_log!("DebugFS: info called with path '{}'", path);
         Err(FilesystemError::NotFound)
     }
-    
-    fn readdir(&self, _handle: &mut DirectoryHandle) -> FilesystemResult<crate::handles::directory::DirectoryEntry> {
+
+    fn readdir(
+        &self,
+        _handle: &mut DirectoryHandle,
+    ) -> FilesystemResult<crate::handles::directory::DirectoryEntry> {
         qemu_log!("DebugFS: readdir called");
         Err(FilesystemError::NotFound)
     }
-    
+
     fn close(&self, _handle: &mut FileHandle) -> FilesystemResult<()> {
         qemu_log!("DebugFS: close called");
         Err(FilesystemError::NotFound)
     }
-    
+
     fn closedir(&self, _handle: &mut DirectoryHandle) -> FilesystemResult<()> {
         qemu_log!("DebugFS: closedir called");
         Err(FilesystemError::NotFound)
     }
-    
+
     fn mkfile(&self, path: &str) -> FilesystemResult<()> {
         qemu_log!("DebugFS: mkfile called ({path:?})");
         Ok(())
     }
-    
+
     fn mkdir(&self, path: &str) -> FilesystemResult<()> {
         qemu_log!("DebugFS: mkfile called ({path:?})");
         Ok(())
     }
-    
+
     fn remove(&self, path: &str) -> FilesystemResult<()> {
         qemu_log!("DebugFS: remove called ({path:?})");
         Ok(())

@@ -26,9 +26,7 @@ fn bitmap() -> &'static [usize] {
     let rawptr = (unsafe { &IMAGE_VIRT_END } as *const *const ()).addr() as *const usize;
 
     // Size - in bytes; Length - in items.
-    let size = noct_sysinfo::info()
-        .physical_memory_bitmap_size
-        .unwrap();
+    let size = noct_sysinfo::info().physical_memory_bitmap_size.unwrap();
 
     assert!(size.is_multiple_of(WORD_SIZE));
 
@@ -41,9 +39,7 @@ fn bitmap_mut() -> &'static mut [usize] {
     let rawptr = (unsafe { &IMAGE_VIRT_END } as *const *const ()).addr() as *mut usize;
 
     // Size - in bytes; Length - in items.
-    let size = noct_sysinfo::info()
-        .physical_memory_bitmap_size
-        .unwrap();
+    let size = noct_sysinfo::info().physical_memory_bitmap_size.unwrap();
 
     assert!(size.is_multiple_of(WORD_SIZE));
 
@@ -220,10 +216,7 @@ pub fn init() {
     // Don't disable interrupts here - multithreading is not available while physical memory manager is not initialized.
     bitmap_mut().fill(0);
 
-    qemu_log!(
-        "Bitmap size: {} bytes",
-        bitmap().len() * WORD_SIZE
-    );
+    qemu_log!("Bitmap size: {} bytes", bitmap().len() * WORD_SIZE);
 
     qemu_log!("Bitmap length: {}", bitmap().len());
 

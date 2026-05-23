@@ -1,13 +1,13 @@
-use core::{cell::UnsafeCell};
+use core::cell::UnsafeCell;
 
 pub struct PseudoSync<T> {
-    data: UnsafeCell<T>
+    data: UnsafeCell<T>,
 }
 
 impl<T> PseudoSync<T> {
     pub const fn new(data: T) -> Self {
         Self {
-            data: UnsafeCell::new(data)
+            data: UnsafeCell::new(data),
         }
     }
 

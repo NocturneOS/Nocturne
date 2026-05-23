@@ -7,9 +7,7 @@ pub struct MemoryInfo {
 
 impl MemoryInfo {
     pub fn new(lower: usize, higher: usize) -> Self {
-        Self {
-            lower, higher
-        }
+        Self { lower, higher }
     }
 
     pub fn lower(&self) -> usize {

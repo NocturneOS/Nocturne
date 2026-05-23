@@ -8,7 +8,8 @@ use crate::{FilesystemInstance, error::FilesystemResult};
 pub type SharedFilesystemInstance = Arc<Box<dyn FilesystemInstance>>;
 
 lazy_static! {
-    pub static ref MOUNTED_DISKS: Mutex<Vec<(String, SharedFilesystemInstance)>> = Mutex::new(Vec::new());
+    pub static ref MOUNTED_DISKS: Mutex<Vec<(String, SharedFilesystemInstance)>> =
+        Mutex::new(Vec::new());
 }
 
 /// Mount specific disk.
@@ -19,8 +20,10 @@ pub fn try_mount(disk_id: &str) -> FilesystemResult<SharedFilesystemInstance> {
 
             let instance = Arc::new(instance);
 
-            MOUNTED_DISKS.lock().push((disk_id.to_owned(), Arc::clone(&instance)));
-            
+            MOUNTED_DISKS
+                .lock()
+                .push((disk_id.to_owned(), Arc::clone(&instance)));
+
             return Ok(instance);
         }
     }
@@ -40,11 +43,8 @@ pub fn get_handle(disk_id: &str) -> Option<SharedFilesystemInstance> {
 
 pub fn scan_and_mount() {
     for disk in noct_diskman::disk_list() {
-        qemu_log!(
-            "Probing disk {}",
-            disk.id,
-        );
-        
+        qemu_log!("Probing disk {}", disk.id,);
+
         if let Err(e) = try_mount(&disk.id) {
             qemu_log!("Failed to mount disk {}: {:?}", disk.id, e);
         }

@@ -45,7 +45,11 @@ impl Debug for CPURegisters {
         writeln!(f, "EIP: {:08x}", self.rip)?;
         writeln!(f, "CS:  {:04x}; DS: {:04x}", self.cs, self.ds)?;
         writeln!(f, "EFLAGS: {:08x}", self.rflags)?;
-        write!(f, "INTERRUPT: {:02x}; ERROR: {:08x}", self.int_num, self.err_code)?;
+        write!(
+            f,
+            "INTERRUPT: {:02x}; ERROR: {:08x}",
+            self.int_num, self.err_code
+        )?;
 
         Ok(())
     }

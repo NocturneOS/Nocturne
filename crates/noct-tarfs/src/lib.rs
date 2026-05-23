@@ -2,9 +2,7 @@
 
 extern crate alloc;
 
-use core::{
-    cell::Cell,
-};
+use core::cell::Cell;
 
 use alloc::{boxed::Box, vec::Vec};
 use noct_fsman::{
@@ -15,7 +13,7 @@ use noct_fsman::{
         file::{FileHandle, FileOpenMode},
     },
 };
-use noct_logger::{noct_time::repr::Time};
+use noct_logger::noct_time::repr::Time;
 use spin::Mutex;
 
 pub mod disk_device;
@@ -184,15 +182,15 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
 
         Ok(())
     }
-    
+
     fn mkfile(&self, _path: &str) -> FilesystemResult<()> {
         Err(FilesystemError::ReadOnly)
     }
-    
+
     fn mkdir(&self, _path: &str) -> FilesystemResult<()> {
         Err(FilesystemError::ReadOnly)
     }
-    
+
     fn remove(&self, _path: &str) -> FilesystemResult<()> {
         Err(FilesystemError::ReadOnly)
     }

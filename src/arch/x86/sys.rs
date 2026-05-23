@@ -9,6 +9,5 @@ unsafe extern "C" {
 pub fn init() {
     noct_sysinfo::info_mut().kernel_start =
         unsafe { ((&IMAGE_VIRT_START) as *const *const ()).addr() };
-    noct_sysinfo::info_mut().kernel_end =
-        unsafe { ((&IMAGE_VIRT_END) as *const *const ()).addr() };
+    noct_sysinfo::info_mut().kernel_end = unsafe { ((&IMAGE_VIRT_END) as *const *const ()).addr() };
 }

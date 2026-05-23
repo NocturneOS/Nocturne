@@ -1,12 +1,13 @@
 use core::{
-    ffi::c_char, sync::atomic::{AtomicPtr, AtomicUsize, Ordering}
+    ffi::c_char,
+    sync::atomic::{AtomicPtr, AtomicUsize, Ordering},
 };
 
 use alloc::ffi::CString;
 use lazy_static::lazy_static;
 use noct_sync::pseudosync::PseudoSync;
 
-use crate::{qemu_log};
+use crate::qemu_log;
 
 use noct_mem::{addrspace_manager::AddressSpace, paging::GlobalPagingArchitecture};
 

@@ -17,8 +17,8 @@ use crate::device::PCIDevice;
 static PCI_ADDRESS_PORT: u16 = 0xCF8;
 static PCI_DATA_PORT: u16 = 0xCFC;
 
-pub mod device;
 pub mod bar;
+pub mod device;
 
 static mut PCI_DEVICES: OnceCell<RwLock<Vec<PCIDevice>>> = OnceCell::new();
 

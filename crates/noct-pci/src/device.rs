@@ -1,4 +1,4 @@
-use crate::{bar::{BARType, PCIBar}};
+use crate::bar::{BARType, PCIBar};
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PCIDevice {

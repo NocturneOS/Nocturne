@@ -33,10 +33,10 @@ lazy_static! {
 static DUMB_STACK: [usize; 0x200] = [0; 0x200];
 
 pub fn init() {
-	unsafe {
-		BSP_TSS.get_mut().iopb = core::mem::size_of::<TSSEntry>() as u16;
-		BSP_TSS.get_mut().ist1 = (DUMB_STACK.as_ptr().addr() + 0x200) as u64;
-	}
+    unsafe {
+        BSP_TSS.get_mut().iopb = core::mem::size_of::<TSSEntry>() as u16;
+        BSP_TSS.get_mut().ist1 = (DUMB_STACK.as_ptr().addr() + 0x200) as u64;
+    }
 
     let base = (BSP_TSS.get() as *const TSSEntry).addr();
     let limit = core::mem::size_of::<TSSEntry>() - 1;
@@ -51,15 +51,15 @@ pub fn init() {
     );
 
     // Write the upper part of system descriptor by utilizing next GDT entry
-	// The Long-Mode GDT entry is 16 bytes long, but only when defining TSS or LDT.
-	// We're defining TSS, so we have to write 16-bit GDT.
-	// The other 8 bytes are divided by two fields: [31..0] base_highest (the high part of 64-bit base) and [63..32] is a reserved field.
+    // The Long-Mode GDT entry is 16 bytes long, but only when defining TSS or LDT.
+    // We're defining TSS, so we have to write 16-bit GDT.
+    // The other 8 bytes are divided by two fields: [31..0] base_highest (the high part of 64-bit base) and [63..32] is a reserved field.
     let upper_part = gdt::GDT_ENTRIES.nth_ptr(6) as *mut u32;
     unsafe {
-		upper_part.add(0).write((base >> 32) as u32);
-		upper_part.add(1).write(0);
-	}
+        upper_part.add(0).write((base >> 32) as u32);
+        upper_part.add(1).write(0);
+    }
 
-	// Fifth index in the GDT: 0x08 * 5 = 0x28.
+    // Fifth index in the GDT: 0x08 * 5 = 0x28.
     unsafe { x86::task::load_tr(SegmentSelector::new(5, Ring::Ring0)) };
 }

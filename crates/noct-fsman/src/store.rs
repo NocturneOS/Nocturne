@@ -5,8 +5,7 @@ use spin::Mutex;
 use crate::Filesystem;
 
 lazy_static! {
-    pub static ref STORE: spin::Mutex<Vec<Box<dyn Filesystem>>> =
-        Mutex::new(Vec::new());
+    pub static ref STORE: spin::Mutex<Vec<Box<dyn Filesystem>>> = Mutex::new(Vec::new());
 }
 
 pub fn register_filesystem(fs: Box<dyn Filesystem>) {

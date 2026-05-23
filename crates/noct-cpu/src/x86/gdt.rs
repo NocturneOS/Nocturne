@@ -37,8 +37,8 @@ impl GDTEntry {
 }
 
 #[repr(align(16))]
-pub struct GDT <const N: usize> {
-    entries: [GDTEntry; N]
+pub struct GDT<const N: usize> {
+    entries: [GDTEntry; N],
 }
 
 impl<const N: usize> GDT<N> {

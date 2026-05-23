@@ -2,7 +2,8 @@ use alloc::{string::String, sync::Arc};
 use bitflags::bitflags;
 
 use crate::{
-    entity::EntityInfo, error::{FilesystemError, FilesystemResult}
+    entity::EntityInfo,
+    error::{FilesystemError, FilesystemResult},
 };
 
 bitflags! {
@@ -30,14 +31,13 @@ pub enum SeekOffset {
 #[derive(Debug)]
 pub struct FileHandle {
     // XXX: This could be done better, without looking up for a disk ID on each operation.
-	// XXX: Like `fh: u64` (file handle)? File handles are handled by filesysten instance.
-	// XXX: Filesystem instance will have a map of file handles to actual file information (like position, node ID, etc.) inside?
-
+    // XXX: Like `fh: u64` (file handle)? File handles are handled by filesysten instance.
+    // XXX: Filesystem instance will have a map of file handles to actual file information (like position, node ID, etc.) inside?
     pub file_handle: u64,
 
-	disk_id: Arc<String>,
+    disk_id: Arc<String>,
 
-	file_info: EntityInfo,
+    file_info: EntityInfo,
 
     pub position: u64,
 }
@@ -47,7 +47,7 @@ impl FileHandle {
         Self {
             file_handle,
             disk_id,
-			file_info,
+            file_info,
             position: 0,
         }
     }
@@ -68,37 +68,36 @@ impl FileHandle {
 
     pub fn seek(&mut self, offset: SeekOffset) -> FilesystemResult<u64> {
         self.position = match offset {
-			SeekOffset::Beginning(pos) => pos,
-			SeekOffset::Current(pos) => {
-				if self.position + pos > self.file_info.size {
-					return Err(FilesystemError::InvalidSeek);
-				}
+            SeekOffset::Beginning(pos) => pos,
+            SeekOffset::Current(pos) => {
+                if self.position + pos > self.file_info.size {
+                    return Err(FilesystemError::InvalidSeek);
+                }
 
-				self.position + pos
-			},
-			SeekOffset::End(pos) => {
-				if pos > self.file_info.size {
-					return Err(FilesystemError::InvalidSeek);
-				}
+                self.position + pos
+            }
+            SeekOffset::End(pos) => {
+                if pos > self.file_info.size {
+                    return Err(FilesystemError::InvalidSeek);
+                }
 
-				self.file_info.size - pos
-			}
-		};
+                self.file_info.size - pos
+            }
+        };
 
-		Ok(self.position)
+        Ok(self.position)
     }
 
-	pub fn tell(&mut self) -> FilesystemResult<u64> {
-		Ok(self.position)
-	}
+    pub fn tell(&mut self) -> FilesystemResult<u64> {
+        Ok(self.position)
+    }
 }
 
 impl Drop for FileHandle {
     fn drop(&mut self) {
-        let Some(fs) =
-            crate::mount::get_handle(&self.disk_id) else {
-                return
-            };
+        let Some(fs) = crate::mount::get_handle(&self.disk_id) else {
+            return;
+        };
 
         fs.close(self).ok();
     }

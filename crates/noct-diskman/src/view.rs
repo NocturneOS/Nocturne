@@ -29,9 +29,7 @@ impl<'a> DiskView<'a> {
         let buf_align = self.drive.buffer_address_alignment();
         let layout = Layout::from_size_align((num_blocks * bs) as _, buf_align).unwrap();
 
-        let buffer =
-            unsafe { alloc::alloc::alloc(layout) }
-                as *mut u8;
+        let buffer = unsafe { alloc::alloc::alloc(layout) } as *mut u8;
 
         if buffer.is_null() {
             alloc::alloc::handle_alloc_error(layout);
@@ -76,9 +74,7 @@ impl<'a> DiskView<'a> {
         let buf_align = self.drive.buffer_address_alignment();
         let layout = Layout::from_size_align((num_blocks * bs) as _, buf_align).unwrap();
 
-        let buffer =
-            unsafe { alloc::alloc::alloc(layout) }
-                as *mut u8;
+        let buffer = unsafe { alloc::alloc::alloc(layout) } as *mut u8;
 
         if buffer.is_null() {
             alloc::alloc::handle_alloc_error(layout);

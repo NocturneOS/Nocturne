@@ -5,9 +5,7 @@ extern crate alloc;
 mod device;
 mod handles;
 
-use core::{
-    cell::Cell,
-};
+use core::cell::Cell;
 
 use alloc::{borrow::ToOwned, boxed::Box, string::String, sync::Arc, vec::Vec};
 use iso9660_simple::{ISODirectoryEntry, Read, ISO9660};
@@ -144,7 +142,8 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
             return Err(FilesystemError::InvalidEntity);
         };
 
-        let count = inst.read_file(&file_handle.file_entry, handle.position as _, buffer)
+        let count = inst
+            .read_file(&file_handle.file_entry, handle.position as _, buffer)
             .ok_or(FilesystemError::Unknown)?;
 
         // TODO: When ISO9660::read_file will return read byte count, pass it here.
@@ -247,15 +246,15 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
 
         Ok(())
     }
-    
+
     fn mkfile(&self, _path: &str) -> FilesystemResult<()> {
         Err(FilesystemError::ReadOnly)
     }
-    
+
     fn mkdir(&self, _path: &str) -> FilesystemResult<()> {
         Err(FilesystemError::ReadOnly)
     }
-    
+
     fn remove(&self, _path: &str) -> FilesystemResult<()> {
         Err(FilesystemError::ReadOnly)
     }
