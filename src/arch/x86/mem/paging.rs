@@ -1,7 +1,7 @@
-use noct_paging::PAGE_SIZE;
+use noct_mem::paging;
 use noct_spec::WORD_SIZE;
 
-use crate::{arch::get_page_size, qemu_log};
+use crate::qemu_log;
 
 // Kernel memory layout:
 // C000_0000: BIOS zone
@@ -18,10 +18,10 @@ pub fn preinit(available_memory_size: usize) {
     qemu_log!("Kernel size is: {kernel_size:x}");
 
     qemu_log!("Available memory: {:#?}", available_memory_size);
-    qemu_log!("Pages: {:?}", available_memory_size / PAGE_SIZE);
+    qemu_log!("Pages: {:?}", available_memory_size / paging::PAGE_SIZE);
 
     // Divide memory by pages and then by 8 (bits in one byte) - it's the bitmap size.
-    let mut phys_bitmap_size = (available_memory_size / PAGE_SIZE) / 8;
+    let mut phys_bitmap_size = (available_memory_size / paging::PAGE_SIZE) / 8;
 
     // Align it to usize boundary.
     if !phys_bitmap_size.is_multiple_of(WORD_SIZE) {
@@ -38,7 +38,7 @@ pub fn preinit(available_memory_size: usize) {
 
     qemu_log!("Total size: {} bytes", total_needed_size);
 
-    let total_needed_pages = total_needed_size / PAGE_SIZE;
+    let total_needed_pages = total_needed_size / paging::PAGE_SIZE;
 
     qemu_log!("Total page count: {}", total_needed_pages);
 
@@ -55,7 +55,7 @@ pub fn preinit(available_memory_size: usize) {
 
     // We did all checks, let's list the entries.
 
-    for (n, i) in noct_paging::page_directory().iter().enumerate() {
+    for (n, i) in noct_mem::paging::page_directory().iter().enumerate() {
         if *i == 0 {
             continue;
         }

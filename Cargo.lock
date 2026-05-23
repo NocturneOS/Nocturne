@@ -154,21 +154,24 @@ name = "noct-mbr"
 version = "0.1.0"
 
 [[package]]
-name = "noct-memdisk"
-version = "0.1.0"
-dependencies = [
- "noct-diskman",
-]
-
-[[package]]
-name = "noct-paging"
+name = "noct-mem"
 version = "0.1.0"
 dependencies = [
  "bitflags 2.10.0",
  "cfg-if",
+ "noct-logger",
  "noct-physmem-alloc",
  "noct-spec",
+ "noct-tools",
+ "spin 0.10.0",
  "x86",
+]
+
+[[package]]
+name = "noct-memdisk"
+version = "0.1.0"
+dependencies = [
+ "noct-diskman",
 ]
 
 [[package]]
@@ -264,8 +267,8 @@ dependencies = [
  "noct-interrupts",
  "noct-iso9660",
  "noct-logger",
+ "noct-mem",
  "noct-memdisk",
- "noct-paging",
  "noct-pci",
  "noct-physmem-alloc",
  "noct-ps2",

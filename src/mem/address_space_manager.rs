@@ -2,14 +2,14 @@ use core::{alloc::Layout, marker::PhantomData};
 
 use alloc::vec::Vec;
 use noct_logger::qemu_log;
-use noct_paging::PagingHierarchy;
+use noct_mem::paging::PagingHierarchy;
 use noct_spec::{KERNEL_BASE, WORD_SIZE};
 
 use crate::{
     arch
 };
 
-use noct_paging::{Page, PageFlags, map_single_page, unmap_single_page};
+use noct_mem::paging::{Page, PageFlags, map_single_page, unmap_single_page};
 
 #[derive(Debug)]
 pub struct AddressSpaceVirtualBlock {
@@ -32,7 +32,7 @@ pub struct AddressSpace<PG: PagingHierarchy> {
 impl<PG: PagingHierarchy> AddressSpace<PG> {
     pub fn new() -> Self {
         let areas = Vec::with_capacity(1024);
-        let root = arch::mem::clone::clone_kernel_page_root::<PG>();
+        let root = noct_mem::paging::clone::clone_kernel_page_root::<PG>();
 
         Self {
             page_root_phys: root,
@@ -70,7 +70,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
 
     pub fn self_map_page<T>(&self, phys_addr: usize, f: impl FnOnce(&mut [Page]) -> T) -> T {
         let layout = Layout::from_size_align(arch::get_page_size(), 0x1000).unwrap();
-        let mapping_region = unsafe { crate::mem::heap::allocate_no_map(layout) };
+        let mapping_region = unsafe { noct_mem::heap::allocate_no_map(layout) };
 
         map_single_page(
             phys_addr,
@@ -100,7 +100,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         f: impl FnOnce(&mut [usize]) -> T,
     ) -> T {
         let layout = Layout::from_size_align(arch::get_page_size(), 0x1000).unwrap();
-        let mapping_region = unsafe { crate::mem::heap::allocate_no_map(layout) };
+        let mapping_region = unsafe { noct_mem::heap::allocate_no_map(layout) };
 
         // Map paging root and get physical address of virtual one.
         let phys = self.phys_of_virt(virt_addr).unwrap();

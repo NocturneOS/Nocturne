@@ -1,14 +1,14 @@
 #![no_std]
 #![feature(linked_list_retain)]
 
-use core::panic::PanicInfo;
+use core::{panic::PanicInfo, time::Duration};
 
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{boxed::Box, sync::Arc, vec::Vec};
 use noct_boot::{BootInfo, Module};
 use noct_logger::qemu_log;
-use noct_paging::PageFlags;
+use noct_mem::paging::PageFlags;
 
-use crate::arch::x86::multiboot::MultibootModule;
+use crate::{arch::x86::multiboot::MultibootModule, sched::{KERNEL_THREAD_DEFAULT_STACK_SIZE, thread::{ThreadFlags, ThreadPriority}}};
 
 mod arch;
 mod mem;
@@ -23,7 +23,7 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     // Now `__arch_init` initialized paging and PMM for us.
     // To make kernel fully initialized we should initialize heap.
 
-    mem::heap::init();
+    noct_mem::heap::init();
 
     sched::init();
 
@@ -68,7 +68,7 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     }
 
     {
-        noct_paging::map_pages(0xf_0000, 0xf_0000, 0x1_0000, PageFlags::Present);
+        noct_mem::paging::map_pages(0xf_0000, 0xf_0000, 0x1_0000, PageFlags::Present);
 
         if let Some(smbios) = noct_smbios::find_smbios() {
             let values = smbios.scan();
@@ -78,7 +78,7 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
             }
         }
 
-        noct_paging::unmap_pages(0xf_0000, 0x1_0000);
+        noct_mem::paging::unmap_pages(0xf_0000, 0x1_0000);
     }
 
     

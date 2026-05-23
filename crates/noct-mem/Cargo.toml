@@ -1,0 +1,15 @@
+[package]
+name = "noct-mem"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+spin = "0.10.0"
+cfg-if = "1.0.4"
+bitflags = "2.10.0"
+x86 = "0.52.0"
+
+noct-logger = { path = "../noct-logger" }
+noct-tools = { path = "../noct-tools" }
+noct-spec = { path = "../noct-spec" }
+noct-physmem-alloc = { path = "../noct-physmem-alloc" }

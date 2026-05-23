@@ -10,10 +10,7 @@ use core::ptr::{self, NonNull};
 use core::usize;
 use spin::{Mutex, MutexGuard};
 
-use crate::arch;
-use crate::arch::mem::paging;
-
-use noct_paging::{PageFlags, map_single_page, unmap_single_page};
+use crate::paging::{self, PageFlags};
 
 /// Page flags for kernel heap: Present + Writable
 ///
@@ -70,11 +67,11 @@ impl InnerArenaAllocator {
         let page =
             noct_physmem_alloc::allocate_one().expect("Could not allocate an initial page for the heap!");
 
-        map_single_page(page, heap_start, PAGE_FLAGS);
+        paging::map_single_page(page, heap_start, PAGE_FLAGS);
 
         // Now `heap_start` is our heap arena start.
 
-        let entries_count = arch::get_page_size() / size_of::<Block>();
+        let entries_count = crate::paging::PAGE_SIZE / size_of::<Block>();
 
         qemu_log!("Heap: {entries_count} entries");
 
@@ -85,7 +82,7 @@ impl InnerArenaAllocator {
 
         // The first block is an arena itself. We allocated one page of memory for arena for now.
         arena[0].address = heap_start;
-        arena[0].size = arch::get_page_size();
+        arena[0].size = crate::paging::PAGE_SIZE;
 
         self.alloc_count += 1;
 
@@ -191,16 +188,16 @@ impl InnerArenaAllocator {
     /// Ensures that the region [ addr; addr + size ) is accessible.
     /// If region within the range above is not accessible, allocate a physical page and map it.
     fn ensure_mapped(&self, addr: usize, size: usize) {
-        let start_addr = addr & !(arch::get_page_size() - 1);
-        let end_addr = noct_tools::align_value(addr + size, arch::get_page_size());
+        let start_addr = addr & !(crate::paging::PAGE_SIZE - 1);
+        let end_addr = noct_tools::align_value(addr + size, crate::paging::PAGE_SIZE);
 
-        for i in (start_addr..end_addr).step_by(arch::get_page_size()) {
-            if !noct_paging::is_memory_accessible(i) {
+        for i in (start_addr..end_addr).step_by(crate::paging::PAGE_SIZE) {
+            if !paging::is_memory_accessible(i) {
                 // TODO: Cancel whole operation if page allocation fails and return None.
                 let page = noct_physmem_alloc::allocate_one()
                     .expect("Failed to allocate a physical page during allocation.");
 
-                map_single_page(page, i, PAGE_FLAGS);
+                paging::map_single_page(page, i, PAGE_FLAGS);
 
                 // qemu_log!("Page {page:x} allocated and mapped to {i:x}!");
             }
@@ -210,7 +207,7 @@ impl InnerArenaAllocator {
     // Checks that the region [ addr; addr + size ) doesn't overlap with other regions.
     // This method unmaps pages inside the region if it finds completely free pages.
     fn delicate_unmap_and_free(&self, addr: usize, size: usize, is_last_block: bool) {
-        let page_size = arch::get_page_size();
+        let page_size = crate::paging::PAGE_SIZE;
         let page_mask = page_size - 1;
     
         // Start freeing from the first page boundary at or after addr (if addr is page-aligned)
@@ -234,8 +231,8 @@ impl InnerArenaAllocator {
         }
     
         for i in (lower_bound..upper_bound).step_by(page_size) {
-            if let Some(free_addr) = noct_paging::virt2phys(i) {
-                unmap_single_page(i);
+            if let Some(free_addr) = paging::virt2phys(i) {
+                paging::unmap_single_page(i);
 
                 noct_physmem_alloc::free_one(free_addr);
             }
@@ -314,7 +311,7 @@ impl InnerArenaAllocator {
 
     /// Allocate memory with the given layout without mapping it
     pub fn allocate_no_map(&mut self, layout: Layout) -> Option<NonNull<u8>> {
-        debug_assert!(layout.align().is_multiple_of(arch::get_page_size()), "Non-mapping allocation must be PAGESIZE-multiple aligned.");
+        debug_assert!(layout.align().is_multiple_of(crate::paging::PAGE_SIZE), "Non-mapping allocation must be PAGESIZE-multiple aligned.");
 
         self.ensure_arena_available();
 

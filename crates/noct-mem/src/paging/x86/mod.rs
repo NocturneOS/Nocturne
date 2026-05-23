@@ -1,6 +1,8 @@
 use bitflags::bitflags;
 
-use crate::PagingHierarchy;
+use crate::paging::PagingHierarchy;
+
+pub mod clone;
 
 pub struct X86Paging;
 
@@ -121,8 +123,6 @@ pub fn vaddr2indices(vaddr: usize) -> (usize, usize) {
 pub fn indices2vaddr(pde: usize, pte: usize) -> usize {
     (pde << 22) | (pte << 12)
 }
-
-use noct_spec::WORD_SIZE;
 
 pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: PageFlags) {
     let (pdi, pti) = vaddr2indices(virtual_address);

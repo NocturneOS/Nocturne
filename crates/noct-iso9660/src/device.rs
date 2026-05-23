@@ -1,5 +1,4 @@
 use alloc::string::{String, ToString};
-use noct_logger::qemu_log;
 
 pub struct Device {
     disk_id: String,

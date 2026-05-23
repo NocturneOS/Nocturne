@@ -86,9 +86,9 @@ impl<'a> DiskView<'a> {
 
         // If the write is not block-aligned, we need to read the first and/or last block to preserve the unaffected bytes.
         if byte_offset % bs != 0 || (byte_offset + buf.len() as u64) % bs != 0 {
-            let read_result = self.drive.read(start_lba, unsafe {
+            self.drive.read(start_lba, unsafe {
                 core::slice::from_raw_parts_mut(buffer, (num_blocks * bs) as usize)
-            });
+            })?;
         }
 
         // Copy input buffer into the correct position within the block-aligned buffer.

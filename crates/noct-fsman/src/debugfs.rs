@@ -80,12 +80,12 @@ impl FilesystemInstance for DebugFSInstance {
         Err(FilesystemError::NotFound)
     }
     
-    fn close(&self, handle: &mut FileHandle) -> FilesystemResult<()> {
+    fn close(&self, _handle: &mut FileHandle) -> FilesystemResult<()> {
         qemu_log!("DebugFS: close called");
         Err(FilesystemError::NotFound)
     }
     
-    fn closedir(&self, handle: &mut DirectoryHandle) -> FilesystemResult<()> {
+    fn closedir(&self, _handle: &mut DirectoryHandle) -> FilesystemResult<()> {
         qemu_log!("DebugFS: closedir called");
         Err(FilesystemError::NotFound)
     }

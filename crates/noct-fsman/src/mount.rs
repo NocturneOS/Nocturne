@@ -1,4 +1,4 @@
-use alloc::{borrow::ToOwned, boxed::Box, collections::btree_map::BTreeMap, string::String, sync::Arc, vec::Vec};
+use alloc::{borrow::ToOwned, boxed::Box, string::String, sync::Arc, vec::Vec};
 use lazy_static::lazy_static;
 use noct_logger::qemu_log;
 use spin::Mutex;

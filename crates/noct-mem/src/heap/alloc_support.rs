@@ -1,10 +1,9 @@
 use core::alloc::Layout;
 
+use noct_logger::qemu_log;
 use noct_tools::interrupt_locker::InterruptLocker;
 
-use crate::{
-    mem::heap::ArenaAllocator, qemu_log,
-};
+use crate::heap::ArenaAllocator;
 
 /// Global allocator instance for the `alloc` crate
 #[global_allocator]

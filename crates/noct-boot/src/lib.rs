@@ -1,7 +1,5 @@
 #![no_std]
 
-use core::ffi::{CStr, c_char};
-
 pub struct MemoryInfo {
     lower: usize,
     higher: usize,

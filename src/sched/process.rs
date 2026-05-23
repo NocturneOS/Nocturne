@@ -9,7 +9,7 @@ use noct_sync::pseudosync::PseudoSync;
 use crate::{qemu_log};
 use crate::mem::address_space_manager::AddressSpace;
 
-use noct_paging::GlobalPagingArchitecture;
+use noct_mem::paging::GlobalPagingArchitecture;
 
 lazy_static! {
     static ref GLOBAL_PID: AtomicUsize = AtomicUsize::new(0);

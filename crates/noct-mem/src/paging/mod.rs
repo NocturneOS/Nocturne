@@ -1,5 +1,3 @@
-#![no_std]
-
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "x86")] {
         mod x86;

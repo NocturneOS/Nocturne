@@ -7,11 +7,10 @@ mod handles;
 
 use core::{
     cell::Cell,
-    ffi::{c_char, c_void},
 };
 
 use alloc::{borrow::ToOwned, boxed::Box, string::String, sync::Arc, vec::Vec};
-use iso9660_simple::{helpers::get_directory_entry_by_path, ISODirectoryEntry, Read, ISO9660};
+use iso9660_simple::{ISODirectoryEntry, Read, ISO9660};
 use noct_fsman::{
     entity::EntityInfo,
     error::{FilesystemError, FilesystemResult},

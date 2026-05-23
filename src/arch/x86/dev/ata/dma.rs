@@ -69,7 +69,7 @@ pub fn fill_prdt(prdt: &mut PRDT, buffer: &[u8]) {
     for (i, chunk) in buffer.chunks(chunk_size).enumerate() {
         let buf_virt = chunk.as_ptr().addr();
         let buf_phys =
-            noct_paging::virt2phys_precise(buf_virt).unwrap();
+            noct_mem::paging::virt2phys_precise(buf_virt).unwrap();
 
         // qemu_log!("V{buf_virt:x?} -> P{buf_phys:x?}");
 

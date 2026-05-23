@@ -35,7 +35,7 @@ pub fn halt_forever() -> ! {
 #[inline]
 pub fn get_page_size() -> usize {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    return noct_paging::PAGE_SIZE;
+    return noct_mem::paging::PAGE_SIZE;
 
     #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
     compile_error!(

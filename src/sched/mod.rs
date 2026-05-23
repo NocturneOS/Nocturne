@@ -262,7 +262,7 @@ impl Scheduler {
             // address_space.get_mut().
 
             // Count guard page in.
-            let addr = stack_addr - crate::arch::get_page_size();
+            let addr = stack_addr - noct_mem::paging::PAGE_SIZE;
 
             unsafe { address_space.get_mut().unmap_pages(stack_addr, thread.stack.stack_size) };
             unsafe { address_space.get_mut().free_virt_region(addr) };

@@ -10,10 +10,22 @@ edition = "2024"
 members = [
     "crates/noct-sync",
     "crates/noct-spec",
-    "crates/noct-tools", "crates/noct-cpuregs", "crates/noct-interrupts", "crates/noct-logger", "crates/noct-time", "crates/noct-ps2", "crates/noct-pci", "crates/noct-smbios", "crates/noct-paging", "crates/noct-physmem-alloc", "crates/noct-sysinfo",
+    "crates/noct-tools",
+    "crates/noct-cpuregs",
+    "crates/noct-interrupts",
+    "crates/noct-logger",
+    "crates/noct-time",
+    "crates/noct-ps2",
+    "crates/noct-pci",
+    "crates/noct-smbios",
+    "crates/noct-physmem-alloc",
+    "crates/noct-sysinfo",
     "crates/noct-mbr",
-    "crates/noct-diskman", "crates/noct-fsman", "crates/noct-tarfs", "crates/noct-memdisk", "crates/noct-boot",
-]
+    "crates/noct-diskman",
+    "crates/noct-fsman",
+    "crates/noct-tarfs",
+    "crates/noct-memdisk",
+    "crates/noct-boot", "crates/noct-mem"]
 resolver = "2"
 
 [dependencies]
@@ -24,25 +36,25 @@ elf = { version = "0.8.0", default-features = false }
 bitflags = "2.10.0"
 cfg-if = "1.0.4"
 
+noct-boot = { path = "crates/noct-boot" }
 noct-cpuregs = { path = "crates/noct-cpuregs" }
-noct-logger = { path = "crates/noct-logger" }
-noct-interrupts = { path = "crates/noct-interrupts" }
-noct-sync = { path = "crates/noct-sync" }
-noct-spec = { path = "crates/noct-spec" }
-noct-time = { path = "crates/noct-time" }
-noct-paging = { path = "crates/noct-paging" }
-noct-ps2 = { path = "crates/noct-ps2" }
-noct-physmem-alloc = { path = "crates/noct-physmem-alloc" }
-noct-pci = { path = "crates/noct-pci" }
-noct-smbios = { path = "crates/noct-smbios" }
-noct-sysinfo = { path = "crates/noct-sysinfo" }
-noct-tools = { path = "crates/noct-tools" }
 noct-diskman = { path = "crates/noct-diskman" }
 noct-fsman = { path = "crates/noct-fsman" }
+noct-mem = { path = "crates/noct-mem" }
+noct-interrupts = { path = "crates/noct-interrupts" }
 noct-iso9660 = { path = "crates/noct-iso9660" }
-noct-tarfs = { path = "crates/noct-tarfs" }
+noct-logger = { path = "crates/noct-logger" }
 noct-memdisk = { path = "crates/noct-memdisk" }
-noct-boot = { path = "crates/noct-boot" }
+noct-pci = { path = "crates/noct-pci" }
+noct-physmem-alloc = { path = "crates/noct-physmem-alloc" }
+noct-ps2 = { path = "crates/noct-ps2" }
+noct-smbios = { path = "crates/noct-smbios" }
+noct-spec = { path = "crates/noct-spec" }
+noct-sync = { path = "crates/noct-sync" }
+noct-sysinfo = { path = "crates/noct-sysinfo" }
+noct-tarfs = { path = "crates/noct-tarfs" }
+noct-time = { path = "crates/noct-time" }
+noct-tools = { path = "crates/noct-tools" }
 
 
 # Profiles
