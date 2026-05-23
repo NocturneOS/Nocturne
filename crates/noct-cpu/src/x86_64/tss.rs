@@ -4,6 +4,8 @@ use x86::{Ring, segmentation::SegmentSelector};
 
 use crate::x86::gdt;
 
+pub use crate::x86::tss::*;
+
 #[repr(C, packed)]
 pub struct TSSEntry {
     reserved: u32,
