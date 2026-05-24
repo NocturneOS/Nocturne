@@ -11,3 +11,4 @@ bitflags = "2.10.0"
 noct-diskman = { path = "../noct-diskman" }
 noct-logger = { path = "../noct-logger" }
 noct-time = { path = "../noct-time" }
+noct-io = { path = "../noct-io" }

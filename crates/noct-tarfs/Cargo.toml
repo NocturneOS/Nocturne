@@ -5,10 +5,11 @@ edition = "2024"
 
 [dependencies]
 tarfs = { path = "/home/ndraey/src/tarfs", default-features = false }
+no_std_io = { version = "0.6.0", features = ["alloc"] }
+spin = "0.10.0"
+
 noct-diskman = { path = "../noct-diskman" }
 noct-fsman = { path = "../noct-fsman" }
 noct-logger = { path = "../noct-logger" }
 noct-tools = { path = "../noct-tools" }
-no_std_io = { version = "0.6.0", features = ["alloc"] }
-
-spin = "0.10.0"
+noct-io = { path = "../noct-io" }

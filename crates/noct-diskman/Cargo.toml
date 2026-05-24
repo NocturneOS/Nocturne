@@ -12,3 +12,4 @@ lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 
 noct-logger = { path = "../noct-logger" }
 noct-mbr = { path = "../noct-mbr" }
+noct-io = { path = "../noct-io" }

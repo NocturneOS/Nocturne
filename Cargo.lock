@@ -102,6 +102,7 @@ name = "noct-diskman"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
+ "noct-io",
  "noct-logger",
  "noct-mbr",
  "num-derive",
@@ -116,6 +117,7 @@ dependencies = [
  "bitflags 2.10.0",
  "lazy_static",
  "noct-diskman",
+ "noct-io",
  "noct-logger",
  "noct-time",
  "spin 0.10.0",
@@ -132,12 +134,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-io"
+version = "0.1.0"
+
+[[package]]
 name = "noct-iso9660"
 version = "0.1.0"
 dependencies = [
  "iso9660_simple",
  "noct-diskman",
  "noct-fsman",
+ "noct-io",
  "noct-logger",
  "noct-time",
  "noct-tools",
@@ -254,6 +261,7 @@ dependencies = [
  "no_std_io",
  "noct-diskman",
  "noct-fsman",
+ "noct-io",
  "noct-logger",
  "noct-tools",
  "spin 0.10.0",

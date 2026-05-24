@@ -1,9 +1,10 @@
 use alloc::{borrow::ToOwned, boxed::Box, string::String, sync::Arc, vec::Vec};
 use lazy_static::lazy_static;
+use noct_io::error::Error;
 use noct_logger::qemu_log;
 use spin::Mutex;
 
-use crate::{FilesystemInstance, error::FilesystemResult};
+use crate::{FilesystemInstance};
 
 pub type SharedFilesystemInstance = Arc<Box<dyn FilesystemInstance>>;
 
@@ -13,7 +14,7 @@ lazy_static! {
 }
 
 /// Mount specific disk.
-pub fn try_mount(disk_id: &str) -> FilesystemResult<SharedFilesystemInstance> {
+pub fn try_mount(disk_id: &str) -> noct_io::Result<SharedFilesystemInstance> {
     for fs in crate::store::STORE.lock().iter() {
         if let Some(instance) = fs.probe(disk_id) {
             qemu_log!("Probe of {} on disk {} succeeded.", fs.name(), disk_id);
@@ -28,7 +29,7 @@ pub fn try_mount(disk_id: &str) -> FilesystemResult<SharedFilesystemInstance> {
         }
     }
 
-    Err(crate::error::FilesystemError::DiskNotRecognized)
+    Err(Error::DiskNotRecognized)
 }
 
 pub fn get_handle(disk_id: &str) -> Option<SharedFilesystemInstance> {

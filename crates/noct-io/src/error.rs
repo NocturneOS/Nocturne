@@ -1,5 +1,5 @@
-#[derive(Debug, Clone, Copy)]
-pub enum FilesystemError {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Error {
     AlreadyExists,
     DiskNotRecognized,
     EndOfIterator,
@@ -14,5 +14,3 @@ pub enum FilesystemError {
     Unknown,
     UnsupportedOperation,
 }
-
-pub type FilesystemResult<T> = Result<T, FilesystemError>;

@@ -24,36 +24,36 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
     noct_sched::init();
 
-    {
-        qemu_log!("Creating 32 processes...");
+    // {
+    //     qemu_log!("Creating 32 processes...");
 
-        let procs: [_; 32] = core::array::from_fn(|_| noct_sched::create_process("proc", "?"));
+    //     let procs: [_; 32] = core::array::from_fn(|_| noct_sched::create_process("proc", "?"));
 
-        qemu_log!("32 processes have been created!");
+    //     qemu_log!("32 processes have been created!");
 
-        core::mem::drop(procs);
+    //     core::mem::drop(procs);
 
-        let proc = noct_sched::this_process();
+    //     let proc = noct_sched::this_process();
 
-        for _ in 0..32 {
-            noct_sched::create_thread(
-                Arc::clone(&proc),
-                move || {
-                    let id = noct_sched::this_thread_id();
+    //     for _ in 0..32 {
+    //         noct_sched::create_thread(
+    //             Arc::clone(&proc),
+    //             move || {
+    //                 let id = noct_sched::this_thread_id();
 
-                    loop {
-                        qemu_log!("Hi thread #{}", id);
-                        noct_sched::sleep(Duration::from_millis((id * 40) as _));
-                    }
-                },
-                noct_sched::KERNEL_THREAD_DEFAULT_STACK_SIZE,
-                noct_sched::thread::ThreadPriority::Low,
-                noct_sched::thread::ThreadFlags::empty(),
-            );
-        }
-    }
+    //                 loop {
+    //                     qemu_log!("Hi thread #{}", id);
+    //                     noct_sched::sleep(Duration::from_millis((id * 40) as _));
+    //                 }
+    //             },
+    //             noct_sched::KERNEL_THREAD_DEFAULT_STACK_SIZE,
+    //             noct_sched::thread::ThreadPriority::Low,
+    //             noct_sched::thread::ThreadFlags::empty(),
+    //         );
+    //     }
+    // }
 
-    loop {}
+    // loop {}
 
     noct_pci::scan();
 

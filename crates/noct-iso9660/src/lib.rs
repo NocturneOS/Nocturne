@@ -11,7 +11,6 @@ use alloc::{borrow::ToOwned, boxed::Box, string::String, sync::Arc, vec::Vec};
 use iso9660_simple::{ISODirectoryEntry, Read, ISO9660};
 use noct_fsman::{
     entity::EntityInfo,
-    error::{FilesystemError, FilesystemResult},
     handles::{
         directory::{DirectoryEntry, DirectoryHandle},
         file::{FileHandle, FileOpenMode},
@@ -103,16 +102,16 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
         &ISO9660Filesystem
     }
 
-    fn open(&self, path: &str, mode: FileOpenMode) -> FilesystemResult<FileHandle> {
+    fn open(&self, path: &str, mode: FileOpenMode) -> noct_io::Result<FileHandle> {
         if mode.contains(FileOpenMode::Truncate) | mode.contains(FileOpenMode::Write) {
-            return Err(FilesystemError::InvalidMode);
+            return Err(noct_io::error::Error::InvalidMode);
         }
 
         let mut inst = self.inst.lock();
 
         let Some(entry) = iso9660_simple::helpers::get_directory_entry_by_path(&mut *inst, path)
         else {
-            return Err(FilesystemError::NotFound);
+            return Err(noct_io::error::Error::NotFound);
         };
 
         let id = self.next_id();
@@ -131,7 +130,7 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
         ))
     }
 
-    fn read(&self, handle: &mut FileHandle, buffer: &mut [u8]) -> FilesystemResult<u64> {
+    fn read(&self, handle: &mut FileHandle, buffer: &mut [u8]) -> noct_io::Result<u64> {
         let mut inst = self.inst.lock();
         let mut bind = self.file_handles.lock();
 
@@ -139,32 +138,32 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
             .iter_mut()
             .find(|entity| entity.id == handle.file_handle as usize)
         else {
-            return Err(FilesystemError::InvalidEntity);
+            return Err(noct_io::error::Error::InvalidEntity);
         };
 
         let count = inst
             .read_file(&file_handle.file_entry, handle.position as _, buffer)
-            .ok_or(FilesystemError::Unknown)?;
+            .ok_or(noct_io::error::Error::Unknown)?;
 
         // TODO: When ISO9660::read_file will return read byte count, pass it here.
         Ok(count as _)
     }
 
-    fn write(&self, _handle: &mut FileHandle, _buffer: &[u8]) -> FilesystemResult<u64> {
-        Err(FilesystemError::ReadOnly)
+    fn write(&self, _handle: &mut FileHandle, _buffer: &[u8]) -> noct_io::Result<u64> {
+        Err(noct_io::error::Error::ReadOnly)
     }
 
-    fn opendir(&self, path: &str) -> FilesystemResult<DirectoryHandle> {
+    fn opendir(&self, path: &str) -> noct_io::Result<DirectoryHandle> {
         let new_id = self.next_id();
         let mut inst = self.inst.lock();
 
         let Some(entry) = iso9660_simple::helpers::get_directory_entry_by_path(&mut *inst, path)
         else {
-            return Err(FilesystemError::NotFound);
+            return Err(noct_io::error::Error::NotFound);
         };
 
         if !entry.is_folder() {
-            return Err(FilesystemError::InvalidEntity);
+            return Err(noct_io::error::Error::InvalidEntity);
         }
 
         self.directory_handles
@@ -181,7 +180,7 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
         })
     }
 
-    fn readdir(&self, handle: &mut DirectoryHandle) -> FilesystemResult<DirectoryEntry> {
+    fn readdir(&self, handle: &mut DirectoryHandle) -> noct_io::Result<DirectoryEntry> {
         let mut inst = self.inst.lock();
 
         let mut bind = self.directory_handles.lock();
@@ -190,7 +189,7 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
             .iter_mut()
             .find(|entity| entity.id == handle.handle_id as usize)
         else {
-            return Err(FilesystemError::InvalidEntity);
+            return Err(noct_io::error::Error::InvalidEntity);
         };
 
         let iter = inst.read_directory(dir_handle.directory_entry.lsb_position() as _);
@@ -198,7 +197,7 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
         let entry = iter
             .skip(dir_handle.iterator_position)
             .next()
-            .ok_or(FilesystemError::EndOfIterator)?;
+            .ok_or(noct_io::error::Error::EndOfIterator)?;
 
         dir_handle.iterator_position += 1;
 
@@ -214,12 +213,12 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
         })
     }
 
-    fn info(&self, path: &str) -> FilesystemResult<EntityInfo> {
+    fn info(&self, path: &str) -> noct_io::Result<EntityInfo> {
         let mut inst = self.inst.lock();
 
         let Some(entry) = iso9660_simple::helpers::get_directory_entry_by_path(&mut *inst, path)
         else {
-            return Err(FilesystemError::NotFound);
+            return Err(noct_io::error::Error::NotFound);
         };
 
         Ok(EntityInfo {
@@ -231,7 +230,7 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
         })
     }
 
-    fn close(&self, handle: &mut FileHandle) -> FilesystemResult<()> {
+    fn close(&self, handle: &mut FileHandle) -> noct_io::Result<()> {
         self.file_handles
             .lock()
             .retain(|x| x.id as u64 != handle.file_handle);
@@ -239,7 +238,7 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
         Ok(())
     }
 
-    fn closedir(&self, handle: &mut DirectoryHandle) -> FilesystemResult<()> {
+    fn closedir(&self, handle: &mut DirectoryHandle) -> noct_io::Result<()> {
         self.directory_handles
             .lock()
             .retain(|x| x.id as u64 != handle.handle_id);
@@ -247,15 +246,15 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
         Ok(())
     }
 
-    fn mkfile(&self, _path: &str) -> FilesystemResult<()> {
-        Err(FilesystemError::ReadOnly)
+    fn mkfile(&self, _path: &str) -> noct_io::Result<()> {
+        Err(noct_io::error::Error::ReadOnly)
     }
 
-    fn mkdir(&self, _path: &str) -> FilesystemResult<()> {
-        Err(FilesystemError::ReadOnly)
+    fn mkdir(&self, _path: &str) -> noct_io::Result<()> {
+        Err(noct_io::error::Error::ReadOnly)
     }
 
-    fn remove(&self, _path: &str) -> FilesystemResult<()> {
-        Err(FilesystemError::ReadOnly)
+    fn remove(&self, _path: &str) -> noct_io::Result<()> {
+        Err(noct_io::error::Error::ReadOnly)
     }
 }

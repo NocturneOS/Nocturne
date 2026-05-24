@@ -1,9 +1,8 @@
 use alloc::{string::String, sync::Arc, vec, vec::Vec};
+use noct_io::error::Error;
 
 use crate::{
-    NodeId,
     entity::EntityInfo,
-    error::{FilesystemError, FilesystemResult},
 };
 
 pub struct DirectoryHandle {
@@ -13,23 +12,23 @@ pub struct DirectoryHandle {
 }
 
 impl DirectoryHandle {
-    pub fn read(&mut self) -> FilesystemResult<DirectoryEntry> {
+    pub fn read(&mut self) -> noct_io::Result<DirectoryEntry> {
         let fs =
-            crate::mount::get_handle(&self.disk_id).ok_or(FilesystemError::DiskNotRecognized)?;
+            crate::mount::get_handle(&self.disk_id).ok_or(Error::DiskNotRecognized)?;
 
         fs.readdir(self)
     }
 
-    pub fn read_all(&mut self) -> FilesystemResult<Vec<DirectoryEntry>> {
+    pub fn read_all(&mut self) -> noct_io::Result<Vec<DirectoryEntry>> {
         let fs =
-            crate::mount::get_handle(&self.disk_id).ok_or(FilesystemError::DiskNotRecognized)?;
+            crate::mount::get_handle(&self.disk_id).ok_or(Error::DiskNotRecognized)?;
 
         let mut data = vec![];
 
         loop {
             let entry = fs.readdir(self);
 
-            if let Err(FilesystemError::EndOfIterator) = entry {
+            if let Err(Error::EndOfIterator) = entry {
                 break;
             }
 

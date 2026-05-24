@@ -3,6 +3,7 @@ use alloc::{
     string::{String, ToString},
     sync::Arc,
 };
+use noct_io::error::Error;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use noct_logger::qemu_log;
 use noct_time::repr::Time;
@@ -10,7 +11,6 @@ use noct_time::repr::Time;
 use crate::{
     DirectoryHandle, FileHandle, FileOpenMode, Filesystem, FilesystemInstance,
     entity::{EntityInfo, EntityType},
-    error::{FilesystemError, FilesystemResult},
 };
 
 pub struct DebugFilesystem;
@@ -45,7 +45,7 @@ impl FilesystemInstance for DebugFSInstance {
         &DebugFilesystem
     }
 
-    fn open(&self, path: &str, mode: FileOpenMode) -> FilesystemResult<FileHandle> {
+    fn open(&self, path: &str, mode: FileOpenMode) -> noct_io::Result<FileHandle> {
         qemu_log!(
             "DebugFS: open called with path '{}' and mode {:?}",
             path,
@@ -67,7 +67,7 @@ impl FilesystemInstance for DebugFSInstance {
         ))
     }
 
-    fn opendir(&self, path: &str) -> FilesystemResult<DirectoryHandle> {
+    fn opendir(&self, path: &str) -> noct_io::Result<DirectoryHandle> {
         qemu_log!("DebugFS: opendir called with path '{}'", path);
 
         Ok(DirectoryHandle {
@@ -76,7 +76,7 @@ impl FilesystemInstance for DebugFSInstance {
         })
     }
 
-    fn read(&self, handle: &mut FileHandle, buffer: &mut [u8]) -> FilesystemResult<u64> {
+    fn read(&self, handle: &mut FileHandle, buffer: &mut [u8]) -> noct_io::Result<u64> {
         qemu_log!(
             "DebugFS: read called with handle {:?} and buffer of length {}",
             handle,
@@ -85,7 +85,7 @@ impl FilesystemInstance for DebugFSInstance {
         Ok(0)
     }
 
-    fn write(&self, handle: &mut FileHandle, buffer: &[u8]) -> FilesystemResult<u64> {
+    fn write(&self, handle: &mut FileHandle, buffer: &[u8]) -> noct_io::Result<u64> {
         qemu_log!(
             "DebugFS: write called with handle {:?} and buffer of length {}",
             handle,
@@ -94,40 +94,40 @@ impl FilesystemInstance for DebugFSInstance {
         Ok(0)
     }
 
-    fn info(&self, path: &str) -> FilesystemResult<crate::entity::EntityInfo> {
+    fn info(&self, path: &str) -> noct_io::Result<crate::entity::EntityInfo> {
         qemu_log!("DebugFS: info called with path '{}'", path);
-        Err(FilesystemError::NotFound)
+        Err(Error::NotFound)
     }
 
     fn readdir(
         &self,
         _handle: &mut DirectoryHandle,
-    ) -> FilesystemResult<crate::handles::directory::DirectoryEntry> {
+    ) -> noct_io::Result<crate::handles::directory::DirectoryEntry> {
         qemu_log!("DebugFS: readdir called");
-        Err(FilesystemError::NotFound)
+        Err(Error::NotFound)
     }
 
-    fn close(&self, _handle: &mut FileHandle) -> FilesystemResult<()> {
+    fn close(&self, _handle: &mut FileHandle) -> noct_io::Result<()> {
         qemu_log!("DebugFS: close called");
-        Err(FilesystemError::NotFound)
+        Err(Error::NotFound)
     }
 
-    fn closedir(&self, _handle: &mut DirectoryHandle) -> FilesystemResult<()> {
+    fn closedir(&self, _handle: &mut DirectoryHandle) -> noct_io::Result<()> {
         qemu_log!("DebugFS: closedir called");
-        Err(FilesystemError::NotFound)
+        Err(Error::NotFound)
     }
 
-    fn mkfile(&self, path: &str) -> FilesystemResult<()> {
+    fn mkfile(&self, path: &str) -> noct_io::Result<()> {
         qemu_log!("DebugFS: mkfile called ({path:?})");
         Ok(())
     }
 
-    fn mkdir(&self, path: &str) -> FilesystemResult<()> {
+    fn mkdir(&self, path: &str) -> noct_io::Result<()> {
         qemu_log!("DebugFS: mkfile called ({path:?})");
         Ok(())
     }
 
-    fn remove(&self, path: &str) -> FilesystemResult<()> {
+    fn remove(&self, path: &str) -> noct_io::Result<()> {
         qemu_log!("DebugFS: remove called ({path:?})");
         Ok(())
     }

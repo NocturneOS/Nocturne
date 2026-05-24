@@ -7,7 +7,6 @@ use core::cell::Cell;
 use alloc::{boxed::Box, vec::Vec};
 use noct_fsman::{
     entity::{EntityInfo, EntityType},
-    error::{FilesystemError, FilesystemResult},
     handles::{
         directory::{DirectoryEntry, DirectoryHandle},
         file::{FileHandle, FileOpenMode},
@@ -73,17 +72,17 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
         &TarFilesystem
     }
 
-    fn open(&self, path: &str, mode: FileOpenMode) -> FilesystemResult<FileHandle> {
+    fn open(&self, path: &str, mode: FileOpenMode) -> noct_io::Result<FileHandle> {
         if mode.contains(FileOpenMode::Write) || mode.contains(FileOpenMode::Truncate) {
-            return Err(FilesystemError::InvalidMode);
+            return Err(noct_io::error::Error::InvalidMode);
         }
 
         let mut bind = self.tar.lock();
         let id = self.next_id();
 
         let file = bind.find_file(path).map_err(|e| match e.kind() {
-            no_std_io::io::ErrorKind::NotFound => FilesystemError::NotFound,
-            _ => FilesystemError::Unknown,
+            no_std_io::io::ErrorKind::NotFound => noct_io::error::Error::NotFound,
+            _ => noct_io::error::Error::Unknown,
         })?;
 
         self.file_handles.lock().push((id as _, file));
@@ -91,34 +90,34 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
         todo!()
     }
 
-    fn read(&self, handle: &mut FileHandle, buffer: &mut [u8]) -> FilesystemResult<u64> {
+    fn read(&self, handle: &mut FileHandle, buffer: &mut [u8]) -> noct_io::Result<u64> {
         let mut bind = self.tar.lock();
         let ent_bind = self.file_handles.lock();
 
         let (_, ent) = ent_bind
             .iter()
             .find(|&&(fh, _)| fh == handle.file_handle)
-            .ok_or(FilesystemError::InvalidHandle)?;
+            .ok_or(noct_io::error::Error::InvalidHandle)?;
 
         bind.read_file_by_entity(ent, handle.position as _, buffer)
-            .map_err(|_| FilesystemError::IoError)?;
+            .map_err(|_| noct_io::error::Error::IoError)?;
 
         todo!()
     }
 
-    fn write(&self, _handle: &mut FileHandle, _buffer: &[u8]) -> FilesystemResult<u64> {
-        Err(FilesystemError::UnsupportedOperation)
+    fn write(&self, _handle: &mut FileHandle, _buffer: &[u8]) -> noct_io::Result<u64> {
+        Err(noct_io::error::Error::UnsupportedOperation)
     }
 
-    fn opendir(&self, path: &str) -> FilesystemResult<DirectoryHandle> {
+    fn opendir(&self, path: &str) -> noct_io::Result<DirectoryHandle> {
         let mut bind = self.tar.lock();
         let id = self.next_id();
 
         let list = bind
             .list_by_path_shallow(path)
             .map_err(|e| match e.kind() {
-                no_std_io::io::ErrorKind::NotFound => FilesystemError::NotFound,
-                _ => FilesystemError::Unknown,
+                no_std_io::io::ErrorKind::NotFound => noct_io::error::Error::NotFound,
+                _ => noct_io::error::Error::Unknown,
             })?;
 
         self.directory_handles
@@ -128,14 +127,14 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
         todo!()
     }
 
-    fn readdir(&self, handle: &mut DirectoryHandle) -> FilesystemResult<DirectoryEntry> {
+    fn readdir(&self, handle: &mut DirectoryHandle) -> noct_io::Result<DirectoryEntry> {
         let mut bind = self.directory_handles.lock();
 
         let Some((_, dir_handle)) = bind.iter_mut().find(|(id, _)| *id == handle.handle_id) else {
-            return Err(FilesystemError::InvalidHandle);
+            return Err(noct_io::error::Error::InvalidHandle);
         };
 
-        let entry = dir_handle.next().ok_or(FilesystemError::EndOfIterator)?;
+        let entry = dir_handle.next().ok_or(noct_io::error::Error::EndOfIterator)?;
 
         Ok(DirectoryEntry {
             name: entry.name.clone(),
@@ -150,12 +149,12 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
         })
     }
 
-    fn info(&self, path: &str) -> FilesystemResult<EntityInfo> {
+    fn info(&self, path: &str) -> noct_io::Result<EntityInfo> {
         let mut bind = self.tar.lock();
 
         let file = bind.find_file(path).map_err(|e| match e.kind() {
-            no_std_io::io::ErrorKind::NotFound => FilesystemError::NotFound,
-            _ => FilesystemError::Unknown,
+            no_std_io::io::ErrorKind::NotFound => noct_io::error::Error::NotFound,
+            _ => noct_io::error::Error::Unknown,
         })?;
 
         Ok(EntityInfo {
@@ -167,7 +166,7 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
         })
     }
 
-    fn close(&self, handle: &mut FileHandle) -> FilesystemResult<()> {
+    fn close(&self, handle: &mut FileHandle) -> noct_io::Result<()> {
         self.file_handles
             .lock()
             .retain(|&(id, _)| id as u64 != handle.file_handle);
@@ -175,7 +174,7 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
         Ok(())
     }
 
-    fn closedir(&self, handle: &mut DirectoryHandle) -> FilesystemResult<()> {
+    fn closedir(&self, handle: &mut DirectoryHandle) -> noct_io::Result<()> {
         self.directory_handles
             .lock()
             .retain(|&(id, _)| id as u64 != handle.handle_id);
@@ -183,15 +182,15 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
         Ok(())
     }
 
-    fn mkfile(&self, _path: &str) -> FilesystemResult<()> {
-        Err(FilesystemError::ReadOnly)
+    fn mkfile(&self, _path: &str) -> noct_io::Result<()> {
+        Err(noct_io::error::Error::ReadOnly)
     }
 
-    fn mkdir(&self, _path: &str) -> FilesystemResult<()> {
-        Err(FilesystemError::ReadOnly)
+    fn mkdir(&self, _path: &str) -> noct_io::Result<()> {
+        Err(noct_io::error::Error::ReadOnly)
     }
 
-    fn remove(&self, _path: &str) -> FilesystemResult<()> {
-        Err(FilesystemError::ReadOnly)
+    fn remove(&self, _path: &str) -> noct_io::Result<()> {
+        Err(noct_io::error::Error::ReadOnly)
     }
 }

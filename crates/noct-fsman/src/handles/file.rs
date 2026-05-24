@@ -1,9 +1,9 @@
 use alloc::{string::String, sync::Arc};
 use bitflags::bitflags;
+use noct_io::{Read, Seek, SeekOffset, Write, error::Error};
 
 use crate::{
     entity::EntityInfo,
-    error::{FilesystemError, FilesystemResult},
 };
 
 bitflags! {
@@ -13,13 +13,6 @@ bitflags! {
         const Write = 1 << 1;
         const Truncate = 1 << 2;
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum SeekOffset {
-    Beginning(u64),
-    Current(u64),
-    End(u64),
 }
 
 /// A file handle. It is an opaque type that represents an open file.
@@ -51,44 +44,62 @@ impl FileHandle {
             position: 0,
         }
     }
+}
 
-    pub fn read(&mut self, buffer: &mut [u8]) -> FilesystemResult<u64> {
+impl Read for FileHandle {
+    fn read(&mut self, buffer: &mut [u8]) -> noct_io::Result<u64> {
         let fs =
-            crate::mount::get_handle(&self.disk_id).ok_or(FilesystemError::DiskNotRecognized)?;
+            crate::mount::get_handle(&self.disk_id).ok_or(Error::DiskNotRecognized)?;
 
         fs.read(self, buffer)
     }
+}
 
-    pub fn write(&mut self, buffer: &[u8]) -> FilesystemResult<u64> {
+impl Write for FileHandle {
+    fn write(&mut self, buffer: &[u8]) -> noct_io::Result<u64> {
         let fs =
-            crate::mount::get_handle(&self.disk_id).ok_or(FilesystemError::DiskNotRecognized)?;
+            crate::mount::get_handle(&self.disk_id).ok_or(Error::DiskNotRecognized)?;
 
         fs.write(self, buffer)
     }
 
-    pub fn seek(&mut self, offset: SeekOffset) -> FilesystemResult<u64> {
+    fn flush(&mut self) -> noct_io::Result<()> {
+        Ok(())
+    }
+}
+
+impl Seek for FileHandle {
+    fn seek(&mut self, offset: SeekOffset) -> noct_io::Result<u64> {
         self.position = match offset {
             SeekOffset::Beginning(pos) => pos,
             SeekOffset::Current(pos) => {
-                if self.position + pos > self.file_info.size {
-                    return Err(FilesystemError::InvalidSeek);
+                let new_position = self
+                    .position
+                    .checked_add_signed(pos)
+                    .ok_or(Error::InvalidSeek)?;
+
+                if new_position > self.file_info.size {
+                    return Err(Error::InvalidSeek);
                 }
 
-                self.position + pos
+                new_position
             }
             SeekOffset::End(pos) => {
-                if pos > self.file_info.size {
-                    return Err(FilesystemError::InvalidSeek);
+                if pos > self.file_info.size as i64 {
+                    return Err(Error::InvalidSeek);
                 }
 
-                self.file_info.size - pos
+                self.file_info
+                    .size
+                    .checked_sub_signed(pos)
+                    .ok_or(Error::InvalidSeek)?
             }
         };
 
         Ok(self.position)
     }
 
-    pub fn tell(&mut self) -> FilesystemResult<u64> {
+    fn position(&mut self) -> noct_io::Result<u64> {
         Ok(self.position)
     }
 }
