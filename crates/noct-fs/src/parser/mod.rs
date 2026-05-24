@@ -59,7 +59,7 @@ impl PathParser {
         if let Some((disk_id, path)) = Self::parse_absolute_path(path) {
             return Some(PathInfo {
                 disk_id: disk_id.to_owned(),
-                path: String::from("/") + path.trim_matches('/'),
+                path: String::from("/") + &Self::canonicalize(path),
             })
         }
 
