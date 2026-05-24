@@ -115,10 +115,20 @@ name = "noct-elfloader"
 version = "0.1.0"
 dependencies = [
  "elf",
+ "noct-fs",
+ "noct-io",
  "noct-logger",
  "noct-mem",
  "noct-physmem-alloc",
  "noct-tools",
+]
+
+[[package]]
+name = "noct-fs"
+version = "0.1.0"
+dependencies = [
+ "noct-fsman",
+ "noct-io",
 ]
 
 [[package]]

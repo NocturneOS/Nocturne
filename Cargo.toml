@@ -25,7 +25,7 @@ members = [
     "crates/noct-fsman",
     "crates/noct-tarfs",
     "crates/noct-memdisk",
-    "crates/noct-boot", "crates/noct-mem", "crates/noct-sched", "crates/noct-io", "crates/noct-elfloader"]
+    "crates/noct-boot", "crates/noct-mem", "crates/noct-sched", "crates/noct-io", "crates/noct-elfloader", "crates/noct-fs"]
 resolver = "2"
 
 [dependencies]

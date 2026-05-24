@@ -13,7 +13,7 @@ extern crate alloc;
 
 #[derive(Debug)]
 pub enum LoadError {
-    System(&'static str),
+    System(noct_io::error::Error),
     InvalidELFType,
     ElfParser(ParseError),
 }
@@ -85,15 +85,15 @@ impl Drop for ProgramHandle {
 }
 
 pub fn load_elf_file(path: &str) -> Result<ProgramHandle, LoadError> {
-    let data = match noct_fs::read(path) {
+    let data = match noct_fs::read_file(path) {
         Ok(data) => data,
         Err(e) => {
-            qemu_log!("Error: {e}");
+            qemu_log!("Error: {e:?}");
             return Err(LoadError::System(e));
         }
     };
 
-    let elf = match elf::ElfBytes::<LittleEndian>::minimal_parse(data) {
+    let elf = match elf::ElfBytes::<LittleEndian>::minimal_parse(&data) {
         Ok(elf) => elf,
         Err(err) => {
             qemu_log!("parser error: {err}");
