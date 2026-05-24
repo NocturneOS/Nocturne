@@ -139,7 +139,7 @@ pub fn load_elf_file(path: &str) -> Result<ProgramHandle, LoadError> {
             1,
         );
 
-        let physical_address = unsafe { noct_physmem_alloc::allocate_bulk(page_count as _) }.unwrap();
+        let physical_address = noct_physmem_alloc::allocate_bulk(page_count as _).unwrap();
 
         unsafe {
             noct_mem::paging::map_pages(

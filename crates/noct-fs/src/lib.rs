@@ -1,8 +1,10 @@
 #![no_std]
 
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 
 extern crate alloc;
+
+pub mod parser;
 
 pub fn read_file(path: &str) -> noct_io::Result<Vec<u8>> {
     // TODO: 0. Canonicalize that path, parse path to get disk id and full path
