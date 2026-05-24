@@ -27,6 +27,10 @@ pub trait Module {
     fn cmdline(&self) -> Option<&str>;
     fn start(&self) -> usize;
     fn end(&self) -> usize;
+
+    fn size(&self) -> usize {
+        self.end() - self.start()
+    }
 }
 
 pub struct ModuleIterator<T: Module> {

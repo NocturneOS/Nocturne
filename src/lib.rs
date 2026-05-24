@@ -1,11 +1,12 @@
 #![no_std]
 
-use core::{panic::PanicInfo, time::Duration};
+use core::panic::PanicInfo;
 
-use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use alloc::boxed::Box;
 use noct_boot::{BootInfo, Module};
 use noct_logger::qemu_log;
 use noct_mem::{heap, paging::PageFlags};
+use noct_memdisk::MemoryDisk;
 
 use crate::arch::x86::multiboot::MultibootModule;
 
@@ -106,9 +107,8 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
     // noct_fsman::store::register_filesystem(Box::new(noct_fsman::nullfs::NullFilesystem));
     noct_fsman::store::register_filesystem(Box::new(noct_iso9660::ISO9660Filesystem));
+    noct_fsman::store::register_filesystem(Box::new(noct_tarfs::TarFilesystem));
     // noct_fsman::store::register_filesystem(Box::new(noct_fsman::debugfs::DebugFilesystem));
-
-    noct_fsman::probe();
 
     for i in boot_info.modules() {
         if i.cmdline().map(|x| x == "ramdisk").unwrap_or(false) {
@@ -118,8 +118,13 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
                 i.end(),
                 i.cmdline()
             );
+
+            noct_diskman::register_drive(Box::new(MemoryDisk::raw(i.start() as *mut u8, i.size())))
+                .ok();
         }
     }
+
+    noct_fsman::probe();
 
     qemu_log!("It works!");
 

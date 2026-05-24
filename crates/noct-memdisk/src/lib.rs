@@ -1,6 +1,11 @@
 #![no_std]
 
-use alloc::{boxed::Box, string::String};
+use core::{
+    borrow::Borrow,
+    ops::{Deref, DerefMut},
+};
+
+use alloc::{boxed::Box, string::String, vec};
 use noct_diskman::{
     error::{DiskManError, DiskManResult},
     structures::{Command, DriveType},
@@ -8,9 +13,52 @@ use noct_diskman::{
 
 extern crate alloc;
 
+pub enum MemoryDiskSource {
+    Predefined(&'static mut [u8]),
+    Allocated(Box<[u8]>),
+}
+
+impl Deref for MemoryDiskSource {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Predefined(items) => items,
+            Self::Allocated(items) => &items,
+        }
+    }
+}
+
+impl DerefMut for MemoryDiskSource {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            Self::Predefined(items) => items,
+            Self::Allocated(items) => items.as_mut(),
+        }
+    }
+}
+
 pub struct MemoryDisk {
     diskman_id: String,
-    data: Box<[u8]>,
+    data: MemoryDiskSource,
+}
+
+impl MemoryDisk {
+    pub fn alloc(size: usize) -> Self {
+        Self {
+            diskman_id: noct_diskman::generate_new_id("mem"),
+            data: MemoryDiskSource::Allocated(vec![0u8; size].into_boxed_slice()),
+        }
+    }
+
+    pub fn raw(ptr: *mut u8, size: usize) -> Self {
+        Self {
+            diskman_id: noct_diskman::generate_new_id("mem"),
+            data: MemoryDiskSource::Predefined(unsafe {
+                core::slice::from_raw_parts_mut(ptr, size)
+            }),
+        }
+    }
 }
 
 impl noct_diskman::drive::Drive for MemoryDisk {
@@ -39,6 +87,10 @@ impl noct_diskman::drive::Drive for MemoryDisk {
     }
 
     fn read(&mut self, location: u64, buffer: &mut [u8]) -> DiskManResult<u64> {
+        if location > self.data.len() as u64 {
+            return Err(DiskManError::LocationOutOfBounds);
+        }
+
         let read_size = core::cmp::min(self.data.len() as u64 - location, buffer.len() as u64);
 
         let range = location as usize..(location + read_size) as usize;

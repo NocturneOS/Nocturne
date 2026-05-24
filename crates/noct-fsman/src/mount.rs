@@ -44,7 +44,7 @@ pub fn get_handle(disk_id: &str) -> Option<SharedFilesystemInstance> {
 
 pub fn scan_and_mount() {
     for disk in noct_diskman::disk_list() {
-        qemu_log!("Probing disk {}", disk.id,);
+        qemu_log!("Probing disk {}", disk.id);
 
         if let Err(e) = try_mount(&disk.id) {
             qemu_log!("Failed to mount disk {}: {:?}", disk.id, e);
