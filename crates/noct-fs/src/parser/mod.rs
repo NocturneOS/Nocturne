@@ -11,7 +11,7 @@ pub struct PathInfo {
 
 impl PathInfo {
     pub fn into_string(self) -> String {
-        self.disk_id + &self.path
+        self.disk_id + ":" + &self.path
     }
 }
 
