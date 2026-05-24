@@ -81,7 +81,7 @@ impl PathParser {
 
         Some(PathInfo {
             disk_id: disk_id.to_owned(),
-            path: canonicalized
+            path: "/".to_owned() + &canonicalized
         })
     }
 

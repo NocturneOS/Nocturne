@@ -1,3 +1,5 @@
+use alloc::{borrow::ToOwned, string::String};
+
 use crate::parser::PathParserBuilder;
 
 macro_rules! make_test {
@@ -53,4 +55,31 @@ pub fn invalid_disk_name() {
 #[test]
 pub fn absolute_path_with_complex_path() {
     make_test!("disk0:/abc/../def///123/", "disk0", "/def/123");
+    make_test!("disk0:/abc/../../..///123/", "disk0", "/123");
+
+    // Note: The colon (:) symbol is allowed in paths.
+    make_test!("disk0:/abc:/././.123/", "disk0", "/abc:/.123");
+}
+
+#[test]
+pub fn disk_with_partition_and_any_path() {
+    make_test!("disk0.1:/a/b/c/", "disk0.1", "/a/b/c");
+    make_test!("disk0.1.2:/a/b/c/", "disk0.1.2", "/a/b/c");
+    make_test!("disk0.1.2.3:/a/b/c/", "disk0.1.2.3", "/a/b/c");
+}
+
+#[test]
+pub fn pathinfo_into_string() {
+    fn make(cwd: &str, path: &str) -> String {
+        let parser = PathParserBuilder::new().cwd(cwd.to_owned()).build();
+
+        let result = parser.parse(path).unwrap().into_string();
+
+        result
+    }
+
+    assert_eq!(make("disk0:/user/me/", "a/b/c"), "disk0:/user/me/a/b/c");
+    assert_eq!(make("disk0:/user/me/..", "a/b/c"), "disk0:/user/a/b/c");
+    assert_eq!(make("disk0:/../../../user/me/../../", "a/b/./../c"), "disk0:/a/c");
+    assert_eq!(make("disk0:/user/me/..", "a/b/./././c"), "disk0:/user/a/b/c");
 }
