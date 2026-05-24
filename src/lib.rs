@@ -111,12 +111,14 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     noct_fsman::probe();
 
     for i in boot_info.modules() {
-        qemu_log!(
-            "Would make disk from module: {:X} - {:X} ({:#?})",
-            i.start(),
-            i.end(),
-            i.cmdline()
-        );
+        if i.cmdline().map(|x| x == "ramdisk").unwrap_or(false) {
+            qemu_log!(
+                "Would make disk from module: {:X} - {:X} ({:?})",
+                i.start(),
+                i.end(),
+                i.cmdline()
+            );
+        }
     }
 
     qemu_log!("It works!");

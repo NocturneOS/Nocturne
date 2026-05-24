@@ -7,6 +7,7 @@ pub enum Error {
     InvalidHandle,
     InvalidMode,
     InvalidSeek,
+    InvalidPath,
     IoError,
     NotFound,
     PermissionDenied,

@@ -13,10 +13,18 @@ impl PathInfo {
     pub fn into_string(self) -> String {
         self.disk_id + ":" + &self.path
     }
+
+    pub fn disk_id(&self) -> &str {
+        &self.disk_id
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
+    }
 }
 
 /// A builder structure for PathParser
-struct PathParserBuilder {
+pub struct PathParserBuilder {
     cwd: Option<String>
 }
 
@@ -45,7 +53,7 @@ impl Default for PathParserBuilder {
     }
 }
 
-struct PathParser {
+pub struct PathParser {
     builder_data: PathParserBuilder
 }
 

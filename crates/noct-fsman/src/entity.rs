@@ -1,7 +1,7 @@
 use crate::NodeId;
 
 /// Filesystem entity type.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityType {
     Directory,
     File,
