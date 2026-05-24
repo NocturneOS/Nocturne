@@ -4,9 +4,9 @@ version = 4
 
 [[package]]
 name = "autocfg"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
+checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
 name = "bit_field"
@@ -22,9 +22,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.10.0"
+version = "2.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "812e12b5285cc515a9c72a5c1d3b6d46a19dac5acfef5265968c166106e31dd3"
+checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
 
 [[package]]
 name = "cfg-if"
@@ -44,7 +44,7 @@ version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47fae570bd2747dcfcdd5585afddd99bac13c44331b70df5cb8584b7c89d17cd"
 dependencies = [
- "bitflags 2.10.0",
+ "bitflags 2.11.1",
  "ucs2",
  "zerocopy",
 ]
@@ -114,7 +114,7 @@ dependencies = [
 name = "noct-fsman"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.10.0",
+ "bitflags 2.11.1",
  "lazy_static",
  "noct-diskman",
  "noct-io",
@@ -147,7 +147,6 @@ dependencies = [
  "noct-io",
  "noct-logger",
  "noct-time",
- "noct-tools",
  "spin 0.10.0",
 ]
 
@@ -156,7 +155,6 @@ name = "noct-logger"
 version = "0.1.0"
 dependencies = [
  "noct-time",
- "noct-tools",
  "x86",
 ]
 
@@ -168,7 +166,7 @@ version = "0.1.0"
 name = "noct-mem"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.10.0",
+ "bitflags 2.11.1",
  "cfg-if",
  "noct-logger",
  "noct-physmem-alloc",
@@ -220,7 +218,7 @@ dependencies = [
 name = "noct-sched"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.10.0",
+ "bitflags 2.11.1",
  "lazy_static",
  "noct-cpu",
  "noct-interrupts",
@@ -263,7 +261,6 @@ dependencies = [
  "noct-fsman",
  "noct-io",
  "noct-logger",
- "noct-tools",
  "spin 0.10.0",
  "tarfs",
 ]
@@ -287,7 +284,6 @@ dependencies = [
 name = "nocturne"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.10.0",
  "cfg-if",
  "elf",
  "lazy_static",
