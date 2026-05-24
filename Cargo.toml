@@ -25,14 +25,13 @@ members = [
     "crates/noct-fsman",
     "crates/noct-tarfs",
     "crates/noct-memdisk",
-    "crates/noct-boot", "crates/noct-mem", "crates/noct-sched", "crates/noct-io"]
+    "crates/noct-boot", "crates/noct-mem", "crates/noct-sched", "crates/noct-io", "crates/noct-elfloader"]
 resolver = "2"
 
 [dependencies]
 x86 = "0.52.0"
 lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
 spin = "0.10.0"
-elf = { version = "0.8.0", default-features = false }
 cfg-if = "1.0.4"
 
 noct-boot = { path = "crates/noct-boot" }
@@ -55,6 +54,7 @@ noct-tarfs = { path = "crates/noct-tarfs" }
 noct-time = { path = "crates/noct-time" }
 noct-tools = { path = "crates/noct-tools" }
 noct-sched = { path = "crates/noct-sched" }
+noct-elfloader = { path = "crates/noct-elfloader" }
 
 
 # Profiles

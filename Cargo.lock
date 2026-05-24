@@ -111,6 +111,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-elfloader"
+version = "0.1.0"
+dependencies = [
+ "elf",
+ "noct-logger",
+ "noct-mem",
+ "noct-physmem-alloc",
+ "noct-tools",
+]
+
+[[package]]
 name = "noct-fsman"
 version = "0.1.0"
 dependencies = [
@@ -285,11 +296,11 @@ name = "nocturne"
 version = "0.1.0"
 dependencies = [
  "cfg-if",
- "elf",
  "lazy_static",
  "noct-boot",
  "noct-cpu",
  "noct-diskman",
+ "noct-elfloader",
  "noct-fsman",
  "noct-interrupts",
  "noct-iso9660",

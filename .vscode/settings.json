@@ -3,15 +3,27 @@
     "rust-analyzer.cargo.target": "./src/arch/x86/i686-unknown-none.json",
     // "rust-analyzer.cargo.target": "./src/arch/x86_64/x86_64-unknown-none.json",
     "rust-analyzer.check.extraArgs": [
-        "-Zbuild-std=core,alloc,compiler_builtins"
+        "-Zbuild-std=core,alloc,compiler_builtins",
+        "-Zunstable-options",
+        "-Zjson-target-spec"
     ],
     "rust-analyzer.check.extraEnv": {
-        "RUSTUP_TOOLCHAIN": "nightly-2026-01-31"
+        "RUSTUP_TOOLCHAIN": "nightly-2026-05-23",
+        "RUSTFLAGS": "-Zunstable-options"
     },
     "rust-analyzer.testExplorer": false,
     "rust-analyzer.diagnostics.styleLints.enable": true,
     "rust-analyzer.assist.preferSelf": true,
     "rust-analyzer.cargo.extraEnv": {
-        "RUSTUP_TOOLCHAIN": "nightly-2026-01-31"
+        "RUSTUP_TOOLCHAIN": "nightly-2026-05-23",
+        "RUSTFLAGS": "-Zunstable-options"
     },
+    "rust-analyzer.cargo.extraArgs": [
+        "-Zunstable-options",
+        "-Zjson-target-spec"
+    ],
+    "rust-analyzer.cargo.metadataExtraArgs": [
+        "-Zunstable-options",
+        "-Zjson-target-spec"
+    ],
 }
