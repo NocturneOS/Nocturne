@@ -1,4 +1,6 @@
 #!/bin/bash
 
-rustup toolchain install nightly-2026-01-31
-rustup component add rust-src --toolchain nightly-2026-01-31-x86_64-unknown-linux-gnu
+TOOLCHAIN=nightly-2026-05-23
+
+rustup toolchain install ${TOOLCHAIN}
+rustup component add rust-src --toolchain ${TOOLCHAIN}-x86_64-unknown-linux-gnu

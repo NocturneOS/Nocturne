@@ -354,7 +354,7 @@ pub fn preinit(available_memory_size: usize) {
 
     qemu_log!("Total page count: {}", total_needed_pages);
 
-    if total_needed_pages > 512 {
+    /*if total_needed_pages > 512 {
         // I would allocate a second page table or even recreate a page directory from scratch,
         // but in this stage we can't have an allocator.
 
@@ -363,7 +363,7 @@ pub fn preinit(available_memory_size: usize) {
             "Needed more than one page table for kernel initialization! (Total pages needed: {})",
             total_needed_pages
         );
-    }
+    }*/
 
     // We did all checks, let's list the entries.
 
