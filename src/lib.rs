@@ -11,6 +11,7 @@ use noct_memdisk::MemoryDisk;
 use crate::arch::x86::multiboot::MultibootModule;
 
 mod arch;
+mod syscalls;
 mod time;
 mod unwind;
 
@@ -126,7 +127,13 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
     noct_fsman::probe();
 
-    qemu_log!("{:?}", noct_fs::read_file("mem0:/README").map(|x| str::from_utf8(&x).unwrap().to_owned()));
+    syscalls::init();
+
+    {
+        let handle = noct_elfloader::load_elf_file("mem0:/prog");
+
+        handle.unwrap().run(&[]);
+    }
 
     qemu_log!("It works!");
 

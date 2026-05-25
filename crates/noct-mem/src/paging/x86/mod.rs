@@ -84,7 +84,7 @@ pub fn map_single_page(physical_address: usize, virtual_address: usize, flags: P
 
     let page_table = page_table_mut(pdi);
 
-    page_table[pti] = Page(physical_address | flags.bits() | 1);
+    page_table[pti] = Page(physical_address | (flags | PageFlags::Present).bits());
 
     unsafe { x86::tlb::flush(virtual_address) };
 

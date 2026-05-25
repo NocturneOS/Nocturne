@@ -133,11 +133,18 @@ pub fn load_elf_file(path: &str) -> Result<ProgramHandle, LoadError> {
             }
         };
 
-        let page_count = core::cmp::max(
-            align_value(i.p_memsz as usize, noct_mem::paging::PAGE_SIZE as usize)
-                / noct_mem::paging::PAGE_SIZE as usize,
-            1,
-        );
+        let (start_vaddr, end_vaddr, page_count) = {
+            let start_addr = (i.p_vaddr & !0xfff) as usize;
+            let end_addr = align_value((i.p_vaddr + i.p_memsz) as _, noct_mem::get_page_size());
+
+            // core::cmp::max(
+            //     align_value(i.p_memsz as usize, noct_mem::paging::PAGE_SIZE as usize)
+            //         / noct_mem::paging::PAGE_SIZE as usize,
+            //     1,
+            // )
+
+            (start_addr, end_addr, (end_addr - start_addr) / noct_mem::get_page_size())
+        };
 
         let physical_address = noct_physmem_alloc::allocate_bulk(page_count as _).unwrap();
 
@@ -151,10 +158,15 @@ pub fn load_elf_file(path: &str) -> Result<ProgramHandle, LoadError> {
 
             let memory_area = core::slice::from_raw_parts_mut(
                 i.p_vaddr as *mut u8,
-                (page_count * noct_mem::get_page_size()) as usize,
+                (page_count * noct_mem::get_page_size()) - (i.p_vaddr & 0xfff) as usize,
             );
 
-            memory_area.fill(0);
+            qemu_log!(
+                "[{physical_address:x?}] Zeroing: {:?}",
+                memory_area.as_ptr_range()
+            );
+
+            memory_area[..].fill(0);
 
             memory_area[..ph_data.len()].copy_from_slice(ph_data);
         }
