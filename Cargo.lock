@@ -203,6 +203,8 @@ name = "noct-memdisk"
 version = "0.1.0"
 dependencies = [
  "noct-diskman",
+ "noct-logger",
+ "noct-mem",
 ]
 
 [[package]]
@@ -311,6 +313,7 @@ dependencies = [
  "noct-cpu",
  "noct-diskman",
  "noct-elfloader",
+ "noct-fs",
  "noct-fsman",
  "noct-interrupts",
  "noct-iso9660",

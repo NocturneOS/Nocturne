@@ -20,7 +20,7 @@ pub fn open_file(path: &str, mode: FileOpenMode) -> noct_io::Result<FileHandle> 
     let handle = noct_fsman::mount::get_handle(info.disk_id())
         .ok_or(noct_io::error::Error::InvalidHandle)?;
 
-    handle.open(path, mode)
+    handle.open(info.path(), mode)
 }
 
 pub fn info(path: &str) -> noct_io::Result<entity::EntityInfo> {
@@ -32,7 +32,7 @@ pub fn info(path: &str) -> noct_io::Result<entity::EntityInfo> {
     let handle = noct_fsman::mount::get_handle(info.disk_id())
         .ok_or(noct_io::error::Error::InvalidHandle)?;
 
-    handle.info(path)
+    handle.info(info.path())
 }
 
 pub fn read_file(path: &str) -> noct_io::Result<Vec<u8>> {
@@ -42,7 +42,7 @@ pub fn read_file(path: &str) -> noct_io::Result<Vec<u8>> {
         return Err(Error::InvalidEntity);
     }
 
-    let mut buffer: Vec<u8> = Vec::with_capacity(info.size as _);
+    let mut buffer: Vec<u8> = alloc::vec![0u8; info.size as _];
 
     let mut handle = open_file(path, FileOpenMode::Read)?;
 

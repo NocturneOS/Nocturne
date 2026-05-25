@@ -2,7 +2,7 @@
 
 use core::panic::PanicInfo;
 
-use alloc::boxed::Box;
+use alloc::{borrow::ToOwned, boxed::Box};
 use noct_boot::{BootInfo, Module};
 use noct_logger::qemu_log;
 use noct_mem::{heap, paging::PageFlags};
@@ -119,12 +119,14 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
                 i.cmdline()
             );
 
-            noct_diskman::register_drive(Box::new(MemoryDisk::raw(i.start() as *mut u8, i.size())))
+            noct_diskman::register_drive(Box::new(MemoryDisk::raw_physical(i.start(), i.size())))
                 .ok();
         }
     }
 
     noct_fsman::probe();
+
+    qemu_log!("{:?}", noct_fs::read_file("mem0:/README").map(|x| str::from_utf8(&x).unwrap().to_owned()));
 
     qemu_log!("It works!");
 

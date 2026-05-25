@@ -4,7 +4,7 @@ extern crate alloc;
 
 use core::cell::Cell;
 
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{borrow::ToOwned, boxed::Box, string::String, sync::Arc, vec::Vec};
 use noct_fsman::{
     entity::{EntityInfo, EntityType},
     handles::{
@@ -12,7 +12,7 @@ use noct_fsman::{
         file::{FileHandle, FileOpenMode},
     },
 };
-use noct_logger::noct_time::repr::Time;
+use noct_logger::{noct_time::repr::Time, qemu_log};
 use spin::Mutex;
 
 pub mod disk_device;
@@ -37,6 +37,8 @@ impl noct_fsman::Filesystem for TarFilesystem {
 
         Some(Box::new(TarFSInstance {
             tar: fl.into(),
+
+            disk_id: disk_id.to_owned().into(),
             id_arena: Cell::new(0).into(),
 
             directory_handles: Vec::new().into(),
@@ -52,6 +54,7 @@ impl noct_fsman::Filesystem for TarFilesystem {
 pub struct TarFSInstance {
     tar: Mutex<tarfs::TarFS>,
 
+    disk_id: Arc<String>,
     id_arena: Mutex<Cell<usize>>,
 
     directory_handles: Mutex<Vec<(u64, alloc::vec::IntoIter<tarfs::Entity>)>>,
@@ -77,17 +80,26 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
             return Err(noct_io::error::Error::InvalidMode);
         }
 
-        let mut bind = self.tar.lock();
         let id = self.next_id();
 
-        let file = bind.find_file(path).map_err(|e| match e.kind() {
-            no_std_io::io::ErrorKind::NotFound => noct_io::error::Error::NotFound,
-            _ => noct_io::error::Error::Unknown,
-        })?;
+        let normalized_path = String::from(".") + path;
+
+        let file = self
+            .tar
+            .lock()
+            .find_file(&normalized_path)
+            .map_err(|e| match e.kind() {
+                no_std_io::io::ErrorKind::NotFound => noct_io::error::Error::NotFound,
+                _ => noct_io::error::Error::Unknown,
+            })?;
 
         self.file_handles.lock().push((id as _, file));
 
-        todo!()
+        Ok(FileHandle::new(
+            id as _,
+            Arc::clone(&self.disk_id),
+            self.info(path)?,
+        ))
     }
 
     fn read(&self, handle: &mut FileHandle, buffer: &mut [u8]) -> noct_io::Result<u64> {
@@ -99,10 +111,10 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
             .find(|&&(fh, _)| fh == handle.file_handle)
             .ok_or(noct_io::error::Error::InvalidHandle)?;
 
-        bind.read_file_by_entity(ent, handle.position as _, buffer)
+        let read_count = bind.read_file_by_entity(ent, handle.position as _, buffer)
             .map_err(|_| noct_io::error::Error::IoError)?;
 
-        todo!()
+        Ok(read_count as _)
     }
 
     fn write(&self, _handle: &mut FileHandle, _buffer: &[u8]) -> noct_io::Result<u64> {
@@ -134,7 +146,9 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
             return Err(noct_io::error::Error::InvalidHandle);
         };
 
-        let entry = dir_handle.next().ok_or(noct_io::error::Error::EndOfIterator)?;
+        let entry = dir_handle
+            .next()
+            .ok_or(noct_io::error::Error::EndOfIterator)?;
 
         Ok(DirectoryEntry {
             name: entry.name.clone(),
@@ -152,10 +166,15 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
     fn info(&self, path: &str) -> noct_io::Result<EntityInfo> {
         let mut bind = self.tar.lock();
 
-        let file = bind.find_file(path).map_err(|e| match e.kind() {
-            no_std_io::io::ErrorKind::NotFound => noct_io::error::Error::NotFound,
-            _ => noct_io::error::Error::Unknown,
-        })?;
+        // Path in tar begin with a trailing '.'
+        let normalized_path = String::from(".") + path;
+
+        let file = bind
+            .find_file(&normalized_path)
+            .map_err(|e| match e.kind() {
+                no_std_io::io::ErrorKind::NotFound => noct_io::error::Error::NotFound,
+                _ => noct_io::error::Error::Unknown,
+            })?;
 
         Ok(EntityInfo {
             node_id: file.position as _,

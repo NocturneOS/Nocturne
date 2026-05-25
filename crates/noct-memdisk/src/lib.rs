@@ -1,6 +1,7 @@
 #![no_std]
 
 use core::{
+    alloc::Layout,
     borrow::Borrow,
     ops::{Deref, DerefMut},
 };
@@ -10,11 +11,17 @@ use noct_diskman::{
     error::{DiskManError, DiskManResult},
     structures::{Command, DriveType},
 };
+use noct_logger::qemu_log;
+use noct_mem::paging::PageFlags;
 
 extern crate alloc;
 
 pub enum MemoryDiskSource {
-    Predefined(&'static mut [u8]),
+    Predefined {
+        physical: usize,
+        buffer: &'static mut [u8],
+        layout: Layout
+    },
     Allocated(Box<[u8]>),
 }
 
@@ -23,7 +30,7 @@ impl Deref for MemoryDiskSource {
 
     fn deref(&self) -> &Self::Target {
         match self {
-            Self::Predefined(items) => items,
+            Self::Predefined { buffer, .. } => buffer,
             Self::Allocated(items) => &items,
         }
     }
@@ -32,7 +39,7 @@ impl Deref for MemoryDiskSource {
 impl DerefMut for MemoryDiskSource {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
-            Self::Predefined(items) => items,
+            Self::Predefined { buffer, .. } => buffer,
             Self::Allocated(items) => items.as_mut(),
         }
     }
@@ -51,12 +58,37 @@ impl MemoryDisk {
         }
     }
 
-    pub fn raw(ptr: *mut u8, size: usize) -> Self {
+    pub fn raw_physical(phys_addr: usize, size: usize) -> Self {
+        let layout = Layout::from_size_align(size, 0x1000).unwrap();
+
+        let virt = unsafe {
+            noct_mem::heap::allocate_no_map(layout)
+        };
+
+        noct_mem::paging::map_pages(
+            phys_addr,
+            virt.addr(),
+            size.next_multiple_of(0x1000),
+            PageFlags::Present,
+        );
+
+        assert!(!virt.is_null());
+
         Self {
             diskman_id: noct_diskman::generate_new_id("mem"),
-            data: MemoryDiskSource::Predefined(unsafe {
-                core::slice::from_raw_parts_mut(ptr, size)
-            }),
+            data: MemoryDiskSource::Predefined {
+                physical: phys_addr,
+                buffer: unsafe { core::slice::from_raw_parts_mut(virt, size) },
+                layout
+            },
+        }
+    }
+}
+
+impl Drop for MemoryDisk {
+    fn drop(&mut self) {
+        if let MemoryDiskSource::Predefined { buffer, layout, .. } = &mut self.data {
+            unsafe { alloc::alloc::dealloc(buffer.as_mut_ptr(), *layout) };
         }
     }
 }
@@ -95,9 +127,11 @@ impl noct_diskman::drive::Drive for MemoryDisk {
 
         let range = location as usize..(location + read_size) as usize;
 
-        self.data
-            .get(range)
-            .ok_or(DiskManError::LocationOutOfBounds)?;
+        buffer.copy_from_slice(
+            self.data
+                .get(range)
+                .ok_or(DiskManError::LocationOutOfBounds)?,
+        );
 
         Ok(read_size)
     }

@@ -38,6 +38,7 @@ noct-boot = { path = "crates/noct-boot" }
 noct-cpu = { path = "crates/noct-cpu" }
 noct-diskman = { path = "crates/noct-diskman" }
 noct-fsman = { path = "crates/noct-fsman" }
+noct-fs = { path = "crates/noct-fs" }
 noct-mem = { path = "crates/noct-mem" }
 noct-interrupts = { path = "crates/noct-interrupts" }
 noct-iso9660 = { path = "crates/noct-iso9660" }
