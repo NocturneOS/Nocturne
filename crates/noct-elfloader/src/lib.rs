@@ -7,7 +7,10 @@ use noct_mem::paging::PageFlags;
 use alloc::{ffi::CString, string::String, sync::Arc, vec::Vec};
 use elf::{ParseError, endian::LittleEndian};
 use noct_logger::qemu_log;
-use noct_sched::{process::Process, thread::{ThreadFlags, ThreadPriority}};
+use noct_sched::{
+    process::Process,
+    thread::{ThreadFlags, ThreadPriority},
+};
 use noct_tools::align_value;
 
 extern crate alloc;
@@ -169,7 +172,13 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
                 .unwrap();
 
             {
-                noct_mem::paging::map_pages(
+                // noct_mem::paging::map_pages(
+                //     physical_address,
+                //     (i.p_vaddr as usize) & !0xfff,
+                //     (page_count * noct_mem::get_page_size()) as _,
+                //     PageFlags::Writeable | PageFlags::Userspace,
+                // );
+                let mapctx = noct_mem::paging::MappingContext::map(
                     physical_address,
                     (i.p_vaddr as usize) & !0xfff,
                     (page_count * noct_mem::get_page_size()) as _,
@@ -190,10 +199,12 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
 
                 memory_area[..ph_data.len()].copy_from_slice(ph_data);
 
-                noct_mem::paging::unmap_pages(
-                    (i.p_vaddr as usize) & !0xfff,
-                    (page_count * noct_mem::get_page_size()) as _,
-                );
+                drop(mapctx);
+                
+                // noct_mem::paging::unmap_pages(
+                //     (i.p_vaddr as usize) & !0xfff,
+                //     (page_count * noct_mem::get_page_size()) as _,
+                // );
             }
         }
 
@@ -207,7 +218,7 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
     noct_sched::create_thread(
         Arc::clone(&proc),
         unsafe { core::mem::transmute(elf.ehdr.e_entry as usize) },
-        512 << 10,  // 512 KB
+        512 << 10, // 512 KB
         ThreadPriority::Medium,
         ThreadFlags::User,
     );

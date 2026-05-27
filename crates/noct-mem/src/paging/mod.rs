@@ -33,3 +33,34 @@ pub trait PagingHierarchy {
     /// Gets paging root (for x86 is PD, for x86_64 it's a PML4T)
     fn root() -> &'static [usize];
 }
+
+// Good for temporary mappings
+pub struct MappingContext {
+    virtual_addr: usize,
+    byte_count: usize,
+}
+
+impl MappingContext {
+    pub fn map(phys_addr: usize, virt_addr: usize, byte_count: usize, flags: PageFlags) -> Self {
+        map_pages(
+            phys_addr,
+            virt_addr,
+            byte_count,
+            flags,
+        );
+
+        Self {
+            virtual_addr: virt_addr,
+            byte_count
+        }
+    }
+}
+
+impl Drop for MappingContext {
+    fn drop(&mut self) {
+        unmap_pages(
+            self.virtual_addr,
+            self.byte_count,
+        );
+    }
+}
