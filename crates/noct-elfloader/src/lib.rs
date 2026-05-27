@@ -200,7 +200,7 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
                 memory_area[..ph_data.len()].copy_from_slice(ph_data);
 
                 drop(mapctx);
-                
+
                 // noct_mem::paging::unmap_pages(
                 //     (i.p_vaddr as usize) & !0xfff,
                 //     (page_count * noct_mem::get_page_size()) as _,
@@ -221,6 +221,7 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
         512 << 10, // 512 KB
         ThreadPriority::Medium,
         ThreadFlags::User,
+        &[5]
     );
 
     ////////

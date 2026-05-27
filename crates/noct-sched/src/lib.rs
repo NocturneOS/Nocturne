@@ -135,6 +135,7 @@ impl Scheduler {
             0x1000,
             ThreadPriority::Low,
             ThreadFlags::Raw,
+            &[],
         );
 
         self.process_list.push_back(kernel_process);
@@ -162,6 +163,7 @@ impl Scheduler {
         stack_size: usize,
         priority: ThreadPriority,
         flags: ThreadFlags,
+        args: &[usize],
     ) -> Option<SharedThread> {
         let is_user_proc = process.id != 0;
 
@@ -172,7 +174,7 @@ impl Scheduler {
         };
 
         qemu_log!("Stack allocated: base @ {:#x?}", stack.stack_addr);
-        
+
         let stack_top = stack.stack_pointer;
 
         qemu_log!("               : pointer @ {:#x?}", stack_top);
@@ -181,6 +183,11 @@ impl Scheduler {
         let archspec = ArchitectureSpecificRegion::new();
 
         //let kst = archspec.tss_kernel_stack.load(Ordering::Relaxed);
+
+        // Push args onto the stack.
+        for i in args {
+            unsafe { stack.push(process.address_space.get_mut(), *i) };
+        }
 
         #[cfg(target_arch = "x86")]
         unsafe {
@@ -569,6 +576,7 @@ pub fn create_thread(
     stack_size: usize,
     priority: ThreadPriority,
     flags: ThreadFlags,
+    args: &[usize],
 ) -> Option<usize> {
     let il = InterruptLocker::lock();
 
@@ -579,7 +587,7 @@ pub fn create_thread(
     {
         let mut binding = this();
 
-        let thread = binding.create_thread(process, entry, stack_size, priority, flags)?;
+        let thread = binding.create_thread(process, entry, stack_size, priority, flags, args)?;
 
         id = thread.id;
     }
@@ -757,19 +765,19 @@ unsafe extern "C" fn thread_trampoline_usermode() -> ! {
     //     "a1: jmp a1"
     // );
     core::arch::naked_asm!(
-        "push eax",        // EAX is thread's ESP. Save it to avoid data corruption.
-        "mov ax, 0x23",    // 0x23 - is GDT selector 0x20 orred by 3 (ring 3).
+        "push eax",     // EAX is thread's ESP. Save it to avoid data corruption.
+        "mov ax, 0x23", // 0x23 - is GDT selector 0x20 orred by 3 (ring 3).
         "mov ds, ax",
         "mov es, ax",
         "mov fs, ax",
         "mov gs, ax",
-        "pop eax",         // Restore EAX.
+        "pop eax", // Restore EAX.
         "cli",
-        "push 0x23",       // Stack selector = Data selector = 0x20 | 3
-        "push eax",        // SS:ESP = 0x23:EAX
-        "push 0x202",      // EFLAGS with IF (interrupt flag enabled)
-        "push 0x1B",       // Code selector
-        "push ebx",        // Entry point = EIP
+        "push 0x23",  // Stack selector = Data selector = 0x20 | 3
+        "push eax",   // SS:ESP = 0x23:EAX
+        "push 0x202", // EFLAGS with IF (interrupt flag enabled)
+        "push 0x1B",  // Code selector
+        "push ebx",   // Entry point = EIP
         "iretd",
     );
 }
