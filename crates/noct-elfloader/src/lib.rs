@@ -171,7 +171,7 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
             {
                 noct_mem::paging::map_pages(
                     physical_address,
-                    i.p_vaddr as _,
+                    (i.p_vaddr as usize) & !0xfff,
                     (page_count * noct_mem::get_page_size()) as _,
                     PageFlags::Writeable | PageFlags::Userspace,
                 );
@@ -191,7 +191,7 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
                 memory_area[..ph_data.len()].copy_from_slice(ph_data);
 
                 noct_mem::paging::unmap_pages(
-                    i.p_vaddr as _,
+                    (i.p_vaddr as usize) & !0xfff,
                     (page_count * noct_mem::get_page_size()) as _,
                 );
             }
@@ -204,7 +204,7 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
         });
     }
 
-    let thread = noct_sched::create_thread(
+    noct_sched::create_thread(
         Arc::clone(&proc),
         unsafe { core::mem::transmute(elf.ehdr.e_entry as usize) },
         512 << 10,  // 512 KB

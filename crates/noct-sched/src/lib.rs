@@ -569,20 +569,26 @@ pub fn create_thread(
     stack_size: usize,
     priority: ThreadPriority,
     flags: ThreadFlags,
-) {
+) -> Option<usize> {
     let il = InterruptLocker::lock();
+
+    let id: usize;
 
     //
 
     {
         let mut binding = this();
 
-        binding.create_thread(process, entry, stack_size, priority, flags);
+        let thread = binding.create_thread(process, entry, stack_size, priority, flags)?;
+
+        id = thread.id;
     }
 
     //
 
     drop(il);
+
+    Some(id)
 }
 
 pub fn schedule() {

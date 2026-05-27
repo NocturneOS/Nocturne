@@ -5,26 +5,51 @@ mod debug;
 
 pub type SyscallHandler = fn(usize, usize, usize, usize, usize) -> Option<usize>;
 
-const SYSCALL_HANDLERS: &[SyscallHandler] = &[
-    debug::debug
-];
+const SYSCALL_HANDLERS: &[SyscallHandler] = &[debug::debug];
 
 pub fn syscall_handler(regs: &mut CPURegisters) {
-    let nr = regs.eax as usize;
+    let nr: usize;
 
-    let arg1 = regs.ebx as usize;
-    let arg2 = regs.ecx as usize;
-    let arg3 = regs.edx as usize;
-    let arg4 = regs.esi as usize;
-    let arg5 = regs.edi as usize;
+    let arg1: usize;
+    let arg2: usize;
+    let arg3: usize;
+    let arg4: usize;
+    let arg5: usize;
+
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "x86")] {
+            nr = regs.eax as usize;
+
+            arg1 = regs.ebx as usize;
+            arg2 = regs.ecx as usize;
+            arg3 = regs.edx as usize;
+            arg4 = regs.esi as usize;
+            arg5 = regs.edi as usize;
+        } else if #[cfg(target_arch = "x86_64")] {
+            nr = regs.rax as usize;
+
+            arg1 = regs.rbx as usize;
+            arg2 = regs.rcx as usize;
+            arg3 = regs.rdx as usize;
+            arg4 = regs.rsi as usize;
+            arg5 = regs.rdi as usize;
+        }
+    }
 
     qemu_log!("System call!");
-    
+
     if let Some(handler) = SYSCALL_HANDLERS.get(nr) {
         let result = handler(arg1, arg2, arg3, arg4, arg5);
 
         if let Some(r) = result {
-            regs.eax = r as u32;
+            #[cfg(target_arch = "x86")]
+            {
+                regs.eax = r as u32;
+            }
+            #[cfg(target_arch = "x86_64")]
+            {
+                regs.rax = r as u64;
+            }
         }
     }
 }

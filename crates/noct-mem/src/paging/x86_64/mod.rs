@@ -15,7 +15,8 @@ impl PagingHierarchy for X86_64Paging {
 
     fn index_at_level(vaddr: usize, level: usize) -> usize {
         match level {
-            0 => vaddr >> 39,
+            // 0 => vaddr >> 39,
+            0 => (vaddr >> 39) & 0x1FF,
             1 => (vaddr >> 30) & 0x1FF,
             2 => (vaddr >> 21) & 0x1FF,
             3 => (vaddr >> 12) & 0x1FF,
