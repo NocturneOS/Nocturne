@@ -221,7 +221,7 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
         512 << 10, // 512 KB
         ThreadPriority::Medium,
         ThreadFlags::User,
-        &[5]
+        &[]
     );
 
     ////////
@@ -230,105 +230,4 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
     drop(il);
 
     Ok(proc)
-}
-
-pub fn load_elf_file(path: &str) -> Result<ProgramHandle, LoadError> {
-    let data = match noct_fs::read_file(path) {
-        Ok(data) => data,
-        Err(e) => {
-            qemu_log!("Error: {e:?}");
-            return Err(LoadError::System(e));
-        }
-    };
-
-    let elf = match elf::ElfBytes::<LittleEndian>::minimal_parse(&data) {
-        Ok(elf) => elf,
-        Err(err) => {
-            qemu_log!("parser error: {err}");
-            return Err(LoadError::ElfParser(err));
-        }
-    };
-
-    let segments = elf.segments().unwrap();
-
-    let mut loaded_segments: Vec<LoadInfo> = Vec::new();
-
-    for i in segments.iter() {
-        if i.p_type != elf::abi::PT_LOAD {
-            continue;
-        }
-
-        let ph_data = match elf.segment_data(&i) {
-            Ok(data) => data,
-            Err(e) => {
-                qemu_log!("Error happened during load! ({e})");
-
-                // Clean up
-                for seg in loaded_segments {
-                    unsafe {
-                        for page in 0..seg.page_count {
-                            noct_mem::paging::unmap_single_page(
-                                (seg.virtual_addr + (page * noct_mem::paging::PAGE_SIZE as usize))
-                                    as _,
-                            )
-                        }
-
-                        noct_physmem_alloc::free_bulk(seg.physical_addr as _, seg.page_count as _);
-                    }
-                }
-
-                return Err(LoadError::ElfParser(e));
-            }
-        };
-
-        let page_count = {
-            let start_addr = (i.p_vaddr & !0xfff) as usize;
-            let end_addr = align_value((i.p_vaddr + i.p_memsz) as _, noct_mem::get_page_size());
-
-            // core::cmp::max(
-            //     align_value(i.p_memsz as usize, noct_mem::paging::PAGE_SIZE as usize)
-            //         / noct_mem::paging::PAGE_SIZE as usize,
-            //     1,
-            // )
-
-            (end_addr - start_addr) / noct_mem::get_page_size()
-        };
-
-        let physical_address = noct_physmem_alloc::allocate_bulk(page_count as _).unwrap();
-
-        unsafe {
-            noct_mem::paging::map_pages(
-                physical_address,
-                i.p_vaddr as _,
-                (page_count * noct_mem::get_page_size()) as _,
-                PageFlags::Writeable | PageFlags::Userspace,
-            );
-
-            let memory_area = core::slice::from_raw_parts_mut(
-                i.p_vaddr as *mut u8,
-                (page_count * noct_mem::get_page_size()) - (i.p_vaddr & 0xfff) as usize,
-            );
-
-            qemu_log!(
-                "[{physical_address:x?}] Zeroing: {:?}",
-                memory_area.as_ptr_range()
-            );
-
-            memory_area[..].fill(0);
-
-            memory_area[..ph_data.len()].copy_from_slice(ph_data);
-        }
-
-        loaded_segments.push(LoadInfo {
-            physical_addr: physical_address as _,
-            virtual_addr: i.p_vaddr as _,
-            page_count,
-        });
-    }
-
-    Ok(ProgramHandle {
-        path: String::from(path),
-        entry_point: elf.ehdr.e_entry as usize,
-        loaded_segments,
-    })
 }
