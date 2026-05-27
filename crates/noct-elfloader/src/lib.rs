@@ -1,5 +1,7 @@
 #![no_std]
 
+mod load;
+
 use core::ffi::c_char;
 
 use noct_mem::paging::PageFlags;
@@ -13,20 +15,17 @@ use noct_sched::{
 };
 use noct_tools::align_value;
 
+use crate::load::{LoadInfo, LoadedSegments};
+
 extern crate alloc;
 
 #[derive(Debug)]
 pub enum LoadError {
     System(noct_io::error::Error),
     InvalidELFType,
+    UnsupportedArchitecture,
     ElfParser(ParseError),
-}
-
-#[derive(Debug)]
-pub struct LoadInfo {
-    physical_addr: usize,
-    virtual_addr: usize,
-    page_count: usize,
+    ThreadCreationFail,
 }
 
 #[derive(Debug)]
@@ -34,7 +33,7 @@ pub struct ProgramHandle {
     path: String,
 
     entry_point: usize,
-    loaded_segments: Vec<LoadInfo>,
+    loaded_segments: LoadedSegments,
 }
 
 impl ProgramHandle {
@@ -74,21 +73,11 @@ impl ProgramHandle {
 
 impl Drop for ProgramHandle {
     fn drop(&mut self) {
-        for seg in &self.loaded_segments {
-            for page in 0..seg.page_count {
-                noct_mem::paging::unmap_single_page(
-                    (seg.virtual_addr + (page * noct_mem::paging::PAGE_SIZE as usize)) as _,
-                )
-            }
-
-            noct_physmem_alloc::free_bulk(seg.physical_addr as _, seg.page_count as _);
-        }
-
         qemu_log!("Should drop!");
     }
 }
 
-pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
+pub fn spawn(path: &str) -> Result<(Arc<Process>, usize), LoadError> {
     // Load data before turning of interrupts.
     let data = match noct_fs::read_file(path) {
         Ok(data) => data,
@@ -106,6 +95,26 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
         }
     };
 
+    // 32-bit system allows executing only 32-bit binaries.
+    #[cfg(target_arch = "x86")]
+    {
+        use elf::file::Class;
+
+        if elf.ehdr.class != Class::ELF32 {
+            return Err(LoadError::UnsupportedArchitecture);
+        }
+    }
+
+    // x86-family system allows executing x86 binaries.
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        if !matches!(elf.ehdr.e_machine, elf::abi::EM_X86_64 | elf::abi::EM_386 | elf::abi::EM_IA_64) {
+            return Err(LoadError::UnsupportedArchitecture);
+        }
+    }
+
+    // elf.ehdr.e_machine
+
     // Turn interrupts off.
     let il = noct_tools::interrupt_locker::InterruptLocker::lock();
 
@@ -115,7 +124,7 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
 
     let segments = elf.segments().unwrap();
 
-    let mut loaded_segments: Vec<LoadInfo> = Vec::new();
+    let mut loaded_segments = LoadedSegments::new();
 
     for i in segments.iter() {
         if i.p_type != elf::abi::PT_LOAD {
@@ -127,20 +136,6 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
             Err(e) => {
                 qemu_log!("Error happened during load! ({e})");
 
-                // Clean up
-                for seg in loaded_segments {
-                    unsafe {
-                        for page in 0..seg.page_count {
-                            proc.address_space.get_mut().unmap_single_page(
-                                (seg.virtual_addr + (page * noct_mem::paging::PAGE_SIZE as usize))
-                                    as _,
-                            )
-                        }
-
-                        noct_physmem_alloc::free_bulk(seg.physical_addr as _, seg.page_count as _);
-                    }
-                }
-
                 return Err(LoadError::ElfParser(e));
             }
         };
@@ -149,18 +144,15 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
             let start_addr = (i.p_vaddr & !0xfff) as usize;
             let end_addr = align_value((i.p_vaddr + i.p_memsz) as _, noct_mem::get_page_size());
 
-            // core::cmp::max(
-            //     align_value(i.p_memsz as usize, noct_mem::paging::PAGE_SIZE as usize)
-            //         / noct_mem::paging::PAGE_SIZE as usize,
-            //     1,
-            // )
-
             (end_addr - start_addr) / noct_mem::get_page_size()
         };
 
-        let physical_address = noct_physmem_alloc::allocate_bulk(page_count as _).unwrap();
-
+        
         unsafe {
+            // let physical_address = proc.address_space.get_mut().alloc_map_multiple_pages((i.p_vaddr as usize) & !0xfff, page_count * noct_mem::get_page_size(), PageFlags::Writeable | PageFlags::Userspace)
+    
+            let physical_address = noct_physmem_alloc::allocate_bulk(page_count as _).unwrap();
+
             proc.address_space
                 .get_mut()
                 .map_pages(
@@ -172,12 +164,6 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
                 .unwrap();
 
             {
-                // noct_mem::paging::map_pages(
-                //     physical_address,
-                //     (i.p_vaddr as usize) & !0xfff,
-                //     (page_count * noct_mem::get_page_size()) as _,
-                //     PageFlags::Writeable | PageFlags::Userspace,
-                // );
                 let mapctx = noct_mem::paging::MappingContext::map(
                     physical_address,
                     (i.p_vaddr as usize) & !0xfff,
@@ -195,39 +181,39 @@ pub fn spawn(path: &str) -> Result<Arc<Process>, LoadError> {
                     memory_area.as_ptr_range()
                 );
 
+                // Zero out whole area to avoid user programs access some garbage and kernel data.
                 memory_area[..].fill(0);
 
                 memory_area[..ph_data.len()].copy_from_slice(ph_data);
 
                 drop(mapctx);
-
-                // noct_mem::paging::unmap_pages(
-                //     (i.p_vaddr as usize) & !0xfff,
-                //     (page_count * noct_mem::get_page_size()) as _,
-                // );
             }
+            
+            loaded_segments.push(LoadInfo {
+                physical_addr: physical_address as _,
+                virtual_addr: i.p_vaddr as _,
+                page_count,
+            });
         }
 
-        loaded_segments.push(LoadInfo {
-            physical_addr: physical_address as _,
-            virtual_addr: i.p_vaddr as _,
-            page_count,
-        });
     }
 
-    noct_sched::create_thread(
+    let thread_id = noct_sched::create_thread(
         Arc::clone(&proc),
         unsafe { core::mem::transmute(elf.ehdr.e_entry as usize) },
-        512 << 10, // 512 KB
+        512 << 10, // Stack size = 512 KB
         ThreadPriority::Medium,
         ThreadFlags::User,
-        &[]
-    );
+        &[
+            0 /* argc */,
+            0 /* argv */
+        ]
+    ).ok_or(LoadError::ThreadCreationFail)?;
 
     ////////
 
     // I put it here for semantics, it doesn't make sense.
     drop(il);
 
-    Ok(proc)
+    Ok((proc, thread_id))
 }

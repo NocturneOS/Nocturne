@@ -1,14 +1,15 @@
 use core::{alloc::Layout, marker::PhantomData};
 
 use crate::{
-    heap,
-    paging::{self, PagingHierarchy},
+    addrspace_manager::page_allocation::PageAllocation, heap, paging::{self, PagingHierarchy, unmap_pages}
 };
 use alloc::vec::Vec;
 use noct_logger::qemu_log;
 use noct_spec::{KERNEL_BASE, WORD_SIZE};
 
 use crate::paging::{Page, PageFlags, map_single_page, unmap_single_page};
+
+pub mod page_allocation;
 
 #[derive(Debug)]
 pub struct AddressSpaceVirtualBlock {
@@ -87,6 +88,35 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         let result = f(slice);
 
         unmap_single_page(mapping_region.addr());
+
+        unsafe { alloc::alloc::dealloc(mapping_region, layout) };
+
+        result
+    }
+
+    pub fn self_map_data<T>(&self, phys_allocation: &PageAllocation, f: impl FnOnce(&mut [u8]) -> T) -> T {
+        let byte_count = crate::paging::PAGE_SIZE * phys_allocation.page_count();
+        let layout = Layout::from_size_align(byte_count, 0x1000).unwrap();
+        let mapping_region = unsafe { heap::allocate_no_map(layout) };
+
+        for (i, page_phys) in phys_allocation.pages().enumerate() {
+            map_single_page(
+                page_phys,
+                mapping_region.addr() + (i * crate::paging::PAGE_SIZE),
+                PageFlags::Present | PageFlags::Writeable,
+            );
+        }
+
+        let slice = unsafe {
+            core::slice::from_raw_parts_mut(
+                mapping_region as *mut u8,
+                byte_count,
+            )
+        };
+
+        let result = f(slice);
+
+        unmap_pages(mapping_region.addr(), byte_count);
 
         unsafe { alloc::alloc::dealloc(mapping_region, layout) };
 
@@ -282,13 +312,13 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         Ok(())
     }
 
-    /// Bulk allocates and maps pages in `(virt_addr..virt_addr + size_in_bytes)` range.
+    /// Bulk allocates and maps physical pages to `(virt_addr..virt_addr + size_in_bytes)` range.
     pub fn alloc_map_multiple_pages(
         &mut self,
         virt_addr: usize,
         size_in_bytes: usize,
         flags: PageFlags,
-    ) -> Result<(), ()> {
+    ) -> Result<PageAllocation, ()> {
         let page_count = size_in_bytes.div_ceil(crate::paging::PAGE_SIZE);
 
         // Try allocate pages in bulk.
@@ -298,11 +328,13 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
             if let Some(phys) = physical {
                 self.map_pages(phys, virt_addr, size_in_bytes, flags)?;
 
-                return Ok(());
+                return Ok(PageAllocation::Bulk { addr: phys, page_count });
             }
         }
 
         // If it didn't work, let's try allocating one by one.
+        let mut pages = Vec::new();
+
         {
             for i in 0..page_count {
                 // TODO: Handle allocation error. We can't use `?`, because if this happens in the middle ...
@@ -312,13 +344,15 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
 
                 self.map_single_page(page, virt_addr + (i * crate::paging::PAGE_SIZE), flags)
                     .unwrap();
+
+                pages.push(page);
             }
         }
 
-        Ok(())
+        Ok(PageAllocation::Multiple(pages))
     }
 
-    // Maybe Result<usize, ASVAllocationError>?
+    // TODO: Maybe Result<usize, ASVAllocationError>?
     pub fn alloc_virt_region(&mut self, size: usize) -> usize {
         if self.used_virt_areas.is_empty() {
             let addr = KERNEL_BASE - size;
