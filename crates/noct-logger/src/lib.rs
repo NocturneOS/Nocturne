@@ -6,20 +6,20 @@ pub use noct_time;
 
 use core::fmt::{self, Write};
 
-// use noct_tools::interrupt_locker::InterruptLocker;
+use noct_tools::interrupt_locker::InterruptLocker;
 
 pub struct SerialWriter {
     pub port: u16,
 }
 
 pub fn __qemu_print(args: fmt::Arguments) {
-    // let il = InterruptLocker::lock();
+    let il = InterruptLocker::lock();
 
     let mut writer = SerialWriter { port: 0x3f8 };
 
     writer.write_fmt(args).unwrap();
 
-    // drop(il);
+    drop(il);
 }
 
 impl fmt::Write for SerialWriter {

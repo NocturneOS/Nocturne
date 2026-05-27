@@ -120,6 +120,7 @@ dependencies = [
  "noct-logger",
  "noct-mem",
  "noct-physmem-alloc",
+ "noct-sched",
  "noct-tools",
 ]
 
@@ -176,6 +177,7 @@ name = "noct-logger"
 version = "0.1.0"
 dependencies = [
  "noct-time",
+ "noct-tools",
  "x86",
 ]
 

@@ -9,6 +9,7 @@ elf = { version = "0.8.0", default-features = false }
 noct-fs = { path = "../noct-fs" }
 noct-io = { path = "../noct-io" }
 noct-logger = { path = "../noct-logger" }
+noct-sched = { path = "../noct-sched" }
 noct-mem = { path = "../noct-mem" }
 noct-physmem-alloc = { path = "../noct-physmem-alloc" }
 noct-tools = { path = "../noct-tools" }

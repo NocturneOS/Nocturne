@@ -3,7 +3,10 @@
 
 extern crate alloc;
 
-use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use core::{
+    ffi::CStr,
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+};
 
 use alloc::{
     collections::{linked_list::LinkedList, vec_deque::VecDeque},
@@ -169,8 +172,10 @@ impl Scheduler {
         };
 
         qemu_log!("Stack allocated: base @ {:#x?}", stack.stack_addr);
-
+        
         let stack_top = stack.stack_pointer;
+
+        qemu_log!("               : pointer @ {:#x?}", stack_top);
 
         let id = next_tid();
         let archspec = ArchitectureSpecificRegion::new();
@@ -179,17 +184,17 @@ impl Scheduler {
 
         #[cfg(target_arch = "x86")]
         unsafe {
-            stack.push(
-                process.address_space.get_mut(),
-                thread_exit as *const () as usize,
-            );
-
             if is_user_proc {
                 stack.push(
                     process.address_space.get_mut(),
                     thread_trampoline_usermode as *const () as usize,
                 );
             } else {
+                stack.push(
+                    process.address_space.get_mut(),
+                    thread_exit as *const () as usize,
+                );
+
                 stack.push(
                     process.address_space.get_mut(),
                     thread_trampoline as *const () as usize,
@@ -250,6 +255,7 @@ impl Scheduler {
             flags,
             state: (thread::ThreadState::Ready as usize).into(),
             stack,
+            // stack: ,
             entry_point: entry as *const () as usize,
             arch_specific_region: archspec,
             last_error: 0.into(),
@@ -537,6 +543,26 @@ pub fn create_process(name: &str, cwd: &str) -> SharedProcess {
     process
 }
 
+pub fn create_process_inherit(name: &str) -> SharedProcess {
+    let cwd = unsafe { CStr::from_ptr(this_process().cwd.load(Ordering::Acquire)) }
+        .to_str()
+        .unwrap();
+
+    let il = InterruptLocker::lock();
+
+    let process: SharedProcess;
+
+    {
+        let mut binding = this();
+
+        process = binding.create_process(name, cwd);
+    }
+
+    drop(il);
+
+    process
+}
+
 pub fn create_thread(
     process: SharedProcess,
     entry: fn() -> (),
@@ -721,18 +747,23 @@ unsafe extern "C" fn thread_trampoline64() -> ! {
 
 #[unsafe(naked)]
 unsafe extern "C" fn thread_trampoline_usermode() -> ! {
+    // core::arch::naked_asm!(
+    //     "a1: jmp a1"
+    // );
     core::arch::naked_asm!(
-        "mov ax, 0x23",
+        "push eax",        // EAX is thread's ESP. Save it to avoid data corruption.
+        "mov ax, 0x23",    // 0x23 - is GDT selector 0x20 orred by 3 (ring 3).
         "mov ds, ax",
         "mov es, ax",
         "mov fs, ax",
         "mov gs, ax",
+        "pop eax",         // Restore EAX.
         "cli",
-        "push 0x23",
-        "push eax",
-        "push 0x202",
-        "push 0x1B",
-        "push ebx",
+        "push 0x23",       // Stack selector = Data selector = 0x20 | 3
+        "push eax",        // SS:ESP = 0x23:EAX
+        "push 0x202",      // EFLAGS with IF (interrupt flag enabled)
+        "push 0x1B",       // Code selector
+        "push ebx",        // Entry point = EIP
         "iretd",
     );
 }
