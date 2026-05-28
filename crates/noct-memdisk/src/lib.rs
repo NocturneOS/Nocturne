@@ -65,14 +65,14 @@ impl MemoryDisk {
             noct_mem::heap::allocate_no_map(layout)
         };
 
+        assert!(!virt.is_null());
+
         noct_mem::paging::map_pages(
             phys_addr,
             virt.addr(),
             size.next_multiple_of(0x1000),
             PageFlags::Present,
         );
-
-        assert!(!virt.is_null());
 
         Self {
             diskman_id: noct_diskman::generate_new_id("mem"),

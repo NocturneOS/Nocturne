@@ -1,3 +1,5 @@
+#![no_std]
+
 use core::ffi::{CStr, c_char};
 
 use noct_boot::{MemoryInfo, ModuleIterator};

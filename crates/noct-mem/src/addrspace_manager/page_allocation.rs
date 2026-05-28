@@ -27,6 +27,21 @@ impl PageAllocation {
     }
 }
 
+impl Drop for PageAllocation {
+    fn drop(&mut self) {
+        match self {
+            Self::Bulk { addr, page_count } => {
+                noct_physmem_alloc::free_bulk(*addr, *page_count);
+            },
+            Self::Multiple(items) => {
+                for i in items {
+                    noct_physmem_alloc::free_one(*i);
+                }
+            },
+        }
+    }
+}
+
 pub struct PAPages<'pa> {
     pa: &'pa PageAllocation,
 

@@ -7,12 +7,25 @@
 // C010_0000: Kernel itself
 // C010_0000 + KERNEL_SIZE: Physical memory bitmap
 
+use core::ops::Range;
+
+use noct_boot::Module;
 use noct_logger::qemu_log;
+use noct_multiboot::MultibootModule;
 use noct_spec::{WORD_SIZE, WORD_SIZE_BITS};
 use noct_tools::interrupt_locker::InterruptLocker;
 
 unsafe extern "C" {
     static IMAGE_VIRT_END: *const ();
+    static IMAGE_PHYS_END: *const ();
+}
+
+static mut BITMAP_START_VIRT: usize = 0x0;
+
+pub fn get_bitmap_range() -> Range<usize> {
+    let range = bitmap().as_ptr_range();
+
+    Range::from(range.start as usize..range.end as usize)
 }
 
 // FIXME: TEMPORAL!
@@ -23,7 +36,7 @@ mod arch {
 }
 
 fn bitmap() -> &'static [usize] {
-    let rawptr = (unsafe { &IMAGE_VIRT_END } as *const *const ()).addr() as *const usize;
+    let rawptr = unsafe { BITMAP_START_VIRT } as *const usize;
 
     // Size - in bytes; Length - in items.
     let size = noct_sysinfo::info().physical_memory_bitmap_size.unwrap();
@@ -36,7 +49,7 @@ fn bitmap() -> &'static [usize] {
 }
 
 fn bitmap_mut() -> &'static mut [usize] {
-    let rawptr = (unsafe { &IMAGE_VIRT_END } as *const *const ()).addr() as *mut usize;
+    let rawptr = unsafe { BITMAP_START_VIRT } as *mut usize;
 
     // Size - in bytes; Length - in items.
     let size = noct_sysinfo::info().physical_memory_bitmap_size.unwrap();
@@ -210,7 +223,28 @@ pub fn free_bulk(address: usize, page_count: usize) {
     }
 }
 
-pub fn init() {
+pub fn init(boot: &impl noct_boot::BootInfo<ModuleType = MultibootModule>) {
+    {
+        let image_end_phys = (unsafe { &IMAGE_PHYS_END } as *const *const ()).addr();
+
+        if let Some(first_module) = boot.modules().next() {
+            // If GRUB placed modules right after the kernel, it's a big ass problem.
+            // Memory layout should be tweaked to consider this change.
+            // Memory bitmap will be placed after the last module.
+            if image_end_phys == first_module.start() {
+                let last_mod_addr = boot.modules().last().unwrap().end();
+
+                qemu_log!("Last module ends at: {last_mod_addr:x?}");
+
+                unsafe { BITMAP_START_VIRT = last_mod_addr + noct_spec::KERNEL_BASE };
+            } else {
+                unsafe { BITMAP_START_VIRT = (&IMAGE_VIRT_END as *const *const ()).addr() };
+            }
+        }
+    }
+
+    qemu_log!("BITMAP START AT: {:x?}", unsafe { BITMAP_START_VIRT });
+
     // Zero out the bitmap, marking all memory as free.
 
     // Don't disable interrupts here - multithreading is not available while physical memory manager is not initialized.
@@ -224,4 +258,15 @@ pub fn init() {
     let end = bitmap().as_ptr_range().end.addr();
 
     qemu_log!("Bitmap: [{:#x?} - {:#x?}]", start, end);
+
+    // Mark bitmap as used
+    let size = noct_sysinfo::info().physical_memory_bitmap_size.unwrap();
+
+    let start = unsafe { BITMAP_START_VIRT } - noct_spec::KERNEL_BASE;
+
+    for page in (start..start+size).step_by(arch::get_page_size()) {
+        qemu_log!("Marked page: {page:x?} as used");
+        
+        mark_page(page, true);
+    }
 }

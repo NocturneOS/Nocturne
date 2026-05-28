@@ -25,7 +25,7 @@ members = [
     "crates/noct-fsman",
     "crates/noct-tarfs",
     "crates/noct-memdisk",
-    "crates/noct-boot", "crates/noct-mem", "crates/noct-sched", "crates/noct-io", "crates/noct-elfloader", "crates/noct-fs"]
+    "crates/noct-boot", "crates/noct-mem", "crates/noct-sched", "crates/noct-io", "crates/noct-elfloader", "crates/noct-fs", "crates/noct-multiboot"]
 resolver = "2"
 
 [dependencies]
@@ -56,6 +56,7 @@ noct-time = { path = "crates/noct-time" }
 noct-tools = { path = "crates/noct-tools" }
 noct-sched = { path = "crates/noct-sched" }
 noct-elfloader = { path = "crates/noct-elfloader" }
+noct-multiboot = { path = "crates/noct-multiboot" }
 
 
 # Profiles

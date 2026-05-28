@@ -210,6 +210,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-multiboot"
+version = "0.1.0"
+dependencies = [
+ "noct-boot",
+ "noct-spec",
+]
+
+[[package]]
 name = "noct-pci"
 version = "0.1.0"
 dependencies = [
@@ -223,7 +231,9 @@ dependencies = [
 name = "noct-physmem-alloc"
 version = "0.1.0"
 dependencies = [
+ "noct-boot",
  "noct-logger",
+ "noct-multiboot",
  "noct-spec",
  "noct-sysinfo",
  "noct-tools",
@@ -322,6 +332,7 @@ dependencies = [
  "noct-logger",
  "noct-mem",
  "noct-memdisk",
+ "noct-multiboot",
  "noct-pci",
  "noct-physmem-alloc",
  "noct-ps2",

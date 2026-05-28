@@ -1,4 +1,6 @@
+use noct_boot::Module;
 use noct_mem::paging;
+use noct_multiboot::MultibootModule;
 use noct_spec::WORD_SIZE;
 
 use crate::qemu_log;
@@ -8,7 +10,10 @@ use crate::qemu_log;
 // C010_0000: Kernel itself
 // C010_0000 + KERNEL_SIZE: Physical memory bitmap
 
-pub fn preinit(available_memory_size: usize) {
+pub fn preinit(
+    available_memory_size: usize,
+    boot: &impl noct_boot::BootInfo<ModuleType = MultibootModule>,
+) {
     let kernel_start = noct_sysinfo::info_mut().kernel_start;
     let kernel_end = noct_sysinfo::info_mut().kernel_end;
 
@@ -38,20 +43,20 @@ pub fn preinit(available_memory_size: usize) {
 
     qemu_log!("Total size: {} bytes", total_needed_size);
 
-    let total_needed_pages = total_needed_size / paging::PAGE_SIZE;
+    // let total_extended_needed_pages = total_needed_size.div_ceil(paging::PAGE_SIZE * 1024);
 
-    qemu_log!("Total page count: {}", total_needed_pages);
+    // qemu_log!("Total extended page count: {}", total_extended_needed_pages);
 
-    if total_needed_pages > 1024 {
-        // I would allocate a second page table or even recreate a page directory from scratch,
-        // but in this stage we can't have an allocator.
+    // if total_extended_needed_pages > 1 {
+    //     // I would allocate a second page table or even recreate a page directory from scratch,
+    //     // but in this stage we can't have an allocator.
 
-        // TODO: Use extended 4MB pages instead? They don't have to allocate.
-        panic!(
-            "Needed more than one page table for kernel initialization! (Total pages needed: {})",
-            total_needed_pages
-        );
-    }
+    //     // TODO: Use extended 4MB pages instead? They don't have to allocate.
+    //     panic!(
+    //         "Needed more than one page table for kernel initialization! (Total pages needed: {})",
+    //         total_extended_needed_pages
+    //     );
+    // }
 
     // We did all checks, let's list the entries.
 

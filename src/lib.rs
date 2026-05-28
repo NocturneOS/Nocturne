@@ -2,13 +2,12 @@
 
 use core::panic::PanicInfo;
 
-use alloc::{borrow::ToOwned, boxed::Box};
+use alloc::{boxed::Box};
 use noct_boot::{BootInfo, Module};
 use noct_logger::qemu_log;
 use noct_mem::{heap, paging::PageFlags};
 use noct_memdisk::MemoryDisk;
-
-use crate::arch::x86::multiboot::MultibootModule;
+use noct_multiboot::MultibootModule;
 
 mod arch;
 mod syscalls;
@@ -120,9 +119,22 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
                 i.cmdline()
             );
 
-            noct_diskman::register_drive(Box::new(MemoryDisk::raw_physical(i.start(), i.size())))
-                .ok();
+            qemu_log!(
+                "Result: {:?}",
+                noct_diskman::register_drive(Box::new(MemoryDisk::raw_physical(
+                    i.start(),
+                    i.size()
+                )))
+            );
         }
+    }
+
+    {
+        let mut mem = [0u8; 5];
+
+        noct_diskman::read_bytes("mem0", 0, &mut mem);
+
+        qemu_log!("{mem:?}");
     }
 
     noct_fsman::probe();

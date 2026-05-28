@@ -2,24 +2,23 @@ pub mod dev;
 pub mod interrupts;
 pub mod io;
 pub mod mem;
-pub mod multiboot;
 pub mod sys;
 pub mod timer;
 pub mod video;
 
 use crate::{
-    arch::{
-        self,
-        x86::multiboot::{MultibootHeader, MultibootMMapType},
-    },
+    arch::{self},
     kmain, qemu_log,
 };
+
+use noct_multiboot::MultibootHeader;
 
 #[cfg(target_arch = "x86")]
 #[unsafe(no_mangle)]
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     use noct_boot::BootInfo;
     use noct_cpu::{gdt, idt, tss};
+use noct_multiboot::MultibootMMapType;
 
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
 
@@ -79,9 +78,9 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     interrupts::exceptions::register_exceptions();
     interrupts::pic::init();
 
-    mem::paging::preinit(mb.memory().total());
+    mem::paging::preinit(mb.memory().total(), mb);
 
-    noct_physmem_alloc::init();
+    noct_physmem_alloc::init(mb);
 
     tss::init();
 
@@ -140,7 +139,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
             }
 
             qemu_log!(
-                "Marked module #{} {:#?} ({:x} - {:x}) as reserved.",
+                "Marked module #{} {:?} ({:x} - {:x}) as reserved.",
                 n,
                 i.cmdline(),
                 start_addr,
@@ -151,21 +150,19 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     // Update info for `kmain`
     {
-        use noct_spec::KERNEL_BASE;
+        let bitmap_end = noct_physmem_alloc::get_bitmap_range();
+        let available_memory_start = bitmap_end.end.next_multiple_of(arch::get_page_size());
 
-        let kernel_end = noct_sysinfo::info().kernel_end;
+        qemu_log!("Range: {bitmap_end:x?}");
+        qemu_log!("Memory start: {available_memory_start:x?}");
+
         let mut info = noct_sysinfo::info_mut();
 
         info.installed_memory = Some(mb.memory().total());
 
         // Set the start of `free memory zone` to the end of last module.
         // If no modules specified, use kernel end address.
-        info.available_memory_start = Some(
-            mb.modules()
-                .last()
-                .map(|x| x.mod_end as usize)
-                .unwrap_or(kernel_end - KERNEL_BASE),
-        );
+        info.available_memory_start = Some(available_memory_start);
     }
 
     timer::pit::init(1000);
