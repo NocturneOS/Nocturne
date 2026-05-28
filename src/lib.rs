@@ -130,9 +130,10 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     syscalls::init();
 
     {
-        let handle = noct_elfloader::spawn("mem0:/prog").unwrap();
+        let (handle, tid) = noct_elfloader::spawn("mem0:/prog").unwrap();
 
         qemu_log!("Started process {}", handle.id);
+        qemu_log!("Thread ID {}", tid);
         // handle.unwrap().run(&[]);
     }
 

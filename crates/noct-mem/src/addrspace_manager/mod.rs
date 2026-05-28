@@ -266,13 +266,44 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         Ok(())
     }
 
+    pub fn map_pages_pa(
+        &mut self,
+        pa: &PageAllocation,
+        virt_addr: usize,
+        flags: PageFlags,
+    ) -> Result<(), ()> {
+        for (i, phys) in pa.pages().enumerate() {
+            self.map_single_page(
+                phys,
+                virt_addr + (i * crate::paging::PAGE_SIZE),
+                flags,
+            )?;
+        }
+
+        Ok(())
+    }
+
+    pub fn unmap_pages_pa(
+        &mut self,
+        pa: &PageAllocation,
+        virt_addr: usize,
+    ) -> Result<(), ()> {
+        for i in 0..pa.page_count() {
+            self.unmap_single_page(
+                virt_addr + (i * crate::paging::PAGE_SIZE),
+            );
+        }
+
+        Ok(())
+    }
+
     pub fn phys_of_virt(&self, virt_addr: usize) -> Option<usize> {
         let mut current_table_phys = self.page_root_phys;
 
         for level in 0..PG::LEVELS {
             let idx = PG::index_at_level(virt_addr, level);
 
-            qemu_log!("PG: {virt_addr:08x} level {level} is {idx}");
+            // qemu_log!("PG: {virt_addr:08x} level {level} is {idx}");
 
             current_table_phys = self.self_map_page(current_table_phys, |table| {
                 let entry = table[idx];

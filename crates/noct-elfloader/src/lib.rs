@@ -108,12 +108,13 @@ pub fn spawn(path: &str) -> Result<(Arc<Process>, usize), LoadError> {
     // x86-family system allows executing x86 binaries.
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        if !matches!(elf.ehdr.e_machine, elf::abi::EM_X86_64 | elf::abi::EM_386 | elf::abi::EM_IA_64) {
+        if !matches!(
+            elf.ehdr.e_machine,
+            elf::abi::EM_X86_64 | elf::abi::EM_386 | elf::abi::EM_IA_64
+        ) {
             return Err(LoadError::UnsupportedArchitecture);
         }
     }
-
-    // elf.ehdr.e_machine
 
     // Turn interrupts off.
     let il = noct_tools::interrupt_locker::InterruptLocker::lock();
@@ -127,6 +128,8 @@ pub fn spawn(path: &str) -> Result<(Arc<Process>, usize), LoadError> {
     let mut loaded_segments = LoadedSegments::new();
 
     for i in segments.iter() {
+        qemu_log!("PH: {i:x?}");
+
         if i.p_type != elf::abi::PT_LOAD {
             continue;
         }
@@ -147,55 +150,54 @@ pub fn spawn(path: &str) -> Result<(Arc<Process>, usize), LoadError> {
             (end_addr - start_addr) / noct_mem::get_page_size()
         };
 
-        
         unsafe {
-            // let physical_address = proc.address_space.get_mut().alloc_map_multiple_pages((i.p_vaddr as usize) & !0xfff, page_count * noct_mem::get_page_size(), PageFlags::Writeable | PageFlags::Userspace)
-    
-            let physical_address = noct_physmem_alloc::allocate_bulk(page_count as _).unwrap();
+            let physical_allocation = proc
+                .address_space
+                .get_mut()
+                .alloc_map_multiple_pages(
+                    (i.p_vaddr as usize) & !0xfff,
+                    page_count * noct_mem::get_page_size(),
+                    PageFlags::Writeable | PageFlags::Userspace,
+                )
+                .unwrap();
 
             proc.address_space
                 .get_mut()
-                .map_pages(
-                    physical_address,
+                .map_pages_pa(
+                    &physical_allocation,
                     (i.p_vaddr as usize) & !0xfff,
-                    (page_count * noct_mem::get_page_size()) as _,
                     PageFlags::Writeable | PageFlags::Userspace,
                 )
                 .unwrap();
 
             {
-                let mapctx = noct_mem::paging::MappingContext::map(
-                    physical_address,
-                    (i.p_vaddr as usize) & !0xfff,
-                    (page_count * noct_mem::get_page_size()) as _,
-                    PageFlags::Writeable | PageFlags::Userspace,
-                );
+                proc.address_space
+                    .get_mut()
+                    .self_map_data(&physical_allocation, |area| {
+                        qemu_log!(
+                            "[{physical_allocation:x?}] Zeroing: {:?} (then {} bytes will be copied)",
+                            area.as_ptr_range(),
+                            ph_data.len()
+                        );
 
-                let memory_area = core::slice::from_raw_parts_mut(
-                    i.p_vaddr as *mut u8,
-                    (page_count * noct_mem::get_page_size()) - (i.p_vaddr & 0xfff) as usize,
-                );
+                        // Zero out whole area to avoid user programs access some garbage and kernel data.
+                        area.fill(0);
 
-                qemu_log!(
-                    "[{physical_address:x?}] Zeroing: {:?}",
-                    memory_area.as_ptr_range()
-                );
+                        // `i.p_vaddr` has unaligned addresses sometimes.
+                        // `area` is a page-aligned and page-multiple sized slice, so
+                        // we should take offset into account.
+                        let offset = (i.p_vaddr as usize) & 0xfff;
 
-                // Zero out whole area to avoid user programs access some garbage and kernel data.
-                memory_area[..].fill(0);
-
-                memory_area[..ph_data.len()].copy_from_slice(ph_data);
-
-                drop(mapctx);
+                        area[offset..][..ph_data.len()].copy_from_slice(ph_data);
+                    });
             }
-            
+
             loaded_segments.push(LoadInfo {
-                physical_addr: physical_address as _,
+                physical_allocation: physical_allocation as _,
                 virtual_addr: i.p_vaddr as _,
                 page_count,
             });
         }
-
     }
 
     let thread_id = noct_sched::create_thread(
@@ -204,11 +206,9 @@ pub fn spawn(path: &str) -> Result<(Arc<Process>, usize), LoadError> {
         512 << 10, // Stack size = 512 KB
         ThreadPriority::Medium,
         ThreadFlags::User,
-        &[
-            0 /* argc */,
-            0 /* argv */
-        ]
-    ).ok_or(LoadError::ThreadCreationFail)?;
+        &[0 /* argc */, 0 /* argv */],
+    )
+    .ok_or(LoadError::ThreadCreationFail)?;
 
     ////////
 
