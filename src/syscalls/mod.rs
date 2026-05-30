@@ -2,6 +2,7 @@ use noct_cpu::CPURegisters;
 use noct_logger::qemu_log;
 
 mod debug;
+mod exit;
 
 pub type SyscallHandler = fn(usize, usize, usize, usize, usize) -> Option<usize>;
 
@@ -9,6 +10,7 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     // Dummy comment to prevent rustfmt onelining the array
     debug::debug,  // 0
     debug::reg_debug,  // 1
+    exit::exit,  // 2
 ];
 
 pub fn syscall_handler(regs: &mut CPURegisters) {

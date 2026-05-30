@@ -1,12 +1,10 @@
 #![no_std]
 
-mod load;
 
-use core::ffi::c_char;
-
+use noct_elf::load::{LoadInfo, LoadedSegments};
 use noct_mem::paging::PageFlags;
 
-use alloc::{ffi::CString, string::String, sync::Arc, vec::Vec};
+use alloc::sync::Arc;
 use elf::{ParseError, endian::LittleEndian};
 use noct_logger::qemu_log;
 use noct_sched::{
@@ -14,8 +12,6 @@ use noct_sched::{
     thread::{ThreadFlags, ThreadPriority},
 };
 use noct_tools::align_value;
-
-use crate::load::{LoadInfo, LoadedSegments};
 
 extern crate alloc;
 
@@ -26,55 +22,6 @@ pub enum LoadError {
     UnsupportedArchitecture,
     ElfParser(ParseError),
     ThreadCreationFail,
-}
-
-#[derive(Debug)]
-pub struct ProgramHandle {
-    path: String,
-
-    entry_point: usize,
-    loaded_segments: LoadedSegments,
-}
-
-impl ProgramHandle {
-    pub fn run(&mut self, args: &[&str]) {
-        let mut normalized: Vec<CString> = Vec::with_capacity(1 + args.len());
-
-        normalized.push(CString::new(self.path.clone()).unwrap());
-        normalized.extend_from_slice(
-            args.iter()
-                .map(|a| CString::new(*a).unwrap())
-                .collect::<Vec<_>>()
-                .as_slice(),
-        );
-
-        let mut ptrs = normalized
-            .iter()
-            .map(|a| a.as_ptr())
-            .collect::<Vec<*const c_char>>();
-        ptrs.push(core::ptr::null());
-
-        let argc: u32 = (ptrs.len() - 1) as u32;
-        let argv = ptrs.as_ptr();
-
-        unsafe {
-            let entry: fn(u32, *const *const c_char) = core::mem::transmute(self.entry_point);
-
-            qemu_log!(
-                "program < argc: {argc}; argv: {:x?}; entry: {:x?}",
-                argv as usize,
-                entry as usize
-            );
-
-            (entry)(argc, argv);
-        }
-    }
-}
-
-impl Drop for ProgramHandle {
-    fn drop(&mut self) {
-        qemu_log!("Should drop!");
-    }
 }
 
 pub fn spawn(path: &str) -> Result<(Arc<Process>, usize), LoadError> {
@@ -124,8 +71,6 @@ pub fn spawn(path: &str) -> Result<(Arc<Process>, usize), LoadError> {
     //////
 
     let segments = elf.segments().unwrap();
-
-    let mut loaded_segments = LoadedSegments::new();
 
     for i in segments.iter() {
         qemu_log!("PH: {i:x?}");
@@ -192,7 +137,7 @@ pub fn spawn(path: &str) -> Result<(Arc<Process>, usize), LoadError> {
                     });
             }
 
-            loaded_segments.push(LoadInfo {
+            proc.program_image.as_ref().unwrap().get_mut().loaded_segments.push(LoadInfo {
                 physical_allocation: physical_allocation as _,
                 virtual_addr: i.p_vaddr as _,
                 page_count,

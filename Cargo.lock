@@ -111,10 +111,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-elf"
+version = "0.1.0"
+dependencies = [
+ "noct-mem",
+]
+
+[[package]]
 name = "noct-elfloader"
 version = "0.1.0"
 dependencies = [
  "elf",
+ "noct-elf",
  "noct-fs",
  "noct-io",
  "noct-logger",
@@ -256,6 +264,7 @@ dependencies = [
  "bitflags 2.11.1",
  "lazy_static",
  "noct-cpu",
+ "noct-elf",
  "noct-interrupts",
  "noct-logger",
  "noct-mem",
