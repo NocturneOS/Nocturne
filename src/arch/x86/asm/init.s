@@ -143,10 +143,20 @@ __pre_init:
 
 __init:
     # Unmap lower part of memory
-    xor %eax, %eax
-    
-    movl %eax, boot_page_directory + 4
-    movl %eax, boot_page_directory
+            
+    mov bootstrap_page_count, %ecx
+
+    mov $(boot_page_directory), %edi
+
+    .unmap_loop:
+        movl $0, (%edi)
+
+        add $4, %edi
+
+        dec %ecx
+
+        test %ecx, %ecx
+        jnz .unmap_loop
 
     mov $stack_top, %esp
 
