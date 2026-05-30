@@ -30,25 +30,94 @@
 .extern IMAGE_PHYS_START
 .extern IMAGE_PHYS_END
 
+.section .data
+.align 4
+fpu_control_word:
+    .word 0x37f
+
+.align 4
+bootstrap_page_count:
+    .int 0
+
 .section .text
 .global __pre_init
 __pre_init:
     cli
 
-    # FIXME: Move this logic to x86_preinit.rs
+    # Compute the size of the kernel image.
 
-    # Extended (1 << 7) | Writeable (1 << 1) | Present (1 << 0)
-    movl $0x83, %eax
+    movl $(IMAGE_PHYS_START), %ecx
+    movl $(IMAGE_PHYS_END), %eax
 
-    # Map the same PT to both lower and higher half.
-    # We will unmap the lower one soon.
-    movl %eax, boot_page_directory - 0xC0000000
-    movl %eax, boot_page_directory - 0xC0000000 + (768 * 4)
+    sub %eax, %ecx
 
-    addl $0x400000, %eax
+    # kernel_size / 0x400000   (0x400000 is 4 MB - the size of one extended page)
+    xor %edx, %edx
+    mov $0x400000, %ecx
+    div %ecx
 
-    movl %eax, boot_page_directory - 0xC0000000 + 4
-    movl %eax, boot_page_directory - 0xC0000000 + (769 * 4)
+    # Do `div_ceil` - if there's non-zero remainder (which is likely), increment page count.
+    test %edx, %edx
+    jz .no_remainder
+
+    inc %eax
+
+    .no_remainder: # ...
+
+    mov %eax, bootstrap_page_count - 0xC0000000
+
+    # Now EAX contains number of extended (4 MB) pages that kernel needs at least run all of its code.
+    # Let's map them
+
+    # do { ...
+    .map_iteration:
+        # Map the same EP to both lower and higher half.
+        # Lower halves will be unmapped soon.
+
+        movl $(boot_page_directory - 0xC0000000), %edi
+
+        push %eax
+
+        # Pages are zero-indexed, so decrement EAX to make it a PT index
+        dec %eax
+
+        # Each PTE is 4 bytes.
+        # EAX = EAX * 4
+        mov $4, %ecx
+        mul %ecx
+
+        # EDI += EAX
+        add %eax, %edi
+
+        # Get back counter.
+        pop %eax
+        push %eax
+        
+        # Now make an address -> EAX = (i * 0x400000) | 0x83
+        dec %eax
+        mov $0x400000, %ecx
+        mul %ecx
+
+        # Extended (1 << 7) | Writeable (1 << 1) | Present (1 << 0)
+        or $0x83, %eax
+        
+        # Lower-half - map as is.
+        mov %eax, (%edi)
+
+        # Add 768 more entries to get to the higher-half.
+        add $(768 * 4), %edi
+
+        # Higher-half.
+        mov %eax, (%edi)
+
+        pop %eax
+
+        # i--
+        dec %eax
+
+        # ... } while(EAX != 0);
+        test %eax, %eax
+        jnz .map_iteration
 
     # Recursive paging
     movl $(boot_page_directory - 0xC0000000), %eax
@@ -84,7 +153,7 @@ __init:
     # init FPU
     fninit
     finit
-    fldcw (conword)
+    fldcw (fpu_control_word)
 
     mov %cr4, %eax
     or $0x200, %eax
@@ -109,6 +178,3 @@ __init:
 
     cli
     hlt
-
-conword:
-    .word 0x37f
