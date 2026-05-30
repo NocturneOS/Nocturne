@@ -129,14 +129,6 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
         }
     }
 
-    {
-        let mut mem = [0u8; 5];
-
-        noct_diskman::read_bytes("mem0", 0, &mut mem);
-
-        qemu_log!("{mem:?}");
-    }
-
     noct_fsman::probe();
 
     syscalls::init();

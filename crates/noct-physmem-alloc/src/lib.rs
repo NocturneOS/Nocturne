@@ -225,21 +225,14 @@ pub fn free_bulk(address: usize, page_count: usize) {
 
 pub fn init(boot: &impl noct_boot::BootInfo<ModuleType = MultibootModule>) {
     {
-        let image_end_phys = (unsafe { &IMAGE_PHYS_END } as *const *const ()).addr();
+        if let Some(mo) = boot.modules().last() {
+            let last_mod_addr = mo.end();
 
-        if let Some(first_module) = boot.modules().next() {
-            // If GRUB placed modules right after the kernel, it's a big ass problem.
-            // Memory layout should be tweaked to consider this change.
-            // Memory bitmap will be placed after the last module.
-            if image_end_phys == first_module.start() {
-                let last_mod_addr = boot.modules().last().unwrap().end();
-
-                qemu_log!("Last module ends at: {last_mod_addr:x?}");
-
-                unsafe { BITMAP_START_VIRT = last_mod_addr + noct_spec::KERNEL_BASE };
-            } else {
-                unsafe { BITMAP_START_VIRT = (&IMAGE_VIRT_END as *const *const ()).addr() };
-            }
+            qemu_log!("Last module ends at: {last_mod_addr:x?}");
+    
+            unsafe { BITMAP_START_VIRT = (last_mod_addr + noct_spec::KERNEL_BASE).next_multiple_of(0x1000) };
+        } else {
+            unsafe { BITMAP_START_VIRT = (&IMAGE_VIRT_END as *const *const ()).addr() };
         }
     }
 
@@ -265,8 +258,8 @@ pub fn init(boot: &impl noct_boot::BootInfo<ModuleType = MultibootModule>) {
     let start = unsafe { BITMAP_START_VIRT } - noct_spec::KERNEL_BASE;
 
     for page in (start..start+size).step_by(arch::get_page_size()) {
-        qemu_log!("Marked page: {page:x?} as used");
-        
         mark_page(page, true);
     }
+    
+    qemu_log!("Marked page range: {:x?} as used", start..start+size);
 }

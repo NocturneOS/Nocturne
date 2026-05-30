@@ -58,7 +58,7 @@ set(ISO_FILE "NocturneOS_${NOCTURNE_ARCH}_${CMAKE_BUILD_TYPE}.iso")
 
 # Emulator
 
-set(QEMU_MEMORY_SIZE 64M)
+set(QEMU_MEMORY_SIZE 4G)
 
 if(NOCTURNE_ARCH STREQUAL "x86_64")
 	set(QEMU "qemu-system-x86_64")

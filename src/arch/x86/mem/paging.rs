@@ -43,21 +43,6 @@ pub fn preinit(
 
     qemu_log!("Total size: {} bytes", total_needed_size);
 
-    // let total_extended_needed_pages = total_needed_size.div_ceil(paging::PAGE_SIZE * 1024);
-
-    // qemu_log!("Total extended page count: {}", total_extended_needed_pages);
-
-    // if total_extended_needed_pages > 1 {
-    //     // I would allocate a second page table or even recreate a page directory from scratch,
-    //     // but in this stage we can't have an allocator.
-
-    //     // TODO: Use extended 4MB pages instead? They don't have to allocate.
-    //     panic!(
-    //         "Needed more than one page table for kernel initialization! (Total pages needed: {})",
-    //         total_extended_needed_pages
-    //     );
-    // }
-
     // We did all checks, let's list the entries.
 
     for (n, i) in noct_mem::paging::page_directory().iter().enumerate() {
