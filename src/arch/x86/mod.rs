@@ -18,7 +18,7 @@ use noct_multiboot::MultibootHeader;
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     use noct_boot::BootInfo;
     use noct_cpu::{gdt, idt, tss};
-use noct_multiboot::MultibootMMapType;
+    use noct_multiboot::MultibootMMapType;
 
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
 
@@ -70,7 +70,7 @@ use noct_multiboot::MultibootMMapType;
 
     // Fill system info
 
-    sys::init();
+    sys::init(mb);
 
     gdt::init();
     idt::init();
@@ -111,41 +111,22 @@ use noct_multiboot::MultibootMMapType;
         qemu_log!("Marked {:#x?} - {:#x?} as reserved.", addr_start, addr_end);
     }
 
-    // Mark all the memory past the kernel (and the kernel region) as used
+    // Reserve memory for modules we load.
 
-    {
-        use noct_spec::KERNEL_BASE;
+    if let Some(mo) = mb.modules().last() {
+        use noct_boot::Module;
 
-        let start = (noct_sysinfo::info().kernel_end - KERNEL_BASE) + noct_mem::paging::PAGE_SIZE;
+        let module_end_addr = mo.end().next_multiple_of(arch::get_page_size());
 
-        for addr in (0..start).step_by(arch::get_page_size()) {
+        for addr in (0..module_end_addr).step_by(arch::get_page_size()) {
             noct_physmem_alloc::mark_page(addr, true);
         }
 
-        qemu_log!("Marked {:#x?} - {:#x?} as used.", 0, start);
-    }
-
-    // Reserve memory for modules we load.
-
-    {
-        for (n, i) in mb.modules().enumerate() {
-            use noct_boot::Module;
-
-            let start_addr = i.mod_start as usize;
-            let end_addr = noct_tools::align_value(i.mod_end as usize, arch::get_page_size());
-
-            for addr in (start_addr..end_addr).step_by(arch::get_page_size()) {
-                noct_physmem_alloc::mark_page(addr, true);
-            }
-
-            qemu_log!(
-                "Marked module #{} {:?} ({:x} - {:x}) as reserved.",
-                n,
-                i.cmdline(),
-                start_addr,
-                end_addr
-            );
-        }
+        qemu_log!(
+            "Marked area ({:08x} - {:08x}) as reserved.",
+            0,
+            module_end_addr
+        );
     }
 
     // Update info for `kmain`

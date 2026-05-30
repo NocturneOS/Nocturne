@@ -9,6 +9,9 @@ pub struct SystemInfo {
     pub kernel_start: usize,
     pub kernel_end: usize,
 
+    // Kernel end with bootloader modules included
+    pub kernel_area_end: usize,
+
     // System installed memory size.
     pub installed_memory: Option<usize>,
 

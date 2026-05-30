@@ -59,7 +59,9 @@ impl MemoryDisk {
     }
 
     pub fn raw_physical(phys_addr: usize, size: usize) -> Self {
-        let layout = Layout::from_size_align(size, 0x1000).unwrap();
+        // Align size too.
+        let aligned_size = size.next_multiple_of(0x1000);
+        let layout = Layout::from_size_align(aligned_size, 0x1000).unwrap();
 
         let virt = unsafe {
             noct_mem::heap::allocate_no_map(layout)
@@ -70,7 +72,7 @@ impl MemoryDisk {
         noct_mem::paging::map_pages(
             phys_addr,
             virt.addr(),
-            size.next_multiple_of(0x1000),
+            aligned_size,
             PageFlags::Present,
         );
 
@@ -122,6 +124,8 @@ impl noct_diskman::drive::Drive for MemoryDisk {
         if location > self.data.len() as u64 {
             return Err(DiskManError::LocationOutOfBounds);
         }
+
+        qemu_log!("Read: {location:x}/{}", buffer.len());
 
         let read_size = core::cmp::min(self.data.len() as u64 - location, buffer.len() as u64);
 
