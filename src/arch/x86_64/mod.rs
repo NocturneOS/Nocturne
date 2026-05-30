@@ -1,7 +1,7 @@
 use noct_cpu::{gdt, idt, tss};
 use noct_mem::paging;
+use noct_multiboot::{MultibootHeader, MultibootMMapType};
 
-use crate::arch::x86::multiboot::{MultibootHeader, MultibootMMapType};
 use crate::arch::x86::{interrupts, sys, timer};
 use crate::{arch, kmain, qemu_log};
 
@@ -51,7 +51,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     // Fill system info
 
-    sys::init();
+    sys::init(mb);
 
     gdt::init();
     idt::init();
@@ -61,7 +61,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     paging::preinit(mb.memory().total());
 
-    noct_physmem_alloc::init();
+    noct_physmem_alloc::init(mb);
 
     tss::init();
 
