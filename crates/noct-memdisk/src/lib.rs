@@ -125,8 +125,6 @@ impl noct_diskman::drive::Drive for MemoryDisk {
             return Err(DiskManError::LocationOutOfBounds);
         }
 
-        qemu_log!("Read: {location:x}/{}", buffer.len());
-
         let read_size = core::cmp::min(self.data.len() as u64 - location, buffer.len() as u64);
 
         let range = location as usize..(location + read_size) as usize;

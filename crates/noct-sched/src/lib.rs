@@ -175,10 +175,6 @@ impl Scheduler {
 
         qemu_log!("Stack allocated: base @ {:#x?}", stack.stack_addr);
 
-        let stack_top = stack.stack_pointer;
-
-        qemu_log!("               : pointer @ {:#x?}", stack_top);
-
         let id = next_tid();
         let archspec = ArchitectureSpecificRegion::new();
 
@@ -188,6 +184,10 @@ impl Scheduler {
         for i in args {
             unsafe { stack.push(process.address_space.get_mut(), *i) };
         }
+
+        let stack_top = stack.stack_pointer;
+
+        qemu_log!("               : pointer @ {:#x?}", stack_top);
 
         #[cfg(target_arch = "x86")]
         unsafe {

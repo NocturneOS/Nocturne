@@ -206,7 +206,7 @@ pub fn spawn(path: &str) -> Result<(Arc<Process>, usize), LoadError> {
         512 << 10, // Stack size = 512 KB
         ThreadPriority::Medium,
         ThreadFlags::User,
-        &[0 /* argc */, 0 /* argv */],
+        &[0x12345678 /* argc */, 0xABCDEF12 /* argv */],
     )
     .ok_or(LoadError::ThreadCreationFail)?;
 

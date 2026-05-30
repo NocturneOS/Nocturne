@@ -5,7 +5,11 @@ mod debug;
 
 pub type SyscallHandler = fn(usize, usize, usize, usize, usize) -> Option<usize>;
 
-const SYSCALL_HANDLERS: &[SyscallHandler] = &[debug::debug];
+const SYSCALL_HANDLERS: &[SyscallHandler] = &[
+    // Dummy comment to prevent rustfmt onelining the array
+    debug::debug,  // 0
+    debug::reg_debug,  // 1
+];
 
 pub fn syscall_handler(regs: &mut CPURegisters) {
     let nr: usize;
