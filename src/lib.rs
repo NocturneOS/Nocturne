@@ -140,7 +140,7 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
         let code = handle.wait();
 
-        qemu_log!("Exited with code: {code:?}");
+        qemu_log!("Process exited with code: {code:?}");
     }
 
     qemu_log!("It works!");

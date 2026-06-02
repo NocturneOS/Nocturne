@@ -106,9 +106,10 @@ impl Scheduler {
         let kernel_thread = Thread {
             id: next_tid(),
 
-            process: Arc::clone(&kernel_process), //Arc::into_raw(Arc::clone(&kernel_process)).into(),
+            process: Arc::clone(&kernel_process),
             flags: ThreadFlags::empty(),
             state: (thread::ThreadState::Running as usize).into(),
+            // SAFETY: Kernel thread's stack will be overwritten on first context switch (on context save phase).
             stack: ThreadStack::from_existing(
                 core::ptr::null_mut(),
                 64 << 10,
@@ -136,7 +137,7 @@ impl Scheduler {
             ThreadPriority::Low,
             ThreadFlags::Raw,
             &[],
-        );
+        ).or_else(|| panic!("Failed to create idle task thread"));
 
         self.thread_list.push_back(Arc::clone(&kernel_thread));
 
