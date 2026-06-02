@@ -45,7 +45,6 @@ pub type SharedProcess = Arc<Process>;
 pub type SharedThread = Arc<Thread>;
 
 pub struct Scheduler {
-    process_list: LinkedList<SharedProcess>,
     thread_list: LinkedList<SharedThread>,
 
     working_queue: LinkedList<SharedThread>,
@@ -77,7 +76,6 @@ fn next_tid() -> usize {
 impl Scheduler {
     pub const fn new() -> Self {
         Self {
-            process_list: LinkedList::new(),
             thread_list: LinkedList::new(),
 
             working_queue: LinkedList::new(),
@@ -140,7 +138,6 @@ impl Scheduler {
             &[],
         );
 
-        self.process_list.push_back(kernel_process);
         self.thread_list.push_back(Arc::clone(&kernel_thread));
 
         self.working_queue.push_back(kernel_thread);
