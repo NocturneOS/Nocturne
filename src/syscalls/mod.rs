@@ -11,6 +11,7 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     debug::debug,  // 0
     debug::reg_debug,  // 1
     exit::exit,  // 2
+    exit::process_exit,  // 3
 ];
 
 pub fn syscall_handler(regs: &mut CPURegisters) {

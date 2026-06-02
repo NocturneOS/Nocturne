@@ -8,7 +8,7 @@ use alloc::sync::Arc;
 use elf::{ParseError, endian::LittleEndian};
 use noct_logger::qemu_log;
 use noct_sched::{
-    process::Process,
+    process::{Process, ProcessHandle},
     thread::{ThreadFlags, ThreadPriority},
 };
 use noct_tools::align_value;
@@ -24,7 +24,7 @@ pub enum LoadError {
     ThreadCreationFail,
 }
 
-pub fn spawn(path: &str) -> Result<(Arc<Process>, usize), LoadError> {
+pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError> {
     // Load data before turning of interrupts.
     let data = match noct_fs::read_file(path) {
         Ok(data) => data,
@@ -145,7 +145,7 @@ pub fn spawn(path: &str) -> Result<(Arc<Process>, usize), LoadError> {
         }
     }
 
-    let thread_id = noct_sched::create_thread(
+    noct_sched::create_thread(
         Arc::clone(&proc),
         unsafe { core::mem::transmute(elf.ehdr.e_entry as usize) },
         512 << 10, // Stack size = 512 KB
@@ -157,8 +157,10 @@ pub fn spawn(path: &str) -> Result<(Arc<Process>, usize), LoadError> {
 
     ////////
 
+    let hdl = Process::into_handle(proc);
+
     // I put it here for semantics, it doesn't make sense.
     drop(il);
 
-    Ok((proc, thread_id))
+    Ok(hdl)
 }

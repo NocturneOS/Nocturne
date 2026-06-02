@@ -10,7 +10,7 @@ use core::{
 
 use alloc::{
     collections::{linked_list::LinkedList, vec_deque::VecDeque},
-    sync::Arc,
+    sync::Arc, vec::Vec,
 };
 use lazy_static::lazy_static;
 use noct_spec::KERNEL_BASE;
@@ -18,6 +18,8 @@ use noct_tools::interrupt_locker::InterruptLocker;
 use spin::{Mutex, MutexGuard};
 
 use noct_logger::qemu_log;
+
+use crate::process::ProcessHandle;
 
 use self::{
     archspec::ArchitectureSpecificRegion,
@@ -666,27 +668,6 @@ pub fn this_thread_id() -> usize {
     id
 }
 
-pub fn in_kernel_context<T>(f: impl FnOnce() -> T) -> T {
-    let il = InterruptLocker::lock();
-
-    if !is_intiialized() {
-        return f();
-    }
-
-    let this_cr3 = unsafe { x86::controlregs::cr3() };
-    let kernel_cr3 = this().kernel_process().address_space.get().page_root_phys;
-
-    unsafe { x86::controlregs::cr3_write(kernel_cr3 as _) };
-
-    let result = f();
-
-    unsafe { x86::controlregs::cr3_write(this_cr3 as _) };
-
-    drop(il);
-
-    result
-}
-
 pub fn sleep(dur: core::time::Duration) {
     let target = noct_time::systemclock::get_uptime_nanos() + dur.as_nanos();
     let ticks = noct_time::systemclock::nanos_to_ticks(target);
@@ -700,10 +681,33 @@ pub fn sleep(dur: core::time::Duration) {
     }
 
     drop(il);
+}
 
-    // while crate::time::get_uptime_nanos() <= target {
-    //     arch::halt();
-    // }
+/// Waits for process with specific PID to complete and returns its exit code
+pub fn waitpid(hdl: &ProcessHandle) -> Option<u32> {
+    // TODO: Make a ThreadState::WaitingFor(pid: usize) enum variant and set that state for this thread.
+    fn does_exist(pid: usize) -> bool {
+        let il = InterruptLocker::lock();
+
+        let sched = this();
+        let result = sched.thread_list.iter().find(|x| x.process.id == pid).is_some();
+
+        drop(il);
+
+        result
+    }
+
+    while does_exist(hdl.pid) {
+        schedule();
+    }
+
+    let il = InterruptLocker::lock();
+
+    let code = hdl.exit_code.load(Ordering::Acquire);
+
+    drop(il);
+
+    Some(code)
 }
 
 // Exit from this thread.
@@ -724,6 +728,49 @@ pub fn thread_exit() -> ! {
             lock.working_queue.retain(|x| x.id != thread.id);
 
             lock.dead_queue.push_back(thread);
+        }
+    }
+
+    schedule();
+
+    unreachable!()
+}
+
+pub fn process_exit(exitcode: u32) -> ! {
+    noct_interrupts::cpu::disable_interrupts();
+
+    {
+        let thread = this_thread();
+
+        thread
+            .process
+            .handle
+            .as_ref()
+            .unwrap()
+            .exit_code
+            .store(exitcode, Ordering::Release);
+
+        let proc_id = thread.process.id;
+
+        {
+            let mut lock = this();
+
+            let list: Vec<Arc<Thread>> = lock
+                .thread_list
+                .iter()
+                .filter(|x| x.process.id == proc_id)
+                .cloned()
+                .collect();
+
+            for i in list {
+                i.state
+                    .store(thread::ThreadState::Dead as _, Ordering::Release);
+
+                lock.sleeping_queue.retain(|(x, _)| x.id != i.id);
+                lock.working_queue.retain(|x| x.id != i.id);
+
+                lock.dead_queue.push_back(i);
+            }
         }
     }
 
