@@ -13,4 +13,5 @@ noct-logger = { path = "../noct-logger" }
 noct-mem = { path = "../noct-mem" }
 noct-physmem-alloc = { path = "../noct-physmem-alloc" }
 noct-sched = { path = "../noct-sched" }
+noct-spec = { path = "../noct-spec" }
 noct-tools = { path = "../noct-tools" }

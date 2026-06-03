@@ -1,10 +1,9 @@
 #![no_std]
 
-
 use noct_elf::load::{LoadInfo, LoadedSegments};
 use noct_mem::paging::PageFlags;
 
-use alloc::sync::Arc;
+use alloc::{string::String, sync::Arc, vec::Vec, vec};
 use elf::{ParseError, endian::LittleEndian};
 use noct_logger::qemu_log;
 use noct_sched::{
@@ -137,13 +136,87 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
                     });
             }
 
-            proc.program_image.as_ref().unwrap().get_mut().loaded_segments.push(LoadInfo {
-                physical_allocation: physical_allocation as _,
-                virtual_addr: i.p_vaddr as _,
-                page_count,
-            });
+            proc.program_image
+                .as_ref()
+                .unwrap()
+                .get_mut()
+                .loaded_segments
+                .push(LoadInfo {
+                    physical_allocation: physical_allocation as _,
+                    virtual_addr: i.p_vaddr as _,
+                    page_count,
+                });
         }
     }
+
+    qemu_log!("Args: {path:?} + {_args:?}");
+
+    let all_args_count = 1 + _args.len(); // +1 for the program name
+
+    let raw_args_size = core::iter::once(path)
+        .chain(_args.iter().copied())
+        .map(|x| x.len() + 1)
+        .sum::<usize>()
+        .next_multiple_of(size_of::<usize>());
+
+    // The total memory size for the arguments, including null terminators.
+    let total_memory_size = (raw_args_size
+        + all_args_count * core::mem::size_of::<usize>() // For the pointers to the arguments
+        + core::mem::size_of::<usize>() // For `char** argv`
+        + core::mem::size_of::<usize>()) // For `int argc`
+    .next_multiple_of(size_of::<usize>()); // Align the total memory size to the nearest multiple of `usize` for proper alignment.
+
+    let mut values = vec![0_usize; total_memory_size / core::mem::size_of::<usize>()];
+
+    // Now, copy the program name and arguments into the `values` vector
+    // Then build up argument list in the format expected by the C runtime (argc, argv)
+    // And add pointer to pointer to the arguments list (char** argv) and argument count
+    {
+        let ptr = values.as_mut_ptr().cast::<u8>();
+
+        // Make a vector of bytes that contain raw null-terminated strings.
+        let mut raw_args = Vec::with_capacity(raw_args_size);
+
+        for arg in core::iter::once(path).chain(_args.iter().copied()) {
+            raw_args.extend_from_slice(arg.as_bytes());
+            raw_args.push(0);
+        }
+
+        // Write chunks to the top of the stack
+        for (idx, i) in raw_args.chunks(size_of::<usize>()).enumerate() {
+            let data = unsafe { ptr.add(raw_args_size).sub((idx + 1) * size_of::<usize>()) };
+
+            unsafe {
+                data.copy_from(i.as_ptr(), i.len());
+            }
+        }
+
+        let argv_array = unsafe { ptr.add(raw_args_size).cast::<usize>() };
+
+        // Stack of the first thread of the process is always at 0xC000_0000 or 0xFFFF_FFFF_8000_0000 and grows downwards.
+        let base = noct_spec::KERNEL_BASE;
+
+        // Make argv array
+        let mut offset = 0;
+
+        for (i, arg_len) in core::iter::once(path).chain(_args.iter().copied()).map(|x| x.len() + 1).enumerate() {
+            unsafe {
+                *argv_array.add((all_args_count - i) - 1) = ((base - raw_args_size) + offset) as usize;
+            }
+            
+            offset += arg_len;
+        }
+
+        // Write argv array pointer and argc counter
+        let arg_ptr = unsafe { ptr.add(raw_args_size + all_args_count * core::mem::size_of::<usize>()).cast::<usize>() };
+
+        unsafe {
+            *arg_ptr = (base - raw_args_size - all_args_count * core::mem::size_of::<usize>()) as usize; // char** argv
+            *arg_ptr.add(1) = all_args_count; // int argc
+        }
+    }
+
+    qemu_log!("Upper stack dump: {values:08x?}");
 
     noct_sched::create_thread(
         Arc::clone(&proc),
@@ -151,9 +224,11 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
         512 << 10, // Stack size = 512 KB
         ThreadPriority::Medium,
         ThreadFlags::User,
-        &[0x12345678 /* argc */, 0xABCDEF12 /* argv */],
+        &values,
     )
     .ok_or(LoadError::ThreadCreationFail)?;
+
+    drop(values);
 
     ////////
 

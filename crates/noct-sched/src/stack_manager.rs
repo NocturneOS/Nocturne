@@ -9,7 +9,7 @@ use noct_mem::{
     paging::{GlobalPagingArchitecture, PageFlags},
 };
 
-const STACK_ALIGNEMNT: usize = 0x1000;
+const STACK_ALIGNMENT: usize = 0x1000;
 
 #[repr(C)]
 pub struct ThreadStack {
@@ -30,7 +30,7 @@ impl ThreadStack {
         // Allocate stack.
         let allocation = unsafe {
             alloc::alloc::alloc_zeroed(
-                Layout::from_size_align(real_stack_size, STACK_ALIGNEMNT)
+                Layout::from_size_align(real_stack_size, STACK_ALIGNMENT)
                     .expect("Stack layout creation failed!"),
             )
         } as *mut usize;
@@ -147,7 +147,7 @@ impl Drop for ThreadStack {
         unsafe {
             alloc::alloc::dealloc(
                 self.stack_addr as *mut u8,
-                Layout::from_size_align_unchecked(self.stack_size, STACK_ALIGNEMNT),
+                Layout::from_size_align_unchecked(self.stack_size, STACK_ALIGNMENT),
             )
         };
 
