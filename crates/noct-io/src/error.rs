@@ -1,4 +1,8 @@
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub use num_derive::{FromPrimitive, ToPrimitive};
+pub use num_traits::{FromPrimitive, ToPrimitive};
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, FromPrimitive, ToPrimitive)]
 pub enum Error {
     AlreadyExists,
     DiskNotRecognized,
@@ -12,6 +16,7 @@ pub enum Error {
     NotFound,
     PermissionDenied,
     ReadOnly,
-    Unknown,
     UnsupportedOperation,
+    MemoryError,
+    Unknown,
 }

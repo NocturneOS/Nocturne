@@ -15,6 +15,9 @@ _start:
 
   int $0x80
 
+  mov $0xc0100000, %eax
+  mov (%eax), %ebx
+
   movl $3, %eax     // process_exit
   movl $67, %ebx    // Exitcode
 

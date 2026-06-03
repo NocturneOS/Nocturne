@@ -2,6 +2,7 @@ use crate::{arch::halt_forever, unwind};
 
 use noct_cpu::CPURegisters;
 use noct_interrupts::handler::register_interrupt_handler;
+use noct_io::error::{Error, ToPrimitive};
 use noct_logger::qemu_println;
 
 fn division_by_zero(regs: &mut CPURegisters) {
@@ -57,7 +58,10 @@ fn common_fault_entry(regs: &mut CPURegisters) {
     //     qemu_println!("Scheduler was disabled (or not initialized)");
     // }
 
-    qemu_println!("Fault on TID: {}", noct_sched::this_thread_id());
+    let pid = noct_sched::this_process().id;
+    let tid = noct_sched::this_thread_id();
+
+    qemu_println!("Fault on PID/TID: {pid}/{tid}");
 
     qemu_println!("{:x?}", regs);
 
@@ -83,6 +87,11 @@ fn common_fault_entry(regs: &mut CPURegisters) {
         };
     } else {
         qemu_println!("Stack pointer is NULL. Cannot unwind. Check the scheduler.");
+    }
+
+    if pid > 0 {
+        // Kill the whole process with code -EMEMORY
+        noct_sched::process_exit(Error::MemoryError.to_u32().unwrap().wrapping_neg());
     }
 
     halt_forever();
