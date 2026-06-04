@@ -96,7 +96,10 @@ impl Drive for Partition {
         Some(self.offset_end - self.offset_start)
     }
 
-    fn block_size(&self) -> Option<u32> {
+    fn block_size(&self) -> Option<usize> {
+        // ATAPI drives use 2048 bytes per block, but MBR uses 512 bytes per block.
+
+        // return Some(512);
         self.parent_operation(|parent_drive| parent_drive.block_size())
     }
 }

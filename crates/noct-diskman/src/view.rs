@@ -6,7 +6,7 @@ use crate::{drive::Drive, error::DiskManResult};
 
 pub struct DiskView<'a> {
     drive: &'a mut dyn Drive,
-    block_size: u32,
+    block_size: usize,
 }
 
 impl<'a> DiskView<'a> {

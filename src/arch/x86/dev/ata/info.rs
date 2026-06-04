@@ -18,19 +18,19 @@ impl ATADriveInfo {
 
     // Offset in bytes
     fn name_conv(&self, offset: usize, length: usize) -> &str {
-        unsafe { str::from_utf8_unchecked(&self.identity[offset..offset + length]) }
+        unsafe { str::from_utf8_unchecked(&self.identity[offset..offset + length]).trim() }
     }
 
     pub fn model_name(&self) -> &str {
-        self.name_conv(54, 40).trim()
+        self.name_conv(54, 40)
     }
 
     pub fn firmware(&self) -> &str {
-        self.name_conv(46, 8).trim()
+        self.name_conv(46, 8)
     }
 
     pub fn serial(&self) -> &str {
-        self.name_conv(20, 20).trim()
+        self.name_conv(20, 20)
     }
 
     pub fn is_lba_supported(&self) -> bool {

@@ -19,6 +19,7 @@ use crate::arch::x86::dev::ata::{
     },
 };
 
+pub mod atapi;
 pub mod commands;
 pub mod dma;
 pub mod dma_prdt;
@@ -185,7 +186,7 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
 
             let identity: info::ATADriveInfo = ide_buf.try_into().unwrap();
 
-            return Ok(ATAPhysicalDrive {
+            let mut drive = ATAPhysicalDrive {
                 bus,
                 drive,
                 is_packet: true,
@@ -195,8 +196,17 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
                     None
                 },
                 identity,
+                block_capacity: None,
                 diskman_id: Some(noct_diskman::generate_new_id("ata")),
-            });
+            };
+
+            let size = atapi::read_medium_capacity(&drive).map(|x| x.0).unwrap_or_default();
+
+            qemu_log!("Size: {size:?}");
+
+            drive.block_capacity = Some(size);
+
+            return Ok(drive);
         }
     }
 
@@ -222,6 +232,7 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
                 None
             },
             identity: identity,
+            block_capacity: None,
             diskman_id: Some(noct_diskman::generate_new_id("ata")),
         });
     }
@@ -247,10 +258,18 @@ fn check_all() {
 
                     qemu_log!("Sector size: {:?}", drv.info().sector_size());
 
+                    // {
+                    //     if drv.info().is_removable_media_device() {
+                    //         let mut data = vec![0u8; 2048];
+
+                    //         drv.read(0, &mut data).unwrap();
+
+                    //         qemu_log!("{:x?}", &data[..128]);
+                    //     }
+                    // }
+
                     // FIXME: Remove that condition when I make Packet ATA work.
-                    if !drv.info().is_removable_media_device() {
-                        noct_diskman::register_drive(Box::new(drv)).ok();
-                    }
+                    noct_diskman::register_drive(Box::new(drv)).ok();
                 }
                 Err(e) => {
                     qemu_log!("{bus:?} {drive:?} => Err({e:?})!");

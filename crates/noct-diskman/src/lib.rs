@@ -179,7 +179,9 @@ fn scan_partitions(
     container_base: Option<u32>,
     ebr_location: Option<u32>,
 ) -> DiskManResult<Vec<PartitionRecord>> {
-    let mut raw_buffer = alloc::vec![0u8; 512];
+    let blksize = disk.block_size().unwrap_or(512).max(512);
+
+    let mut raw_buffer = alloc::vec![0u8; blksize];
     let read_at = ebr_location.unwrap_or(0) as u64; // * block_size as u64;
 
     disk.read(read_at, &mut raw_buffer)?;
@@ -282,7 +284,7 @@ pub struct DiskInfo {
     pub is_partition: bool,
     pub drive_type: DriveType,
     pub capacity: Option<u64>,
-    pub block_size: Option<u32>,
+    pub block_size: Option<usize>,
 }
 
 pub fn disk_list() -> Vec<DiskInfo> {

@@ -144,7 +144,7 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     // }
 
     {
-        let data = noct_fs::read_file("ata1:/hello.txt");
+        let data = noct_fs::read_file("ata0:/hello.txt");
 
         match data {
             Ok(data) => {

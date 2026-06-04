@@ -112,7 +112,7 @@ impl noct_diskman::drive::Drive for MemoryDisk {
         Some(self.data.len() as u64)
     }
 
-    fn block_size(&self) -> Option<u32> {
+    fn block_size(&self) -> Option<usize> {
         Some(1)
     }
 

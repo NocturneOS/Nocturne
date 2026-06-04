@@ -56,11 +56,11 @@ pub struct ATADMA<'a> {
 }
 
 impl ATAIO for ATADMA<'_> {
-    fn read48(&mut self, lba: u64, output: &mut [u8]) -> ATAIOResult<()> {
+    fn read(&mut self, lba: u64, output: &mut [u8]) -> ATAIOResult<()> {
         self::read48(self.drive, lba, output)
     }
 
-    fn write48(&mut self, lba: u64, input: &[u8]) -> ATAIOResult<()> {
+    fn write(&mut self, lba: u64, input: &[u8]) -> ATAIOResult<()> {
         self::write48(self.drive, lba, input)
     }
 }

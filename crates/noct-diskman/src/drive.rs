@@ -22,7 +22,7 @@ pub trait Drive {
     fn capacity(&self) -> Option<u64>;
 
     /// Gets block size of the drive in bytes.
-    fn block_size(&self) -> Option<u32>;
+    fn block_size(&self) -> Option<usize>;
 
     fn buffer_address_alignment(&self) -> usize;
 

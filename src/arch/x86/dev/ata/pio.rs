@@ -18,7 +18,7 @@ pub struct ATAPIO<'drv> {
 }
 
 impl ATAIO for ATAPIO<'_> {
-    fn read48(&mut self, lba: u64, output: &mut [u8]) -> ATAIOResult<()> {
+    fn read(&mut self, lba: u64, output: &mut [u8]) -> ATAIOResult<()> {
         let drv = &self.drive;
 
         if output.len() % drv.info().sector_size() != 0 {
@@ -103,7 +103,7 @@ impl ATAIO for ATAPIO<'_> {
         Ok(())
     }
 
-    fn write48(&mut self, lba: u64, input: &[u8]) -> ATAIOResult<()> {
+    fn write(&mut self, lba: u64, input: &[u8]) -> ATAIOResult<()> {
         let drv = &self.drive;
 
         if input.len() % 512 != 0 {

@@ -21,6 +21,7 @@ pub struct ATAPhysicalDrive {
     pub(super) identity: ATADriveInfo,
     pub(super) prdt: Option<PRDT>,
     pub(super) diskman_id: Option<String>,
+    pub(super) block_capacity: Option<usize>
 }
 
 impl ATAPhysicalDrive {
@@ -44,18 +45,22 @@ impl ATAPhysicalDrive {
     pub fn read(&mut self, lba: u64, output: &mut [u8]) -> ATAIOResult<()> {
         // qemu_log!("Reading from drive {} at LBA {} with length {} bytes", self.diskman_id.as_deref().unwrap_or("<unknown>"), lba, output.len());
 
+        if self.identity.is_removable_media_device() {
+            return super::atapi::read_sectors(self, lba as u32, output);
+        }
+
         if self.identity.is_dma_supported() {
             if self.identity.is_removable_media_device() {
                 todo!("DMA reading for removable media devices is not yet implemented");
             }
 
-            super::dma::ATADMA { drive: self }.read48(lba, output)
+            super::dma::ATADMA { drive: self }.read(lba, output)
         } else {
             if self.identity.is_removable_media_device() {
                 todo!("PIO reading for removable media devices is not yet implemented");
             }
 
-            super::pio::ATAPIO { drive: self }.read48(lba, output)
+            super::pio::ATAPIO { drive: self }.read(lba, output)
         }
     }
 
@@ -75,14 +80,14 @@ impl ATAPhysicalDrive {
                 return Err(ATAIOError::UnsupportedOperation);
             }
 
-            super::dma::ATADMA { drive: self }.write48(lba, input)
+            super::dma::ATADMA { drive: self }.write(lba, input)
         } else {
             // See comment above.
             if self.identity.is_removable_media_device() {
                 return Err(ATAIOError::UnsupportedOperation);
             }
 
-            super::pio::ATAPIO { drive: self }.write48(lba, input)
+            super::pio::ATAPIO { drive: self }.write(lba, input)
         }
     }
 }
@@ -132,10 +137,14 @@ impl noct_diskman::drive::Drive for ATAPhysicalDrive {
     }
 
     fn capacity(&self) -> Option<u64> {
+        if let Some(cap) = self.block_capacity {
+            return Some(cap as _);
+        }
+
         Some(self.info().max_lba())
     }
 
-    fn block_size(&self) -> Option<u32> {
+    fn block_size(&self) -> Option<usize> {
         Some(self.info().sector_size() as _)
     }
 }

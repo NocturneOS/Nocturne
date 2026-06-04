@@ -11,3 +11,10 @@ pub const ATA_CMD_CACHE_FLUSH_EXT: u8 = 0xEA;
 pub const ATA_CMD_PACKET: u8 = 0xA0;
 pub const ATA_CMD_IDENTIFY_PACKET: u8 = 0xA1;
 pub const ATA_CMD_IDENTIFY: u8 = 0xEC;
+
+pub const ATAPI_CMD_READY: u8 = 0x00;
+pub const ATAPI_CMD_RQ_SENSE: u8 = 0x03;
+pub const ATAPI_CMD_START_STOP: u8 = 0x1B;
+pub const ATAPI_CMD_READ_CAPACITY: u8 = 0x25;
+pub const ATAPI_CMD_READ: u8 = 0xA8;
+pub const ATAPI_CMD_READ16: u8 = 0x88;

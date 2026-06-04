@@ -21,6 +21,12 @@ impl IOPort {
         unsafe { x86::io::outw(self.0, value) };
     }
 
+    pub fn write16_bulk(&self, values: &[u16]) {
+        for value in values {
+            unsafe { x86::io::outw(self.0, *value) };
+        }
+    }
+
     pub fn write32(&self, value: u32) {
         unsafe { x86::io::outl(self.0, value) };
     }
@@ -33,7 +39,13 @@ impl IOPort {
         unsafe { x86::io::inw(self.0) }
     }
 
-    pub fn read32(&self, value: u32) -> u32 {
+    pub fn read16_bulk(&self, out: &mut [u16]) {
+        for value in out.iter_mut() {
+            *value = unsafe { x86::io::inw(self.0) }
+        }
+    }
+
+    pub fn read32(&self) -> u32 {
         unsafe { x86::io::inl(self.0) }
     }
 }

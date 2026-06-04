@@ -66,7 +66,7 @@ impl PartitionRecord {
 }
 
 pub fn parse_from_sector(data: &[u8]) -> Vec<PartitionRecord> {
-    let signature: [u8; 2] = data[510..].try_into().unwrap();
+    let signature: [u8; 2] = data[510..512].try_into().unwrap();
 
     let mut records = Vec::with_capacity(4);
 
