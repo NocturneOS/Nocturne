@@ -43,7 +43,7 @@ pub fn syscall_handler(regs: &mut CPURegisters) {
         }
     }
 
-    qemu_log!("System call!");
+    // qemu_log!("System call!");
 
     if let Some(handler) = SYSCALL_HANDLERS.get(nr) {
         let result = handler(arg1, arg2, arg3, arg4, arg5);

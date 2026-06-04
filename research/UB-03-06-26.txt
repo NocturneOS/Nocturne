@@ -1,0 +1,26 @@
+<  0.223000000> Added thread nr: 2
+<  0.229000000> System call!
+<  0.237000000> Syscall debug: bfffffe0 11 (3221225440 11 0 0 0)
+<  0.233000000> Started process 1
+<  0.239000000> Debug! [109, 101, 109, 48, 58, 47, 112, 114, 111, 103, 50] "mem0:/prog2"
+<  0.247000000> System call!
+<  0.250000000> Syscall debug: <  0.254000000> Kernel panicked at /home/ndraey/.rustup/toolchains/nightly-2026-01-01-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/fmt/rt.rs:154:48: unsafe precondition(s) violated: hint::unreachable_unchecked must never be reached
+
+This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
+<  0.254000000> -  <unknown> (0xc01bfd6b)
+<  0.254000000> -  <unknown> (0xc0138045)
+<  0.254000000> -  <unknown> (0xc0137fde)
+<  0.254000000> -  <unknown> (0xc013da96)
+<  0.254000000> -  <unknown> (0xc013da43)
+<  0.254000000> -  <unknown> (0xc013f085)
+<  0.254000000> -  <unknown> (0xc013e946)
+<  0.254000000> -  <unknown> (0xc027e2d6)
+<  0.254000000> -  <unknown> (0xc027e215)
+<  0.254000000> -  <unknown> (0xc027e1a3)
+<  0.254000000> -  <unknown> (0xc02050cf)
+<  0.254000000> -  <unknown> (0xc0203862)
+<  0.254000000> -  <unknown> (0xc0275ebb)
+<  0.254000000> -  <unknown> (0xc0275fe0)
+<  0.254000000> -  <unknown> (0xc010137d)
+<  0.254000000> -  <unknown> (0x80490b5)
+
