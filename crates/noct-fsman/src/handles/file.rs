@@ -49,7 +49,7 @@ impl FileHandle {
 impl Read for FileHandle {
     fn read(&mut self, buffer: &mut [u8]) -> noct_io::Result<u64> {
         let fs =
-            crate::mount::get_handle(&self.disk_id).ok_or(Error::DiskNotRecognized)?;
+            crate::mount::get_handle(&self.disk_id).ok_or(Error::FilesystemNotRecognized)?;
 
         fs.read(self, buffer)
     }
@@ -58,7 +58,7 @@ impl Read for FileHandle {
 impl Write for FileHandle {
     fn write(&mut self, buffer: &[u8]) -> noct_io::Result<u64> {
         let fs =
-            crate::mount::get_handle(&self.disk_id).ok_or(Error::DiskNotRecognized)?;
+            crate::mount::get_handle(&self.disk_id).ok_or(Error::FilesystemNotRecognized)?;
 
         fs.write(self, buffer)
     }

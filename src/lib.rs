@@ -133,14 +133,29 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
     syscalls::init();
 
+    // {
+    //     let handle = noct_elfloader::spawn("mem0:/prog2", &[]).unwrap();
+
+    //     qemu_log!("Started process {}", handle.pid);
+
+    //     let code = handle.wait();
+
+    //     qemu_log!("Process exited with code: {code:?}");
+    // }
+
     {
-        let handle = noct_elfloader::spawn("mem0:/prog2", &[]).unwrap();
+        let data = noct_fs::read_file("ata1:/hello.txt");
 
-        qemu_log!("Started process {}", handle.pid);
+        match data {
+            Ok(data) => {
+                let s = str::from_utf8(&data).unwrap();
 
-        let code = handle.wait();
-
-        qemu_log!("Process exited with code: {code:?}");
+                qemu_log!("Data: {s:?}");
+            },
+            Err(e) => {
+                qemu_log!("Error: {e:?}");
+            },
+        }
     }
 
     qemu_log!("It works!");

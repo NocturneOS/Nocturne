@@ -14,14 +14,14 @@ pub struct DirectoryHandle {
 impl DirectoryHandle {
     pub fn read(&mut self) -> noct_io::Result<DirectoryEntry> {
         let fs =
-            crate::mount::get_handle(&self.disk_id).ok_or(Error::DiskNotRecognized)?;
+            crate::mount::get_handle(&self.disk_id).ok_or(Error::FilesystemNotRecognized)?;
 
         fs.readdir(self)
     }
 
     pub fn read_all(&mut self) -> noct_io::Result<Vec<DirectoryEntry>> {
         let fs =
-            crate::mount::get_handle(&self.disk_id).ok_or(Error::DiskNotRecognized)?;
+            crate::mount::get_handle(&self.disk_id).ok_or(Error::FilesystemNotRecognized)?;
 
         let mut data = vec![];
 

@@ -29,7 +29,7 @@ pub fn try_mount(disk_id: &str) -> noct_io::Result<SharedFilesystemInstance> {
         }
     }
 
-    Err(Error::DiskNotRecognized)
+    Err(Error::FilesystemNotRecognized)
 }
 
 pub fn get_handle(disk_id: &str) -> Option<SharedFilesystemInstance> {

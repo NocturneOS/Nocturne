@@ -18,7 +18,7 @@ pub fn open_file(path: &str, mode: FileOpenMode) -> noct_io::Result<FileHandle> 
         .ok_or(noct_io::error::Error::InvalidPath)?;
 
     let handle = noct_fsman::mount::get_handle(info.disk_id())
-        .ok_or(noct_io::error::Error::InvalidHandle)?;
+        .ok_or(noct_io::error::Error::NoDrive)?;
 
     handle.open(info.path(), mode)
 }
@@ -30,7 +30,7 @@ pub fn info(path: &str) -> noct_io::Result<entity::EntityInfo> {
         .ok_or(noct_io::error::Error::InvalidPath)?;
 
     let handle = noct_fsman::mount::get_handle(info.disk_id())
-        .ok_or(noct_io::error::Error::InvalidHandle)?;
+        .ok_or(noct_io::error::Error::NoDrive)?;
 
     handle.info(info.path())
 }
