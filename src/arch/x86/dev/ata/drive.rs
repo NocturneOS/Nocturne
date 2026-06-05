@@ -1,5 +1,8 @@
 use alloc::string::String;
-use noct_diskman::{error::DiskManResult, structures::Command};
+use noct_diskman::{
+    error::{DiskManError, DiskManResult},
+    structures::Command,
+};
 use noct_logger::qemu_log;
 
 use crate::arch::x86::{
@@ -14,6 +17,8 @@ use crate::arch::x86::{
     io::IOPort,
 };
 
+use super::atapi::StartStopOperation;
+
 pub struct ATAPhysicalDrive {
     pub(super) bus: ATABus,
     pub(super) drive: ATADrive,
@@ -21,7 +26,7 @@ pub struct ATAPhysicalDrive {
     pub(super) identity: ATADriveInfo,
     pub(super) prdt: Option<PRDT>,
     pub(super) diskman_id: Option<String>,
-    pub(super) block_capacity: Option<usize>
+    pub(super) block_capacity: Option<usize>,
 }
 
 impl ATAPhysicalDrive {
@@ -116,16 +121,39 @@ impl noct_diskman::drive::Drive for ATAPhysicalDrive {
     fn control(
         &mut self,
         command: Command,
-        command_parameters: &[u8],
-        data: &mut [u8],
+        _command_parameters: &[u8],
+        _data: &mut [u8],
     ) -> DiskManResult<()> {
         match command {
+            Command::Eject => {
+                if !self.identity.is_removable_media_device() {
+                    return Err(DiskManError::UnsupportedOperation);
+                }
+
+                super::atapi::start_stop(self, StartStopOperation::Stop)
+                    .and_then(|_| super::atapi::start_stop(self, StartStopOperation::Eject))
+                    .map_err(|e| match e {
+                        ATAIOError::ControllerError(_) => DiskManError::IOError,
+                        _ => DiskManError::UnsupportedOperation,
+                    })
+            },
+            Command::Load => {
+                if !self.identity.is_removable_media_device() {
+                    return Err(DiskManError::UnsupportedOperation);
+                }
+
+                super::atapi::start_stop(self, StartStopOperation::Load)
+                    .map_err(|e| match e {
+                        ATAIOError::ControllerError(_) => DiskManError::IOError,
+                        _ => DiskManError::UnsupportedOperation,
+                    })
+            },
             cmd => todo!("Unimplemented control command for ATA (issued: {cmd:?})"),
         }
     }
 
     fn buffer_address_alignment(&self) -> usize {
-        1
+        8
     }
 
     fn drive_type(&self) -> noct_diskman::structures::DriveType {

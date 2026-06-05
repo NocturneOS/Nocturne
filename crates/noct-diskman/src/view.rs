@@ -104,9 +104,8 @@ impl<'a> DiskView<'a> {
 
         unsafe { alloc::alloc::dealloc(buffer, layout) };
 
-        if let Err(e) = write_result {
-            return Err(e);
-        }
+        // Check for error after deallocating buffer to ensure memory is properly managed.
+        write_result?;
 
         Ok(bytes_to_copy as i64)
     }

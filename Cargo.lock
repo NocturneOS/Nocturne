@@ -327,6 +327,8 @@ name = "noct-tools"
 version = "0.1.0"
 dependencies = [
  "noct-interrupts",
+ "noct-time",
+ "x86",
 ]
 
 [[package]]

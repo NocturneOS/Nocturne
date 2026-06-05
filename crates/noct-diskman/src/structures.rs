@@ -22,5 +22,6 @@ pub enum MediumStatus {
 #[derive(FromPrimitive, Debug, Clone, Copy, PartialEq)]
 pub enum Command {
     Eject = 0x00,
-    GetMediumStatus = 0x01,
+    Load = 0x01,
+    GetMediumStatus = 0x02,
 }

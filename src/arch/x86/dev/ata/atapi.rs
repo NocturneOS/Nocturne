@@ -4,7 +4,7 @@ use noct_logger::qemu_log;
 
 use crate::arch::x86::dev::ata::{
     ATABus, ATADrive,
-    commands::{ATA_CMD_PACKET, ATAPI_CMD_READ, ATAPI_CMD_READ_CAPACITY},
+    commands::{ATA_CMD_PACKET, ATAPI_CMD_READ, ATAPI_CMD_READ_CAPACITY, ATAPI_CMD_START_STOP},
     drive::ATAPhysicalDrive,
     error::{ATAError, ATAIOError, ATAIOResult, ATAResult},
     ide_400ns_delay, ide_poll, ide_select_drive,
@@ -76,6 +76,7 @@ pub fn read_medium_capacity(drive: &ATAPhysicalDrive) -> ATAResult<(usize, usize
 }
 
 pub fn read_sectors(drive: &ATAPhysicalDrive, lba: u32, buffer: &mut [u8]) -> ATAIOResult<()> {
+    // SAFETY: For ATAPI devices, the block size is always sepcified, so unwrap will always succeed.
     let blksize = drive.block_size().unwrap();
 
     assert!(buffer.len().is_multiple_of(blksize));
@@ -84,7 +85,7 @@ pub fn read_sectors(drive: &ATAPhysicalDrive, lba: u32, buffer: &mut [u8]) -> AT
 
     let command: [u8; 12] = [
         ATAPI_CMD_READ,
-        0, // ?
+        0, // Reserved or flags (usually zero)
         ((lba >> 0x18) & 0xFF) as u8, // LBA
         ((lba >> 0x10) & 0xFF) as u8,
         ((lba >> 0x08) & 0xFF) as u8,
@@ -93,19 +94,22 @@ pub fn read_sectors(drive: &ATAPhysicalDrive, lba: u32, buffer: &mut [u8]) -> AT
         ((count >> 0x10) & 0xFF) as u8,
         ((count >> 0x08) & 0xFF) as u8,
         ((count >> 0x00) & 0xFF) as u8,
-        0, // ?
-        0, // ?
+        0, // Reserved (usually zero)
+        0, // Control (usually zero)
     ];
 
-    let command16 = unsafe { core::slice::from_raw_parts(command.as_ptr().cast::<u16>(), 6) };
+    let command16 = [
+        (command[1] as u16) << 8 | (command[0] as u16),
+        (command[3] as u16) << 8 | (command[2] as u16),
+        (command[5] as u16) << 8 | (command[4] as u16),
+        (command[7] as u16) << 8 | (command[6] as u16),
+        (command[9] as u16) << 8 | (command[8] as u16),
+        (command[11] as u16) << 8 | (command[10] as u16),
+    ];
 
     send_scsi(drive, blksize as _, &command16).map_err(ATAIOError::ControllerError)?;
 
     ide_poll(drive.bus.io()).map_err(ATAIOError::ControllerError)?;
-
-    // let transf_size = receive_size_of_transfer(drive).map_err(ATAIOError::ControllerError)?;
-
-    // qemu_log!("Transfer size: {transf_size}");
 
     let data_port = drive.pio_port().offset(ATA_REG_DATA);
 
@@ -124,6 +128,35 @@ pub fn read_sectors(drive: &ATAPhysicalDrive, lba: u32, buffer: &mut [u8]) -> AT
 
         data_port.read16_bulk(data_buf16);
     }
+
+    Ok(())
+}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StartStopOperation {
+    Stop = 0b00,
+    Start = 0b01,
+    Eject = 0b10,
+    Load = 0b11,
+}
+
+pub fn start_stop(drive: &ATAPhysicalDrive, op: StartStopOperation) -> ATAIOResult<()> {
+    let mut command: [u16; 6] = [(ATAPI_CMD_START_STOP as u16), 0, 0, 0, 0, 0];
+
+    // Byte 4:
+	//   Bit 0: Start
+	//   Bit 1: LoEj
+
+	// LoEj      Start      Result
+	//  0          0     Stop the Disc
+	//  0          1     Start the Disc
+	//  1          0     Eject Disc
+	//  1          1     Close the Tray (Load the Disc)
+
+    unsafe { command.as_mut_ptr().cast::<u8>().add(4).write(op as u8) };
+
+    send_scsi(drive, 0, &command).map_err(ATAIOError::ControllerError)?;
 
     Ok(())
 }

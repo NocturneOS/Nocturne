@@ -42,6 +42,7 @@ pub struct GDT<const N: usize> {
 }
 
 impl<const N: usize> GDT<N> {
+    #[allow(clippy::mut_from_ref)]
     pub fn nth(&self, index: usize) -> &mut GDTEntry {
         if index >= N {
             panic!("GDT out of range");

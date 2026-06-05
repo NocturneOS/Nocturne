@@ -28,7 +28,7 @@ pub fn halt_forever() -> ! {
         halt();
     }
 
-    loop {}
+    panic!("Halt forever should never return!")
 }
 
 #[inline]

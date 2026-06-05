@@ -144,7 +144,9 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     // }
 
     {
-        let data = noct_fs::read_file("ata0:/hello.txt");
+        let (data, time) = noct_tools::measure_time_timer(|| noct_fs::read_file("ata0:/hello.txt"));
+
+        qemu_log!("Time: {} ms", time);
 
         match data {
             Ok(data) => {

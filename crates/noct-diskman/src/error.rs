@@ -7,5 +7,6 @@ pub enum DiskManError {
     WriteError,
     ControlError,
     LocationOutOfBounds,
+    IOError,
     UnsupportedOperation,
 }

@@ -169,7 +169,7 @@ pub fn read48(drv: &mut ATAPhysicalDrive, lba: u64, output: &mut [u8]) -> ATAIOR
 
             super::ide_poll_drq(pio.addr(), 65535).unwrap();
 
-            x86::io::outb(dma.addr() + 0, 9);
+            dma.write8(9);
         }
 
         super::ide_poll_bsy(pio.addr(), 65535).unwrap();
@@ -184,7 +184,7 @@ pub fn read48(drv: &mut ATAPhysicalDrive, lba: u64, output: &mut [u8]) -> ATAIOR
             }
         }
 
-        dma.offset(0).write8(0);
+        dma.write8(0);
 
         sector_count -= readsize;
         current_lba += readsize as u64;
@@ -268,7 +268,7 @@ pub fn write48(drv: &mut ATAPhysicalDrive, lba: u64, input: &[u8]) -> ATAIOResul
 
             super::ide_poll_drq(pio.addr(), 65535).unwrap();
 
-            x86::io::outb(dma.addr() + 0, 1);
+            dma.write8(1);
         }
 
         super::ide_poll_bsy(pio.addr(), 65535).unwrap();

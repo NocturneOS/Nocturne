@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 noct-interrupts = { path = "../noct-interrupts" }
+noct-time = { path = "../noct-time" }
+x86 = "0.52.0"

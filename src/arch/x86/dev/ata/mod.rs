@@ -60,11 +60,11 @@ pub enum ATADrive {
 }
 
 fn soft_reset(io: u16) {
-    unsafe { outb(io + ATA_REG_CONTROL as u16, 0x04) };
+    unsafe { outb(io + ATA_REG_CONTROL, 0x04) };
 
     ide_400ns_delay(io);
 
-    unsafe { outb(io + ATA_REG_CONTROL as u16, 0) };
+    unsafe { outb(io + ATA_REG_CONTROL, 0) };
 }
 
 #[inline]
@@ -73,7 +73,7 @@ fn ide_select_drive(bus: ATABus, drive: ATADrive) {
 
     unsafe {
         outb(
-            io + ATA_REG_HDDEVSEL as u16,
+            io + ATA_REG_HDDEVSEL,
             0xA0 | (((drive == ATADrive::Slave) as u8) << 4),
         )
     };
@@ -83,21 +83,21 @@ fn ide_select_drive(bus: ATABus, drive: ATADrive) {
 
 fn ide_400ns_delay(io: u16) {
     unsafe {
-        inb(io + ATA_REG_ALTSTATUS as u16);
-        inb(io + ATA_REG_ALTSTATUS as u16);
-        inb(io + ATA_REG_ALTSTATUS as u16);
-        inb(io + ATA_REG_ALTSTATUS as u16);
+        inb(io + ATA_REG_ALTSTATUS);
+        inb(io + ATA_REG_ALTSTATUS);
+        inb(io + ATA_REG_ALTSTATUS);
+        inb(io + ATA_REG_ALTSTATUS);
     }
 }
 
 fn ide_poll_drq(io: u16, mut timeout: usize) -> ATAResult<()> {
     loop {
-        let status = unsafe { inb(io + ATA_REG_STATUS as u16) };
+        let status = unsafe { inb(io + ATA_REG_STATUS) };
 
         if (status & ATA_SR_DRQ) != 0 {
             return Ok(());
         } else if (status & ATA_SR_ERR) != 0 || (status & ATA_SR_DF) != 0 {
-            return Err(unsafe { ATAError::ErrorSet(inb(io + ATA_REG_ERROR as u16)) });
+            return Err(unsafe { ATAError::ErrorSet(inb(io + ATA_REG_ERROR)) });
         }
 
         if timeout == 0 {
@@ -105,17 +105,19 @@ fn ide_poll_drq(io: u16, mut timeout: usize) -> ATAResult<()> {
         }
 
         timeout -= 1;
+
+        unsafe { core::arch::asm!("pause") };
     }
 }
 
 fn ide_poll_bsy(io: u16, mut timeout: usize) -> ATAResult<()> {
     loop {
-        let status = unsafe { inb(io + ATA_REG_STATUS as u16) };
+        let status = unsafe { inb(io + ATA_REG_STATUS) };
 
         if (status & ATA_SR_BSY) == 0 {
             return Ok(());
         } else if (status & ATA_SR_ERR) != 0 || (status & ATA_SR_DF) != 0 {
-            return Err(unsafe { ATAError::ErrorSet(inb(io + ATA_REG_ERROR as u16)) });
+            return Err(unsafe { ATAError::ErrorSet(inb(io + ATA_REG_ERROR)) });
         }
 
         if timeout == 0 {
@@ -123,6 +125,8 @@ fn ide_poll_bsy(io: u16, mut timeout: usize) -> ATAResult<()> {
         }
 
         timeout -= 1;
+
+        unsafe { core::arch::asm!("pause") };
     }
 }
 
@@ -144,19 +148,19 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
     ide_select_drive(bus, drive);
 
     unsafe {
-        outb(io + ATA_REG_SECCOUNT0 as u16, 0);
-        outb(io + ATA_REG_LBA0 as u16, 0);
-        outb(io + ATA_REG_LBA1 as u16, 0);
-        outb(io + ATA_REG_LBA2 as u16, 0);
+        outb(io + ATA_REG_SECCOUNT0, 0);
+        outb(io + ATA_REG_LBA0, 0);
+        outb(io + ATA_REG_LBA1, 0);
+        outb(io + ATA_REG_LBA2, 0);
     }
 
     unsafe {
-        outb(io + ATA_REG_COMMAND as u16, ATA_CMD_IDENTIFY);
+        outb(io + ATA_REG_COMMAND, ATA_CMD_IDENTIFY);
     }
 
     ide_poll_bsy(io, 65535)?;
 
-    let status = unsafe { inb(io + ATA_REG_STATUS as u16) };
+    let status = unsafe { inb(io + ATA_REG_STATUS) };
 
     qemu_log!("Status: {}; Err: {}", status, status & ATA_SR_ERR);
 
@@ -167,18 +171,18 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
     // then the device is a packet device,
     // and `IDENTIFY PACKET DEVICE` (0xA1) should be used.
     if (status & ATA_SR_ERR) != 0 {
-        let seccount = unsafe { inb(io + ATA_REG_SECCOUNT0 as u16) };
-        let lba_l = unsafe { inb(io + ATA_REG_LBA0 as u16) };
-        let lba_m = unsafe { inb(io + ATA_REG_LBA1 as u16) };
-        let lba_h = unsafe { inb(io + ATA_REG_LBA2 as u16) };
+        let seccount = unsafe { inb(io + ATA_REG_SECCOUNT0) };
+        let lba_l = unsafe { inb(io + ATA_REG_LBA0) };
+        let lba_m = unsafe { inb(io + ATA_REG_LBA1) };
+        let lba_h = unsafe { inb(io + ATA_REG_LBA2) };
 
         if seccount == 0x01 && lba_l == 0x01 && lba_m == 0x14 && lba_h == 0xEB {
             qemu_log!("ATAPI!");
 
-            unsafe { outb(io + ATA_REG_COMMAND as u16, ATA_CMD_IDENTIFY_PACKET) };
+            unsafe { outb(io + ATA_REG_COMMAND, ATA_CMD_IDENTIFY_PACKET) };
 
             for i in (0..512).step_by(2) {
-                let word = unsafe { inw(io + ATA_REG_DATA as u16) };
+                let word = unsafe { inw(io + ATA_REG_DATA) };
 
                 ide_buf[i] = ((word >> 8) & 0xff) as u8;
                 ide_buf[i + 1] = (word & 0xff) as u8;

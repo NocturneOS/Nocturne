@@ -64,7 +64,7 @@ pub fn generate_new_id(driver_id: &str) -> String {
         .filter(|x| x.get_id().starts_with(driver_id))
         .map(|x| x.get_id()[driver_id.len()..].to_owned())
         .map(|x| {
-            let first_section = x.split('.').nth(0).unwrap();
+            let first_section = x.split('.').next().unwrap();
 
             first_section.parse::<usize>().unwrap_or(0)
         })

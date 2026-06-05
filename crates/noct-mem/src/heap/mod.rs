@@ -114,9 +114,9 @@ impl InnerArenaAllocator {
 
     // Returns Option<(INDEX, ADDRESS)>
     fn find_suitable_block(&self, layout: &Layout) -> Option<(usize, usize)> {
-        let mut index = 0usize;
+        // let mut index = 0usize;
 
-        for i in self.blocks().windows(2) {
+        for (index, i) in self.blocks().windows(2).enumerate() {
             let this_block = &i[0];
             let next_block = &i[1];
 
@@ -145,7 +145,7 @@ impl InnerArenaAllocator {
                 return Some((index + 1, aligned_new_block_addr));
             }
 
-            index += 1;
+            // index += 1;
         }
 
         None

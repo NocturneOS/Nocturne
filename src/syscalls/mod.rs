@@ -15,31 +15,23 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
 ];
 
 pub fn syscall_handler(regs: &mut CPURegisters) {
-    let nr: usize;
-
-    let arg1: usize;
-    let arg2: usize;
-    let arg3: usize;
-    let arg4: usize;
-    let arg5: usize;
-
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "x86")] {
-            nr = regs.eax as usize;
+            let nr = regs.eax as usize;
 
-            arg1 = regs.ebx as usize;
-            arg2 = regs.ecx as usize;
-            arg3 = regs.edx as usize;
-            arg4 = regs.esi as usize;
-            arg5 = regs.edi as usize;
+            let arg1 = regs.ebx as usize;
+            let arg2 = regs.ecx as usize;
+            let arg3 = regs.edx as usize;
+            let arg4 = regs.esi as usize;
+            let arg5 = regs.edi as usize;
         } else if #[cfg(target_arch = "x86_64")] {
-            nr = regs.rax as usize;
+            let nr = regs.rax as usize;
 
-            arg1 = regs.rbx as usize;
-            arg2 = regs.rcx as usize;
-            arg3 = regs.rdx as usize;
-            arg4 = regs.rsi as usize;
-            arg5 = regs.rdi as usize;
+            let arg1 = regs.rbx as usize;
+            let arg2 = regs.rcx as usize;
+            let arg3 = regs.rdx as usize;
+            let arg4 = regs.rsi as usize;
+            let arg5 = regs.rdi as usize;
         }
     }
 
