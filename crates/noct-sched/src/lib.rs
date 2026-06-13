@@ -10,7 +10,8 @@ use core::{
 
 use alloc::{
     collections::{linked_list::LinkedList, vec_deque::VecDeque},
-    sync::Arc, vec::Vec,
+    sync::Arc,
+    vec::Vec,
 };
 use lazy_static::lazy_static;
 use noct_spec::KERNEL_BASE;
@@ -130,14 +131,16 @@ impl Scheduler {
         self.current_process = Some(Arc::clone(&kernel_process));
         self.current_thread = Some(Arc::clone(&kernel_thread));
 
-        self.idle_task = self.create_thread(
-            Arc::clone(&kernel_process),
-            idle_task,
-            0x1000,
-            ThreadPriority::Low,
-            ThreadFlags::Raw,
-            &[],
-        ).or_else(|| panic!("Failed to create idle task thread"));
+        self.idle_task = self
+            .create_thread(
+                Arc::clone(&kernel_process),
+                idle_task,
+                0x1000,
+                ThreadPriority::Low,
+                ThreadFlags::Raw,
+                &[],
+            )
+            .or_else(|| panic!("Failed to create idle task thread"));
 
         self.thread_list.push_back(Arc::clone(&kernel_thread));
 
@@ -681,6 +684,21 @@ pub fn sleep(dur: core::time::Duration) {
     drop(il);
 }
 
+pub fn get_process_handle(pid: usize) -> Option<Arc<ProcessHandle>> {
+    let il = InterruptLocker::lock();
+
+    let sched = this();
+    let result = sched
+        .thread_list
+        .iter()
+        .find(|x| x.process.id == pid)
+        .map(|x| Arc::clone(&x.process.handle.as_ref().unwrap()));
+
+    drop(il);
+
+    result
+}
+
 /// Waits for process with specific PID to complete and returns its exit code
 pub fn waitpid(hdl: &ProcessHandle) -> Option<u32> {
     // TODO: Make a ThreadState::WaitingFor(pid: usize) enum variant and set that state for this thread.
@@ -688,7 +706,11 @@ pub fn waitpid(hdl: &ProcessHandle) -> Option<u32> {
         let il = InterruptLocker::lock();
 
         let sched = this();
-        let result = sched.thread_list.iter().find(|x| x.process.id == pid).is_some();
+        let result = sched
+            .thread_list
+            .iter()
+            .find(|x| x.process.id == pid)
+            .is_some();
 
         drop(il);
 

@@ -1,8 +1,9 @@
 use noct_cpu::CPURegisters;
-use noct_logger::qemu_log;
 
 mod debug;
+mod error;
 mod exit;
+mod waitpid;
 
 pub type SyscallHandler = fn(usize, usize, usize, usize, usize) -> Option<usize>;
 
@@ -12,6 +13,8 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     debug::reg_debug,  // 1
     exit::exit,  // 2
     exit::process_exit,  // 3
+    error::geterror,   // 4
+    waitpid::waitpid,  // 5
 ];
 
 pub fn syscall_handler(regs: &mut CPURegisters) {
