@@ -1,7 +1,6 @@
 use core::sync::atomic::Ordering;
 
 use noct_io::error::Error;
-use noct_logger::qemu_log;
 
 pub fn waitpid(pid: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
     let Some(ph) = noct_sched::get_process_handle(pid) else {

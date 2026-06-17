@@ -109,7 +109,7 @@ __pre_init:
     or $(1 << 0 | 1 << 1), %esi
     mov %esi, (511 * 8)(%edi)
 
-    # Map first 8 MB by using large pages (2MB pages)
+    # Map first 16 MB by using large pages (2MB pages)
     lea (boot_pdt), %edi
     mov $0, %esi
     or $(1 << 0 | 1 << 1 | 1 << 7), %esi  # Present + Writable + Page Size
@@ -123,6 +123,15 @@ __pre_init:
 
     add $0x200000, %esi
     mov %esi, 24(%edi)
+
+    add $0x200000, %esi
+    mov %esi, 32(%edi)
+
+    add $0x200000, %esi
+    mov %esi, 40(%edi)
+
+    add $0x200000, %esi
+    mov %esi, 48(%edi)
 
     # Now, load PML4T to CR3
     lea (boot_pml4t), %eax
