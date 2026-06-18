@@ -42,9 +42,9 @@ impl Debug for CPURegisters {
         writeln!(f, "R10: {:016x}; R11: {:016x}", self.r10, self.r11)?;
         writeln!(f, "R12: {:016x}; R13: {:016x}", self.r12, self.r13)?;
         writeln!(f, "R14: {:016x}; R15: {:016x}", self.r14, self.r15)?;
-        writeln!(f, "EIP: {:08x}", self.rip)?;
+        writeln!(f, "RIP: {:016x}", self.rip)?;
         writeln!(f, "CS:  {:04x}; DS: {:04x}", self.cs, self.ds)?;
-        writeln!(f, "EFLAGS: {:08x}", self.rflags)?;
+        writeln!(f, "RFLAGS: {:08x}", self.rflags)?;
         write!(
             f,
             "INTERRUPT: {:02x}; ERROR: {:08x}",

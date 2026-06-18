@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 elf = { version = "0.8.0", default-features = false }
+x86 = "0.52.0"
 
 noct-elf = { path = "../noct-elf" }
 noct-fs = { path = "../noct-fs" }

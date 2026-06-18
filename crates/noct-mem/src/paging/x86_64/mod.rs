@@ -34,12 +34,14 @@ impl PagingHierarchy for X86_64Paging {
     }
 }
 
-const fn indices2vaddr(pml4: u64, pdpt: u64, pd: u64, pt: u64) -> u64 {
-    (pml4 << 39) | (pdpt << 30) | (pd << 21) | (pt << 12)
+/// Canonicalize a 48-bit virtual address by sign-extending bit 47 into the upper bits,
+/// as required by x86_64 canonical addressing rules.
+const fn canonicalize_vaddr_48(addr: usize) -> usize {
+    ((addr << 16) as isize >> 16) as usize
 }
 
 const fn vaddr2indices(addr: usize) -> (usize, usize, usize, usize) {
-    let addr = ((addr << 16) as isize >> 16) as usize;
+    let addr = canonicalize_vaddr_48(addr);
 
     let pml4 = (addr >> 39) & 0x1FF;
     let pdpt = (addr >> 30) & 0x1FF;
@@ -231,12 +233,6 @@ pub fn virt2phys(virt_addr: usize) -> Option<usize> {
         return None;
     }
 
-    if (pml4t()[pml4t_i] & (1 << 7)) != 0 {
-        let page_base = pml4t()[pml4t_i] & !0x3fff_ffff;
-
-        return Some(page_base /* | (virt_addr & 0x3fff_ffff)*/);
-    }
-
     //
 
     if (pdpt(pml4t_i)[pdpt_i] & 1) == 0 {
@@ -275,12 +271,6 @@ pub fn virt2phys_precise(virt_addr: usize) -> Option<usize> {
 
     if (pml4t()[pml4t_i] & 1) == 0 {
         return None;
-    }
-
-    if (pml4t()[pml4t_i] & (1 << 7)) != 0 {
-        let page_base = pml4t()[pml4t_i] & !0x3fff_ffff;
-
-        return Some(page_base | (virt_addr & 0x3fff_ffff));
     }
 
     //

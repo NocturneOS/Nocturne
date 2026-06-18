@@ -29,13 +29,18 @@ lazy_static! {
     static ref BSP_TSS: PseudoSync<TSSEntry> = unsafe { core::mem::zeroed() };
 }
 
+const DUMB_STACK_SIZE: usize = 0x1000;
+
 // TODO: Dynamically allocate the stack!
-static DUMB_STACK: [usize; 0x200] = [0; 0x200];
+#[repr(align(16))]
+struct AlignedStack([u8; DUMB_STACK_SIZE]);
+
+static DUMB_STACK: AlignedStack = AlignedStack([0; DUMB_STACK_SIZE]);
 
 pub fn init() {
     unsafe {
         BSP_TSS.get_mut().iopb = core::mem::size_of::<TSSEntry>() as u16;
-        BSP_TSS.get_mut().ist1 = (DUMB_STACK.as_ptr().addr() + 0x200) as u64;
+        BSP_TSS.get_mut().ist1 = DUMB_STACK.0.as_ptr().add(DUMB_STACK_SIZE).addr() as u64;
     }
 
     let base = (BSP_TSS.get() as *const TSSEntry).addr();

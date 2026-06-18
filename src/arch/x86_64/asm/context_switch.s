@@ -40,6 +40,13 @@ __context_switch:
 
     # TODO: TSS
 
+    # Load kernel stack top to TSS::RSP0
+    # 0x48 = Thread::ArchitectureSpecificRegion::tss_kernel_stack
+    mov 0x48(%rcx), %rax
+    mov $BSP_TSS, %rbx
+    # 0x04 = TSSEntry::rsp0
+    mov %eax, 4(%rbx)
+
     # Get current process' root page directory (RPD)
     mov 0x8(%rdi), %rax   # RPD of current process
     mov 0x8(%rdx), %rbx   # RPD of next process

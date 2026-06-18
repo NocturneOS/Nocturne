@@ -179,6 +179,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
                 let pt_phys: usize;
 
                 if !page_table[idx].is_present() {
+                    // FIXME: Possible memory leak on Err(())
                     pt_phys = noct_physmem_alloc::allocate_one().ok_or(())?;
 
                     self.self_map_page(pt_phys, |x| {
@@ -189,7 +190,15 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
                         pt_phys,
                         PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace,
                     );
+
+                    qemu_log!("New page table mapped at level {level} for virt addr {virt_addr:#x?} at phys addr {pt_phys:#x?}");
                 } else {
+                    if flags.contains(PageFlags::Userspace) && !page_table[idx].is_usermode() {
+                        qemu_log!("{:#x?} set to usermode.", page_table[idx].raw());
+
+                        page_table[idx].set_usermode(true);
+                    }
+
                     pt_phys = page_table[idx].phys();
                 }
 

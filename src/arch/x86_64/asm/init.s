@@ -84,8 +84,6 @@ __pre_init:
     mov %esi, (%edi)
 
     // Higher half mapping - entry 511 (0xFFFF_FFFF_8000_0000)
-    lea (boot_pdpt), %esi
-    or $(1 << 0 | 1 << 1), %esi
     mov %esi, (511 * 8)(%edi)
 
     // Recursive paging at entry 510

@@ -200,10 +200,10 @@ impl Scheduler {
                     thread_trampoline_usermode as *const () as usize,
                 );
             } else {
-                stack.push(
-                    process.address_space.get_mut(),
-                    thread_exit as *const () as usize,
-                );
+                // stack.push(
+                //     process.address_space.get_mut(),
+                //     thread_exit as *const () as usize,
+                // );
 
                 stack.push(
                     process.address_space.get_mut(),
@@ -227,8 +227,8 @@ impl Scheduler {
             stack.push(process.address_space.get_mut(), 0);
 
             if is_user_proc {
-                todo!("Usermode trampoline for x86_64")
-                // stack.push(process.address_space.get_mut(), thread_trampoline_usermode64 as *const () as usize);
+                // todo!("Usermode trampoline for x86_64")
+                stack.push(process.address_space.get_mut(), thread_trampoline_usermode64 as *const () as usize);
             } else {
                 stack.push(
                     process.address_space.get_mut(),
@@ -238,7 +238,7 @@ impl Scheduler {
 
             stack.push(process.address_space.get_mut(), 0x202); // IF=1, IOPL=0
 
-            stack.push(process.address_space.get_mut(), 0); // RAX
+            stack.push(process.address_space.get_mut(), stack_top as usize); // RAX
             stack.push(process.address_space.get_mut(), entry as *const () as usize); // RBX = entry
             stack.push(process.address_space.get_mut(), 0); // RCX
             stack.push(process.address_space.get_mut(), 0); // RDX
@@ -265,7 +265,6 @@ impl Scheduler {
             flags,
             state: (thread::ThreadState::Ready as usize).into(),
             stack,
-            // stack: ,
             entry_point: entry as *const () as usize,
             arch_specific_region: archspec,
             last_error: 0.into(),
@@ -520,6 +519,8 @@ pub fn init() {
 }
 
 fn this_process_unlocked() -> SharedProcess {
+    unsafe { SCHEDULER.force_unlock() };
+    
     let lock = this();
 
     let proc = lock.current_process.as_ref().unwrap();
@@ -826,11 +827,9 @@ unsafe extern "C" fn thread_trampoline64() -> ! {
     );
 }
 
+#[cfg(target_arch = "x86")]
 #[unsafe(naked)]
 unsafe extern "C" fn thread_trampoline_usermode() -> ! {
-    // core::arch::naked_asm!(
-    //     "a1: jmp a1"
-    // );
     core::arch::naked_asm!(
         "push eax",     // EAX is thread's ESP. Save it to avoid data corruption.
         "mov ax, 0x23", // 0x23 - is GDT selector 0x20 orred by 3 (ring 3).
@@ -843,9 +842,32 @@ unsafe extern "C" fn thread_trampoline_usermode() -> ! {
         "push 0x23",  // Stack selector = Data selector = 0x20 | 3
         "push eax",   // SS:ESP = 0x23:EAX
         "push 0x202", // EFLAGS with IF (interrupt flag enabled)
-        "push 0x1B",  // Code selector
+        "push 0x1B",  // Code selector | 3
         "push ebx",   // Entry point = EIP
+        // "hlt",
         "iretd",
+    );
+}
+
+#[cfg(target_arch = "x86_64")]
+#[unsafe(naked)]
+unsafe extern "C" fn thread_trampoline_usermode64() -> ! {
+    core::arch::naked_asm!(
+        "push rax",     // RAX is thread's RSP. Save it to avoid data corruption.
+        "mov ax, 0x23", // 0x23 - is GDT selector 0x20 orred by 3 (ring 3).
+        "mov ds, ax",
+        "mov es, ax",
+        "mov fs, ax",
+        "mov gs, ax",
+        "pop rax", // Restore RAX.
+        "cli",
+        "push 0x23",  // Stack selector = Data selector = 0x20 | 3
+        "push rax",   // SS:RSP = 0x23:RAX
+        "push 0x202", // RFLAGS with IF (interrupt flag enabled)
+        "push 0x1B",  // Code selector | 3
+        "push rbx",   // Entry point = RIP
+        // "hlt",
+        "iretq",
     );
 }
 

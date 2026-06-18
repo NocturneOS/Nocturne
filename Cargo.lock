@@ -131,6 +131,7 @@ dependencies = [
  "noct-sched",
  "noct-spec",
  "noct-tools",
+ "x86",
 ]
 
 [[package]]

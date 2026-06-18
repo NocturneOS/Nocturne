@@ -53,6 +53,18 @@ impl Page {
     pub fn is_extended(&self) -> bool {
         self.flags().contains(PageFlags::Extended)
     }
+
+    pub fn is_usermode(&self) -> bool {
+        self.flags().contains(PageFlags::Userspace)
+    }
+
+    pub fn set_usermode(&mut self, usermode: bool) {
+        if usermode {
+            self.0 |= PageFlags::Userspace.bits();
+        } else {
+            self.0 &= !PageFlags::Userspace.bits();
+        }
+    }
 }
 
 impl PartialEq<usize> for Page {

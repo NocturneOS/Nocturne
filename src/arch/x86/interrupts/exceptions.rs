@@ -58,8 +58,12 @@ fn common_fault_entry(regs: &mut CPURegisters) {
     //     qemu_println!("Scheduler was disabled (or not initialized)");
     // }
 
+    noct_interrupts::cpu::disable_interrupts();
+
     let pid = noct_sched::this_process().id;
     let tid = noct_sched::this_thread_id();
+
+    noct_interrupts::cpu::enable_interrupts();
 
     qemu_println!("Fault on PID/TID: {pid}/{tid}");
 

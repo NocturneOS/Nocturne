@@ -31,7 +31,7 @@ isr\isr_num:
 .macro IRQ irq_num, isr_num
     .global irq\irq_num
 irq\irq_num:
-    // cli
+    # cli
     push	$0
     push	$\isr_num
     jmp	irq_common_stub
@@ -144,9 +144,13 @@ isr80:
     mov $0x10, %rbp
     mov %rbp, %ds
 
-    // RAX = first argument
+    # clac
+
+    # RAX = first argument
     cld
     call  isr_handler
+
+    # stac
 
     pop %rbp
     mov %rbp, %ds
@@ -170,7 +174,11 @@ isr_common_stub_err:
     mov $0x10, %rbp
     mov %rbp, %ds
 
+    # clac
+
     call isr_handler
+
+    # stac
 
     pop %rbp
     mov %rbp, %ds
@@ -192,8 +200,12 @@ isr_common_stub_noerr:
     mov $0x10, %rbp
     mov %rbp, %ds
 
+    # clac
+
     cld
     call isr_handler
+
+    # stac
 
     pop %rbp
     mov %rbp, %ds
@@ -216,14 +228,18 @@ irq_common_stub:
     mov $0x10, %rdx
     mov %rdx, %ds
 
+    # clac
+
     cld
     call irq_handler
+
+    # stac
 
     pop %rdx
     mov %rdx, %ds
 
     POPA64
 
-    // Push out interrupt number and errcode
+    # Push out interrupt number and errcode
     add   $(2 * 8), %rsp
     iretq
