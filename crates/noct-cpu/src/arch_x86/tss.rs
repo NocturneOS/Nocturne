@@ -3,6 +3,7 @@ use x86::{Ring, segmentation::SegmentSelector};
 
 use crate::gdt;
 
+#[cfg(target_arch = "x86")]
 #[repr(C, packed)]
 #[derive(Debug)]
 pub struct TSSEntry {
@@ -37,11 +38,13 @@ pub struct TSSEntry {
 
 pub const TSS_KERNEL_STACK_SIZE: usize = 0x1000;
 
+#[cfg(target_arch = "x86")]
 #[unsafe(no_mangle)]
 static BSP_TSS: PseudoSync<TSSEntry> = unsafe { core::mem::zeroed() };
 static BSP_TSS_KERNEL_STACK: [usize; TSS_KERNEL_STACK_SIZE / core::mem::size_of::<usize>()] =
     [0; TSS_KERNEL_STACK_SIZE / core::mem::size_of::<usize>()];
 
+#[cfg(target_arch = "x86")]
 pub fn init() {
     unsafe {
         let tss = BSP_TSS.get_mut();

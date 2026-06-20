@@ -1,12 +1,14 @@
-use lazy_static::lazy_static;
+#![allow(static_mut_refs)]
+
 use noct_sync::pseudosync::PseudoSync;
 use x86::{Ring, segmentation::SegmentSelector};
 
-use crate::x86::gdt;
+use crate::arch_x86::gdt;
 
-pub use crate::x86::tss::*;
+pub use crate::arch_x86::tss::*;
 
-#[repr(C, packed)]
+#[cfg(target_arch = "x86_64")]
+#[repr(C, packed(1))]
 pub struct TSSEntry {
     reserved: u32,
     rsp0: u64,
@@ -25,9 +27,9 @@ pub struct TSSEntry {
     iopb: u16,
 }
 
-lazy_static! {
-    static ref BSP_TSS: PseudoSync<TSSEntry> = unsafe { core::mem::zeroed() };
-}
+#[cfg(target_arch = "x86_64")]
+#[unsafe(no_mangle)]
+pub static mut BSP_TSS: PseudoSync<TSSEntry> = unsafe { core::mem::zeroed() };
 
 const DUMB_STACK_SIZE: usize = 0x1000;
 
@@ -43,7 +45,7 @@ pub fn init() {
         BSP_TSS.get_mut().ist1 = DUMB_STACK.0.as_ptr().add(DUMB_STACK_SIZE).addr() as u64;
     }
 
-    let base = (BSP_TSS.get() as *const TSSEntry).addr();
+    let base = (unsafe { BSP_TSS.get() as *const TSSEntry }).addr();
     let limit = core::mem::size_of::<TSSEntry>() - 1;
 
     // qemu_log!("TSS BASE: {base:#x?}; TSS LIMIT: {limit:#x?}");

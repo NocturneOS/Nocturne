@@ -283,11 +283,11 @@ fn check_all() {
     }
 }
 
-fn primary_bus_irq(_regs: &mut CPURegisters) {
+extern "C" fn primary_bus_irq(_regs: &mut CPURegisters) {
     unsafe { inb(ATABus::Primary.io() + ATA_REG_STATUS as u16) };
 }
 
-fn secondary_bus_irq(_regs: &mut CPURegisters) {
+extern "C" fn secondary_bus_irq(_regs: &mut CPURegisters) {
     unsafe { inb(ATABus::Secondary.io() + ATA_REG_STATUS as u16) };
 }
 

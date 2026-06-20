@@ -107,7 +107,9 @@ const _: &[()] = &[
     assert!(core::mem::offset_of!(Thread, stack.stack_addr) == 0x28),
     assert!(core::mem::offset_of!(Thread, stack.stack_size) == 0x30),
     assert!(core::mem::offset_of!(Thread, arch_specific_region) == 0x40),
-];
+    assert!(core::mem::offset_of!(Thread, arch_specific_region.fxsave_region) == 0x40),
+    assert!(core::mem::offset_of!(Thread, arch_specific_region.tss_kernel_stack) == 0x48),
+    ];
 
 // impl Drop for Thread {
 //     fn drop(&mut self) {

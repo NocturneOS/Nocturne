@@ -5,19 +5,19 @@ use noct_interrupts::handler::register_interrupt_handler;
 use noct_io::error::{Error, ToPrimitive};
 use noct_logger::qemu_println;
 
-fn division_by_zero(regs: &mut CPURegisters) {
+extern "C" fn division_by_zero(regs: &mut CPURegisters) {
     qemu_println!("Division by zero...");
 
     common_fault_entry(regs);
 }
 
-fn general_protection_fault(regs: &mut CPURegisters) {
+extern "C" fn general_protection_fault(regs: &mut CPURegisters) {
     qemu_println!("General protection fault...");
 
     common_fault_entry(regs);
 }
 
-fn page_fault(regs: &mut CPURegisters) {
+extern "C" fn page_fault(regs: &mut CPURegisters) {
     qemu_println!("Page fault... ({:08x})", unsafe { x86::controlregs::cr2() });
 
     let err = regs.err_code;
@@ -45,8 +45,26 @@ fn page_fault(regs: &mut CPURegisters) {
     common_fault_entry(regs);
 }
 
-fn sse_fault(regs: &mut CPURegisters) {
+extern "C" fn sse_fault(regs: &mut CPURegisters) {
     qemu_println!("SSE fault...");
+
+    common_fault_entry(regs);
+}
+
+extern "C" fn invalid_opcode(regs: &mut CPURegisters) {
+    qemu_println!("Invalid opcode...");
+
+    common_fault_entry(regs);
+}
+
+extern "C" fn tss_fault(regs: &mut CPURegisters) {
+    qemu_println!("TSS fault...");
+
+    common_fault_entry(regs);
+}
+
+extern "C" fn alignment_check_fault(regs: &mut CPURegisters) {
+    qemu_println!("Alignment check fault...");
 
     common_fault_entry(regs);
 }
@@ -76,7 +94,7 @@ fn common_fault_entry(regs: &mut CPURegisters) {
         }
         #[cfg(target_arch = "x86_64")]
         {
-            regs.rsp
+            regs.userrsp
         }
     };
 
@@ -85,10 +103,10 @@ fn common_fault_entry(regs: &mut CPURegisters) {
         unsafe {
             unwind::backtrace_extern(regs.ebp as _)
         };
-        #[cfg(target_arch = "x86_64")]
-        unsafe {
-            unwind::backtrace_extern(regs.rbp as _)
-        };
+        // #[cfg(target_arch = "x86_64")]
+        // unsafe {
+        //     unwind::backtrace_extern(regs.rbp as _)
+        // };
     } else {
         qemu_println!("Stack pointer is NULL. Cannot unwind. Check the scheduler.");
     }
@@ -103,7 +121,10 @@ fn common_fault_entry(regs: &mut CPURegisters) {
 
 pub fn register_exceptions() {
     register_interrupt_handler(0, division_by_zero);
+    register_interrupt_handler(6, invalid_opcode);
+    register_interrupt_handler(10, tss_fault);
     register_interrupt_handler(13, general_protection_fault);
     register_interrupt_handler(14, page_fault);
+    register_interrupt_handler(17, alignment_check_fault);
     register_interrupt_handler(19, sse_fault);
 }

@@ -45,7 +45,7 @@ __context_switch:
     mov 0x48(%rcx), %rax
     mov $BSP_TSS, %rbx
     # 0x04 = TSSEntry::rsp0
-    mov %eax, 4(%rbx)
+    mov %rax, 4(%rbx)
 
     # Get current process' root page directory (RPD)
     mov 0x8(%rdi), %rax   # RPD of current process

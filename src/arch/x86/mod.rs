@@ -152,3 +152,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     kmain(mb)
 }
+
+pub fn post_init() {
+    qemu_log!("Post init...");
+}

@@ -63,7 +63,7 @@ pub extern "C" fn init() {
 }
 
 #[unsafe(no_mangle)]
-pub fn keyboard_handler(_regs: &mut CPURegisters) {
+pub extern "C" fn keyboard_handler(_regs: &mut CPURegisters) {
     let kbdstatus = unsafe { inb(PS2_STATE_REG) };
 
     if (kbdstatus & 0x01) != 0 {

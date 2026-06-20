@@ -2,7 +2,6 @@ pub mod tss;
 
 use core::fmt::Debug;
 
-#[repr(C, packed(8))]
 pub struct CPURegisters {
     pub ds: u64,
     pub r15: u64,
@@ -13,22 +12,24 @@ pub struct CPURegisters {
     pub r10: u64,
     pub r9: u64,
     pub r8: u64,
-    pub rdi: u64,
-    pub rsi: u64,
     pub rbp: u64,
     pub rsp: u64,
-    pub rbx: u64,
+    pub rdi: u64,
+    pub rsi: u64,
     pub rdx: u64,
     pub rcx: u64,
+    pub rbx: u64,
     pub rax: u64,
     pub int_num: u64,
     pub err_code: u64,
+    // CPU-pushed iret frame below:
     pub rip: u64,
     pub cs: u64,
     pub rflags: u64,
-    pub userrsp: u64,
+    pub userrsp: u64,  // user RSP from iret frame
     pub ss: u64,
 }
+
 
 impl Debug for CPURegisters {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

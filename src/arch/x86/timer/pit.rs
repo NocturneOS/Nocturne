@@ -3,7 +3,7 @@ use noct_interrupts::handler::register_interrupt_handler;
 
 const PIT_BASE_FREQ: u32 = 1193180;
 
-fn callback(_regs: &mut CPURegisters) {
+extern "C" fn callback(_regs: &mut CPURegisters) {
     crate::time::tick();
 }
 

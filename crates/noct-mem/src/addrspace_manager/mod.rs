@@ -194,7 +194,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
                     qemu_log!("New page table mapped at level {level} for virt addr {virt_addr:#x?} at phys addr {pt_phys:#x?}");
                 } else {
                     if flags.contains(PageFlags::Userspace) && !page_table[idx].is_usermode() {
-                        qemu_log!("{:#x?} set to usermode.", page_table[idx].raw());
+                        qemu_log!("{:#x?} (level {level}) set to usermode. ({:#x?} -> {:#x?})", page_table[idx].raw(), phys_addr, virt_addr);
 
                         page_table[idx].set_usermode(true);
                     }
@@ -344,12 +344,12 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         // })
     }
 
-    pub fn alloc_map_single_page(&mut self, virt_addr: usize, flags: PageFlags) -> Result<(), ()> {
+    pub fn alloc_map_single_page(&mut self, virt_addr: usize, flags: PageFlags) -> Result<usize, ()> {
         let page = noct_physmem_alloc::allocate_one().ok_or(())?;
 
         self.map_single_page(page, virt_addr, flags)?;
 
-        Ok(())
+        Ok(page)
     }
 
     /// Bulk allocates and maps physical pages to `(virt_addr..virt_addr + size_in_bytes)` range.

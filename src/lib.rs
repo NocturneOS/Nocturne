@@ -2,12 +2,13 @@
 
 use core::panic::PanicInfo;
 
-use alloc::{boxed::Box};
+use alloc::boxed::Box;
 use noct_boot::{BootInfo, Module};
 use noct_logger::qemu_log;
 use noct_mem::{heap, paging::PageFlags};
 use noct_memdisk::MemoryDisk;
 use noct_multiboot::MultibootModule;
+use noct_sched::thread::ThreadFlags;
 
 mod arch;
 mod syscalls;
@@ -22,6 +23,8 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     // To make kernel fully initialized we should initialize heap.
 
     heap::init();
+
+    crate::arch::post_init();
 
     noct_sched::init();
 
@@ -38,18 +41,19 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
     //     for _ in 0..32 {
     //         noct_sched::create_thread(
-    //             Arc::clone(&proc),
+    //             alloc::sync::Arc::clone(&proc),
     //             move || {
     //                 let id = noct_sched::this_thread_id();
 
     //                 loop {
     //                     qemu_log!("Hi thread #{}", id);
-    //                     noct_sched::sleep(Duration::from_millis((id * 40) as _));
+    //                     noct_sched::sleep(core::time::Duration::from_millis((id * 40) as _));
     //                 }
     //             },
     //             noct_sched::KERNEL_THREAD_DEFAULT_STACK_SIZE,
     //             noct_sched::thread::ThreadPriority::Low,
     //             noct_sched::thread::ThreadFlags::empty(),
+    //             &[]
     //         );
     //     }
     // }
@@ -134,13 +138,49 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     syscalls::init();
 
     {
-        let handle = noct_elfloader::spawn("mem0:/loop", &[]).unwrap();
+        let handle = noct_elfloader::spawn("mem0:/prog2_64", &["abc", "def"]).unwrap();
 
         qemu_log!("Started process {}", handle.pid);
 
-        //let code = handle.wait();
+        let code = handle.wait();
 
-        //qemu_log!("Process exited with code: {code:?}");
+        qemu_log!("Process exited with code: {code:?}");
+
+        // let il = noct_tools::interrupt_locker::InterruptLocker::lock();
+
+        // let proc = noct_sched::create_process_inherit("test process");
+
+        // // Allocate a page, map it into the new process at 0x400000, and write some code there that just loops forever.
+        // let phys = unsafe {
+        //     proc.address_space
+        //         .get_mut()
+        //         .alloc_map_single_page(0x40_0000, PageFlags::Writeable | PageFlags::Userspace)
+        //         .unwrap()
+        // };
+
+        // // Context is a RAII guard that will automatically unmap the page when it goes out of scope, so we don't have to worry about cleaning up if something goes wrong.
+        // let ctx =
+        //     noct_mem::paging::MappingContext::map(phys, 0x100_0000, 0x1000, PageFlags::Writeable);
+
+        // let code: &[u8] = &[0xeb, 0xfe, 0x90];
+
+        // unsafe { (0x100_0000 as *mut u8).copy_from(code.as_ptr(), code.len()) };
+
+        // drop(ctx);
+
+        // // And finally create thread.
+        // let thread = noct_sched::create_thread(
+        //     proc,
+        //     unsafe { core::mem::transmute(0x40_0000 as *const ()) },
+        //     0x1000,
+        //     noct_sched::thread::ThreadPriority::Low,
+        //     ThreadFlags::User,  // TODO: Not actually needed, because any PID > 0 is userspace, remove that flag from the scheduler.
+        //     &[],
+        // );
+
+        // qemu_log!("Created thread: {thread:?}");
+
+        // drop(il);
     }
 
     // {

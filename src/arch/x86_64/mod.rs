@@ -151,3 +151,9 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
     kmain(mb);
 }
+
+
+// After memory is initialized, some hardware will require additional setup.
+pub fn post_init() {
+    qemu_log!("Post init...");
+}

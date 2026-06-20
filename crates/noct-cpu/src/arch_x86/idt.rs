@@ -45,7 +45,10 @@ impl IDTEntry {
     }
 }
 
-static IDT_ENTRIES: Mutex<[IDTEntry; 256]> = unsafe { core::mem::zeroed() };
+#[repr(align(16))]
+struct IDTEntries(pub Mutex<[IDTEntry; 256]>);
+
+static IDT_ENTRIES: IDTEntries = IDTEntries(unsafe { core::mem::zeroed() });
 
 #[rustfmt::skip]
 unsafe extern "C" {
@@ -106,7 +109,7 @@ unsafe extern "C" {
 #[rustfmt::skip]
 #[allow(clippy::identity_op)]
 pub fn init() {
-    let mut bind = IDT_ENTRIES.lock();
+    let mut bind = IDT_ENTRIES.0.lock();
 
     bind[0] = IDTEntry::new(isr0 as *const () as _, 0x08, PRESENT | DPL_0 | GATE_32_TRAP);
     bind[1] = IDTEntry::new(isr1 as *const () as _, 0x08, PRESENT | DPL_0 | GATE_32_TRAP);

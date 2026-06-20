@@ -8,7 +8,6 @@ idt_flush:
 .extern     isr_handler
 .extern     irq_handler
 
-/* Макрос для обработчика без возврата кода ошибки */
 .macro ISR_NOERRCODE isr_num
     .global	isr\isr_num
 isr\isr_num:
@@ -18,7 +17,6 @@ isr\isr_num:
     jmp	isr_common_stub_noerr
 .endm
 
-/* Макрос для обработчика прерывания с возвратом кода ошибки */
 .macro ISR_ERRCODE isr_num
     .global	isr\isr_num
 isr\isr_num:
@@ -27,11 +25,10 @@ isr\isr_num:
     jmp	isr_common_stub_err
 .endm
 
-/* Макрос для враппера обработчика прерывания */
 .macro IRQ irq_num, isr_num
     .global irq\irq_num
 irq\irq_num:
-    # cli
+    cli
     push	$0
     push	$\isr_num
     jmp	irq_common_stub
@@ -66,7 +63,7 @@ irq\irq_num:
     pop  %r9
     pop  %r8
     pop  %rbp
-    pop  %rsp
+    add $8, %rsp
     pop  %rdi
     pop  %rsi
     pop  %rdx
@@ -127,7 +124,7 @@ IRQ 13, 45
 IRQ 14, 46
 IRQ 15, 47
 
-/* Вызов сервиса ОС */
+# OS service call
 .global isr80
 isr80:
     push  $0
@@ -144,6 +141,8 @@ isr80:
     mov $0x10, %rbp
     mov %rbp, %ds
 
+    # I don't know anything about SMAP, so I am so unsure about their placement here.
+
     # clac
 
     # RAX = first argument
@@ -159,8 +158,6 @@ isr80:
 
     add   $(2 * 8), %rsp
     iretq
-
-/* Здесь две одинаковые функции (?) */
 
 isr_common_stub_err:
     PUSHA64
@@ -219,27 +216,32 @@ isr_common_stub_noerr:
 irq_common_stub:
     PUSHA64
 
+    # Push DS (will be first field in CPURegisters structure)
     mov %ds, %rdx
     push %rdx
 
+    # Make RAX point to the to the beginning of stack frame (CPURegisters)
     mov %rsp, %rax
     add $144, %rax
 
+    # Load kernel DS
     mov $0x10, %rdx
     mov %rdx, %ds
 
     # clac
 
+    # SysV thing?
     cld
     call irq_handler
 
     # stac
 
+    # Restore DS
     pop %rdx
     mov %rdx, %ds
 
     POPA64
 
-    # Push out interrupt number and errcode
+    # Push out interrupt number and errcode (IRQ handlers push 0 as error code)
     add   $(2 * 8), %rsp
     iretq
