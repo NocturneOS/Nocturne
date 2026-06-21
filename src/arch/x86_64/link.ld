@@ -67,6 +67,15 @@ SECTIONS {
         PROVIDE(BSS_end = .);
     }
 
+    /* TEMPLATE for PerCPU */
+    .percpu ALIGN(4K) : AT(ADDR(.percpu)) {
+        _percpu_start = .;
+        
+        *(.percpu .percpu.*)
+ 
+        _percpu_end = .;
+    }
+
     .debug_symbols ALIGN(4K) : AT(ADDR (.debug_symbols) - 0xFFFFFFFF80000000) {
         *(.debug_symbols*)
     }
