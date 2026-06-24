@@ -11,8 +11,14 @@ _start:
   mov $0x0123456789ABCDEF, %r10   # Argument 4
   mov $0x0123456789ABCDEF, %r8    # Argument 5
   mov $0x0123456789ABCDEF, %r9    # Argument 6
+  
   syscall
 
+  movq $3, %rax
+
+  xor %rdi, %rdi
+
+  syscall
   nop
 
   .a: jmp .a
