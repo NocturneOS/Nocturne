@@ -10,7 +10,7 @@ syscall_stack_top:
 
 .section .data
 .align 16
-__user_stack_address: .long 0
+__user_stack_address: .quad 0
 
 .section .text
 .align 16
@@ -55,7 +55,7 @@ __syscall_handler64:
     cld
     call syscall_handler
 
-    add $8, %rsp
+    add $8, %rsp   # Skip DS
 
     pop %r15
     pop %r14
@@ -66,7 +66,7 @@ __syscall_handler64:
     pop %r9
     pop %r8
     pop %rbp
-    pop %rsp
+    pop %rsp     # IT'S OKAY! RSP updates and points to the right place, because we pushed RSP before pushing RBP
     pop %rdi
     pop %rsi
     pop %rdx
@@ -74,13 +74,13 @@ __syscall_handler64:
     pop %rbx
     pop %rax
 
-    add $16, %rsp
+    add $16, %rsp   # Skip error code and interrupt number
  
-    pop %rcx
+    pop %rcx        # RIP for sysretq (RCX = RIP)
 
-    add $8, %rsp
-    pop %r11
-    pop %rsp
+    add $8, %rsp    # skip CS
+    pop %r11        # RFLAGS for sysretq (R11 = RFLAGS)
+    pop %rsp        # Restore user stack pointer (RSP = user stack pointer)
 
     swapgs
 
