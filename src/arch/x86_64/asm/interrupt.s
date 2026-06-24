@@ -28,7 +28,7 @@ isr\isr_num:
 .macro IRQ irq_num, isr_num
     .global irq\irq_num
 irq\irq_num:
-    cli
+    # cli
     push	$0
     push	$\isr_num
     jmp	irq_common_stub
@@ -63,6 +63,7 @@ irq\irq_num:
     pop  %r9
     pop  %r8
     pop  %rbp
+    # pop  %rsp
     add $8, %rsp
     pop  %rdi
     pop  %rsi
@@ -214,27 +215,24 @@ isr_common_stub_noerr:
 
 /* IRQ common stub */
 irq_common_stub:
-    PUSHA64
+    # clac
 
+    PUSHA64
+    
     # Push DS (will be first field in CPURegisters structure)
     mov %ds, %rdx
     push %rdx
-
-    # Make RAX point to the to the beginning of stack frame (CPURegisters)
-    mov %rsp, %rax
-    add $144, %rax
 
     # Load kernel DS
     mov $0x10, %rdx
     mov %rdx, %ds
 
-    # clac
+    # RDI = &mut CPURegisters
+    mov %rsp, %rdi
 
     # SysV thing?
     cld
     call irq_handler
-
-    # stac
 
     # Restore DS
     pop %rdx
@@ -244,4 +242,7 @@ irq_common_stub:
 
     # Push out interrupt number and errcode (IRQ handlers push 0 as error code)
     add   $(2 * 8), %rsp
+    
+    # stac
+    
     iretq

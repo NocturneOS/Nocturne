@@ -6,4 +6,4 @@
 *.elf.map
 /iso/ramdisk
 *.img
-
+/ramdisk/*.o

@@ -861,10 +861,10 @@ unsafe extern "C" fn thread_trampoline_usermode64() -> ! {
         "mov gs, ax",
         "pop rax", // Restore RAX.
         "cli",
-        "push 0x23",  // Stack selector = Data selector = 0x20 | 3
-        "push rax",   // SS:RSP = 0x23:RAX
+        "push 0x1B",  // Stack selector = Data selector = 0x18 | 3
+        "push rax",   // SS:RSP = 0x18:RAX
         "push 0x202", // RFLAGS with IF (interrupt flag enabled)
-        "push 0x1B",  // Code selector | 3
+        "push 0x23",  // Code selector | 3
         "push rbx",   // Entry point = RIP
         // "hlt",
         "iretq",

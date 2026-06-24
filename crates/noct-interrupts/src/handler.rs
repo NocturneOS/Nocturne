@@ -14,11 +14,11 @@ pub unsafe extern "C" fn isr_handler(mut regs: CPURegisters) {
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn irq_handler(mut regs: CPURegisters) {
+pub unsafe extern "C" fn irq_handler(regs: &mut CPURegisters) {
     // Send EOI.
     eoi(regs.int_num as _);
 
-    interrupt_handler(&mut regs);
+    interrupt_handler(regs);
 }
 
 pub fn register_interrupt_handler(int_nr: u8, callback: InterruptCallback) {

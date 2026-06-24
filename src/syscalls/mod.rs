@@ -1,4 +1,5 @@
 use noct_cpu::CPURegisters;
+use noct_logger::qemu_log;
 
 mod debug;
 mod error;
@@ -39,7 +40,7 @@ pub extern "C" fn syscall_handler(regs: &mut CPURegisters) {
         }
     }
 
-    // qemu_log!("System call!");
+    qemu_log!("System call!");
 
     if let Some(handler) = SYSCALL_HANDLERS.get(nr) {
         let result = handler(arg1, arg2, arg3, arg4, arg5);
@@ -54,6 +55,8 @@ pub extern "C" fn syscall_handler(regs: &mut CPURegisters) {
                 regs.rax = r as u64;
             }
         }
+    } else {
+        qemu_log!("Error: no syscall handle for id: 0x{nr:x}");
     }
 }
 
@@ -65,22 +68,33 @@ unsafe extern "C" {
 pub fn init() {
     #[cfg(target_arch = "x86_64")]
     {
+        use noct_cpu::x86_64::PrivilegeLevel;
         use noct_cpu::x86_64::VirtAddr;
         use noct_cpu::x86_64::registers::control::Efer;
-        use noct_cpu::x86_64::registers::model_specific::{LStar, SFMask};
         use noct_cpu::x86_64::registers::control::EferFlags;
+        use noct_cpu::x86_64::registers::model_specific::{LStar, SFMask, Star};
         use noct_cpu::x86_64::registers::rflags::RFlags;
+        use noct_cpu::x86_64::structures::gdt::SegmentSelector;
+use noct_logger::qemu_log;
 
         // Enable `syscall/sysret` support
         unsafe {
             Efer::update(|x| {
-
                 *x |= EferFlags::SYSTEM_CALL_EXTENSIONS;
             })
         };
 
         // RFLAGS on system call
+        qemu_log!("RFLAGS: {:x?}", SFMask::read());
+
         SFMask::update(|x| *x |= RFlags::INTERRUPT_FLAG);
+
+        Star::write(
+            SegmentSelector::new(4, PrivilegeLevel::Ring3),
+            SegmentSelector::new(3, PrivilegeLevel::Ring3),
+            SegmentSelector::new(1, PrivilegeLevel::Ring0),
+            SegmentSelector::new(2,PrivilegeLevel::Ring0),
+        ).unwrap();
 
         // Point CPU where lowlevel syscall handler is
         LStar::write(VirtAddr::new(__syscall_handler64 as *const () as _));

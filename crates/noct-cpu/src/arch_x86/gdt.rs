@@ -94,11 +94,25 @@ pub fn init() {
     // 0x10: Ring 0 / Data
     *GDT_ENTRIES.nth(2) = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_0 | ACCESS_CODE_OR_DATA | ACCESS_RW, data_flags);
     
-    // 0x18: Ring 3 / Code
-    *GDT_ENTRIES.nth(3) = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_EXECUTABLE | ACCESS_RW , code_flags);
-    
-    // 0x20: Ring 3 / Data
-    *GDT_ENTRIES.nth(4) = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_RW, data_flags);
+    #[cfg(target_arch = "x86_64")]
+    {
+        // 0x18: Ring 3 / Data
+        *GDT_ENTRIES.nth(3) = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_RW, data_flags);
+        
+        // 0x20: Ring 3 / Code
+        *GDT_ENTRIES.nth(4) = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_EXECUTABLE | ACCESS_RW , code_flags);
+    }
+
+    #[cfg(not(target_arch = "x86_64"))]
+    {
+        // 0x18: Ring 3 / Code
+        *GDT_ENTRIES.nth(3) = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_EXECUTABLE | ACCESS_RW , code_flags);
+        
+        // 0x20: Ring 3 / Data
+        *GDT_ENTRIES.nth(4) = GDTEntry::new(0, 0xffff_ffff, ACCESS_PRESENT | ACCESS_DPL_3 | ACCESS_CODE_OR_DATA | ACCESS_RW, data_flags);
+
+    }
+
 
     let entries = &GDT_ENTRIES.entries;
 

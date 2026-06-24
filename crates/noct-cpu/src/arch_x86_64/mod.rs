@@ -2,6 +2,7 @@ pub mod tss;
 
 use core::fmt::Debug;
 
+#[repr(C)]
 pub struct CPURegisters {
     pub ds: u64,
     pub r15: u64,
