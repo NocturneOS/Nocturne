@@ -65,13 +65,13 @@ __attribute__((naked)) void _start() {
   __asm__ volatile(
       //"pop %esi\n"
       //"pop %edi\n"
+      "mov (%rsp), %rdi\n"
+      "mov 0x08(%rsp), %rsi\n"
       "call main\n"
 
-      "mov %rax, %rbx\n"
       "mov $3, %rax\n"
-      "xor %edi, %edi\n"
+      "xor %rdi, %rdi\n"
       "syscall\n"
-      ".a: jmp .a"
   );
 }
 #else

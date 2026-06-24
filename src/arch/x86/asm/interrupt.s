@@ -190,9 +190,14 @@ irq_common_stub:
     mov   %ax, %es
     mov   %ax, %fs
     mov   %ax, %gs
+
+    mov %esp, %eax
+    push %eax
     
     cld
     call  irq_handler
+
+    add $4, %esp
 
     pop   %ebx
     mov %bx, %ds
