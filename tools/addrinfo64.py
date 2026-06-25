@@ -1,5 +1,9 @@
 import sys
 
+if not sys.argv[1:]:
+    print(f"Usage: {sys.argv[0]} VIRTUAL_ADDRESS")
+    exit(1)
+
 addr = sys.argv[1]
 
 if addr.startswith('0x'):
