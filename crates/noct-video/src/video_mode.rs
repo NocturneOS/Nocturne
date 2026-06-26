@@ -1,6 +1,4 @@
-use noct_spec::{KERNEL_BASE, units::Size};
-
-pub mod canvas;
+use noct_spec::units::Size;
 
 #[derive(Debug)]
 pub enum VideoModeType {
@@ -69,11 +67,4 @@ impl VideoMode {
     pub fn mode(&self) -> &VideoModeType {
         &self.mode
     }
-}
-
-use lazy_static::lazy_static;
-use spin::Mutex;
-
-lazy_static! {
-    pub static ref CURRENT_VIDEO_MODE: Mutex<Option<VideoMode>> = None.into();
 }

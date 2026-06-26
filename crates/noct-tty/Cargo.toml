@@ -1,0 +1,12 @@
+[package]
+name = "noct-tty"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+unifont = "1.1.0"
+lazy_static = "1.5.0"
+spin = "0.10.0"
+
+noct-logger = { path = "../noct-logger" }
+noct-video = { path = "../noct-video" }

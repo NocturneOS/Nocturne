@@ -1,4 +1,4 @@
-use crate::arch::x86::video::VideoMode;
+use crate::video_mode::VideoMode;
 
 pub struct Canvas<'vid> {
     video: &'vid mut VideoMode
@@ -11,14 +11,21 @@ impl<'vid> Canvas<'vid> {
         }
     }
 
-    pub fn fill(&mut self, color: usize) {
+    pub fn fill(&mut self, color: u32) {
         let bpp = self.video.bpp().unwrap();
         let repr = &color.to_le_bytes();
 
         for chunk in self.video.buffer_mut().chunks_mut(bpp) {
             chunk[..repr.len()].copy_from_slice(repr);
         }
+    }
 
-        // self.video.buffer_mut().fill(0xff);
+    pub fn put_pixel(&mut self, x: usize, y: usize, color: u32) {
+        let bpp = self.video.bpp().unwrap();
+        let repr = &color.to_le_bytes();
+
+        let offset = ((y * self.video.resolution().width) + x) * self.video.bpp().unwrap();
+
+        self.video.buffer_mut()[offset..][..repr.len()].copy_from_slice(repr);
     }
 }

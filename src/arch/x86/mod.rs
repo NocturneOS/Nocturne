@@ -4,12 +4,11 @@ pub mod io;
 pub mod mem;
 pub mod sys;
 pub mod timer;
-pub mod video;
 
 use core::alloc::Layout;
 
 use crate::{
-    arch::{self, x86::video::VideoMode},
+    arch,
     kmain, qemu_log,
 };
 
@@ -17,6 +16,7 @@ use noct_boot::BootInfo;
 use noct_mem::paging::PageFlags;
 use noct_multiboot::{MultibootHeader, MultibootModule};
 use noct_spec::units::Size;
+use noct_video::video_mode::VideoMode;
 
 #[cfg(target_arch = "x86")]
 #[unsafe(no_mangle)]
@@ -170,7 +170,7 @@ pub fn post_init(boot: &dyn BootInfo<ModuleType = MultibootModule>) {
 
     noct_mem::paging::map_pages(phys_addr as _, ptr.addr(), size as _, PageFlags::Writeable);
 
-    let mut lock = crate::arch::x86::video::CURRENT_VIDEO_MODE.lock();
+    let mut lock = noct_video::CURRENT_VIDEO_MODE.lock();
 
     *lock = Some(VideoMode::new_graphics(
         ptr,

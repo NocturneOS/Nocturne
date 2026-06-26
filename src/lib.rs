@@ -8,6 +8,7 @@ use noct_logger::qemu_log;
 use noct_mem::{heap, paging::PageFlags};
 use noct_memdisk::MemoryDisk;
 use noct_multiboot::MultibootModule;
+use noct_tty::tty_println;
 
 mod arch;
 mod syscalls;
@@ -163,12 +164,18 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
         }
     }
 
+    // {
+    //     let mut lock = noct_video::CURRENT_VIDEO_MODE.lock();
+
+    //     let mut canvas = noct_video::canvas::Canvas::new(lock.as_mut().unwrap());
+
+    //     canvas.fill(0x00_00_00_ff << 16);   // AA_RR_GG_BB
+    // }
+
     {
-        let mut lock = crate::arch::x86::video::CURRENT_VIDEO_MODE.lock();
+        noct_tty::init(80, 25);
 
-        let mut canvas = crate::arch::x86::video::canvas::Canvas::new(lock.as_mut().unwrap());
-
-        canvas.fill(0x00_00_00_ff << 16);   // AA_RR_GG_BB
+        tty_println!("\x1b[33mHello, world!");
     }
 
     qemu_log!("It works!");

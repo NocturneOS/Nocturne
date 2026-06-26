@@ -25,7 +25,12 @@ members = [
     "crates/noct-fsman",
     "crates/noct-tarfs",
     "crates/noct-memdisk",
-    "crates/noct-boot", "crates/noct-mem", "crates/noct-sched", "crates/noct-io", "crates/noct-elfloader", "crates/noct-fs", "crates/noct-multiboot", "crates/noct-elf"]
+    "crates/noct-boot",
+    "crates/noct-mem",
+    "crates/noct-sched",
+    "crates/noct-io",
+    "crates/noct-elfloader",
+    "crates/noct-fs", "crates/noct-multiboot", "crates/noct-elf", "crates/noct-tty", "crates/noct-video"]
 resolver = "2"
 
 [dependencies]
@@ -58,6 +63,8 @@ noct-sched = { path = "crates/noct-sched" }
 noct-elfloader = { path = "crates/noct-elfloader" }
 noct-io = { path = "crates/noct-io" }
 noct-multiboot = { path = "crates/noct-multiboot" }
+noct-tty = { path = "crates/noct-tty" }
+noct-video = { path = "crates/noct-video" }
 
 
 # Profiles

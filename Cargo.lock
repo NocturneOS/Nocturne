@@ -340,6 +340,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-tty"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "noct-logger",
+ "noct-video",
+ "spin 0.10.0",
+ "unifont",
+]
+
+[[package]]
+name = "noct-video"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "noct-spec",
+ "spin 0.10.0",
+]
+
+[[package]]
 name = "nocturne"
 version = "0.1.0"
 dependencies = [
@@ -369,6 +389,8 @@ dependencies = [
  "noct-tarfs",
  "noct-time",
  "noct-tools",
+ "noct-tty",
+ "noct-video",
  "spin 0.10.0",
  "x86",
 ]
@@ -482,6 +504,12 @@ name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
+
+[[package]]
+name = "unifont"
+version = "1.1.0+data-15.1.05"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8eb5abf597aaa6fff19801d6747672f56e618d60002e7191ea92773a5bcae156"
 
 [[package]]
 name = "volatile"
