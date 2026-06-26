@@ -131,6 +131,9 @@ __pre_init:
     add $0x200000, %esi
     mov %esi, 48(%edi)
 
+    add $0x200000, %esi
+    mov %esi, 56(%edi)
+
     # Now, load PML4T to CR3
     lea (boot_pml4t), %eax
     mov %eax, %cr3

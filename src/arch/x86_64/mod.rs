@@ -6,6 +6,7 @@ use crate::arch::x86::{interrupts, sys, timer};
 use crate::{arch, kmain, qemu_log};
 
 use noct_boot::{BootInfo, Module};
+use noct_multiboot::MultibootModule;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
@@ -154,6 +155,8 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
 
 
 // After memory is initialized, some hardware will require additional setup.
-pub fn post_init() {
-    qemu_log!("Post init...");
+pub fn post_init(boot: &dyn BootInfo<ModuleType = MultibootModule>) {
+    // qemu_log!("Post init...");
+
+    crate::arch::x86::post_init(boot);
 }
