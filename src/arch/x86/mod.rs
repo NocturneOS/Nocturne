@@ -163,8 +163,6 @@ pub fn post_init(boot: &dyn BootInfo<ModuleType = MultibootModule>) {
 
     let phys_addr = boot.video().fb_addr;
 
-    qemu_log!("{:#x?}", boot.video());
-
     let size = (boot.video().fb_width * boot.video().fb_height * (boot.video().fb_bpp as u32 >> 3)) as usize;
 
 
@@ -180,5 +178,5 @@ pub fn post_init(boot: &dyn BootInfo<ModuleType = MultibootModule>) {
         (boot.video().fb_bpp >> 3) as _
     ));
 
-    crate::arch::x86::video::canvas::Canvas::new(lock.as_mut().unwrap()).fill(0xffffffff);
+    qemu_log!("Video initialized");
 }
