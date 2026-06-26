@@ -10,6 +10,15 @@ pub struct Size<T> {
     pub height: T,
 }
 
+impl<T> From<(T, T)> for Size<T> {
+    fn from(value: (T, T)) -> Self {
+        Self {
+            width: value.0,
+            height: value.1,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Rectangle<T> {
     pub x: T,

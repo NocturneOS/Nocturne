@@ -1,19 +1,14 @@
 use core::cell::Cell;
 
+use noct_diskman::drive::Drive;
 use noct_logger::qemu_log;
 use noct_pci;
 use noct_sync::pseudosync::PseudoSync;
 
 use super::dma_prdt::PRDT;
 use crate::arch::{
-    self,
-    x86::dev::ata::{
-        ATADrive,
-        commands::{ATA_CMD_READ_DMA_EXT, ATA_CMD_WRITE_DMA_EXT},
-        drive::ATAPhysicalDrive,
-        error::{ATAIOError, ATAIOResult},
-        io::ATAIO,
-        regs::{
+    self, x86::dev::ata::{
+        ATADrive, atapi::send_scsi, commands::{ATA_CMD_READ_DMA_EXT, ATA_CMD_WRITE_DMA_EXT, ATAPI_CMD_READ}, drive::ATAPhysicalDrive, error::{ATAIOError, ATAIOResult}, ide_poll, io::ATAIO, regs::{
             ATA_REG_COMMAND, ATA_REG_HDDEVSEL, ATA_REG_LBA0, ATA_REG_LBA1, ATA_REG_LBA2,
             ATA_REG_SECCOUNT0,
         },
@@ -177,14 +172,14 @@ pub fn read48(drv: &mut ATAPhysicalDrive, lba: u64, output: &mut [u8]) -> ATAIOR
         let status_port = dma.offset(2);
 
         loop {
-            let st = status_port.read8();
+            let st = unsafe { status_port.read8() };
 
             if (st & 0x04) != 0 {
                 break;
             }
         }
 
-        dma.write8(0);
+        unsafe { dma.write8(0) };
 
         sector_count -= readsize;
         current_lba += readsize as u64;
@@ -276,14 +271,14 @@ pub fn write48(drv: &mut ATAPhysicalDrive, lba: u64, input: &[u8]) -> ATAIOResul
         let status_port = dma.offset(2);
 
         loop {
-            let st = status_port.read8();
+            let st = unsafe { status_port.read8() };
 
             if (st & 0x04) != 0 {
                 break;
             }
         }
 
-        dma.offset(0).write8(0);
+        unsafe { dma.offset(0).write8(0) };
 
         sector_count -= readsize;
         current_lba += readsize as u64;

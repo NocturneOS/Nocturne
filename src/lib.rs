@@ -24,7 +24,7 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
     heap::init();
 
-    crate::arch::post_init();
+    crate::arch::post_init(boot_info);
 
     noct_sched::init();
 
@@ -137,68 +137,32 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
     syscalls::init();
 
-    {
-        let handle = noct_elfloader::spawn("mem0:/prog2", &["abc", "def", "ghi"]).unwrap();
-
-        qemu_log!("Started process {}", handle.pid);
-
-        let code = handle.wait();
-
-        qemu_log!("Process exited with code: {code:?}");
-
-        // let il = noct_tools::interrupt_locker::InterruptLocker::lock();
-
-        // let proc = noct_sched::create_process_inherit("test process");
-
-        // // Allocate a page, map it into the new process at 0x400000, and write some code there that just loops forever.
-        // let phys = unsafe {
-        //     proc.address_space
-        //         .get_mut()
-        //         .alloc_map_single_page(0x40_0000, PageFlags::Writeable | PageFlags::Userspace)
-        //         .unwrap()
-        // };
-
-        // // Context is a RAII guard that will automatically unmap the page when it goes out of scope, so we don't have to worry about cleaning up if something goes wrong.
-        // let ctx =
-        //     noct_mem::paging::MappingContext::map(phys, 0x100_0000, 0x1000, PageFlags::Writeable);
-
-        // let code: &[u8] = &[0xeb, 0xfe, 0x90];
-
-        // unsafe { (0x100_0000 as *mut u8).copy_from(code.as_ptr(), code.len()) };
-
-        // drop(ctx);
-
-        // // And finally create thread.
-        // let thread = noct_sched::create_thread(
-        //     proc,
-        //     unsafe { core::mem::transmute(0x40_0000 as *const ()) },
-        //     0x1000,
-        //     noct_sched::thread::ThreadPriority::Low,
-        //     ThreadFlags::User,  // TODO: Not actually needed, because any PID > 0 is userspace, remove that flag from the scheduler.
-        //     &[],
-        // );
-
-        // qemu_log!("Created thread: {thread:?}");
-
-        // drop(il);
-    }
-
     // {
-    //     let (data, time) = noct_tools::measure_time_timer(|| noct_fs::read_file("ata0:/hello.txt"));
+    //     let handle = noct_elfloader::spawn("mem0:/prog2", &["abc", "def", "ghi"]).unwrap();
 
-    //     qemu_log!("Time: {} ms", time);
+    //     qemu_log!("Started process {}", handle.pid);
 
-    //     match data {
-    //         Ok(data) => {
-    //             let s = str::from_utf8(&data).unwrap();
+    //     let code = handle.wait();
 
-    //             qemu_log!("Data: {s:?}");
-    //         },
-    //         Err(e) => {
-    //             qemu_log!("Error: {e:?}");
-    //         },
-    //     }
+    //     qemu_log!("Process exited with code: {code:?}");
     // }
+
+    {
+        let (data, time) = noct_tools::measure_time_timer(|| noct_fs::read_file("ata0:/hello.txt"));
+
+        qemu_log!("Time: {} ms", time);
+
+        match data {
+            Ok(data) => {
+                let s = str::from_utf8(&data).unwrap();
+
+                qemu_log!("Data: {s:?}");
+            },
+            Err(e) => {
+                qemu_log!("Error: {e:?}");
+            },
+        }
+    }
 
     qemu_log!("It works!");
 

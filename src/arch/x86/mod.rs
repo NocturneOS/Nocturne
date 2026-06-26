@@ -6,12 +6,17 @@ pub mod sys;
 pub mod timer;
 pub mod video;
 
+use core::alloc::Layout;
+
 use crate::{
-    arch::{self},
+    arch::{self, x86::video::VideoMode},
     kmain, qemu_log,
 };
 
-use noct_multiboot::MultibootHeader;
+use noct_boot::BootInfo;
+use noct_mem::paging::PageFlags;
+use noct_multiboot::{MultibootHeader, MultibootModule};
+use noct_spec::units::Size;
 
 #[cfg(target_arch = "x86")]
 #[unsafe(no_mangle)]
@@ -153,6 +158,27 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     kmain(mb)
 }
 
-pub fn post_init() {
+pub fn post_init(boot: &dyn BootInfo<ModuleType = MultibootModule>) {
     qemu_log!("Post init...");
+
+    let phys_addr = boot.video().fb_addr;
+
+    qemu_log!("{:#x?}", boot.video());
+
+    let size = (boot.video().fb_width * boot.video().fb_height * (boot.video().fb_bpp as u32 >> 3)) as usize;
+
+
+    let ptr = unsafe { alloc::alloc::alloc(Layout::from_size_align_unchecked(size, 0x1000)) };
+
+    noct_mem::paging::map_pages(phys_addr as _, ptr.addr(), size as _, PageFlags::Writeable);
+
+    let mut lock = crate::arch::x86::video::CURRENT_VIDEO_MODE.lock();
+
+    *lock = Some(VideoMode::new_graphics(
+        ptr,
+        Size::from((boot.video().fb_width as usize, boot.video().fb_height as usize)),
+        (boot.video().fb_bpp >> 3) as _
+    ));
+
+    crate::arch::x86::video::canvas::Canvas::new(lock.as_mut().unwrap()).fill(0xffffffff);
 }

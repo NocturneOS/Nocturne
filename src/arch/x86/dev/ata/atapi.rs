@@ -18,18 +18,38 @@ pub fn send_scsi(drive: &ATAPhysicalDrive, lba: u16, command: &[u16]) -> ATAResu
 
     let port = drive.pio_port();
 
-    port.offset(ATA_REG_ERROR).write8(0);
-    port.offset(ATA_REG_LBA1).write8((lba & 0xff) as _);
-    port.offset(ATA_REG_LBA2).write8(((lba >> 8) & 0xff) as _);
-    port.offset(ATA_REG_COMMAND).write8(ATA_CMD_PACKET);
+    unsafe {
+        port.offset(ATA_REG_ERROR).write8(0);
+        port.offset(ATA_REG_LBA1).write8((lba & 0xff) as _);
+        port.offset(ATA_REG_LBA2).write8(((lba >> 8) & 0xff) as _);
+        port.offset(ATA_REG_COMMAND).write8(ATA_CMD_PACKET);
+    }
 
     ide_400ns_delay(drive.bus.io());
 
     ide_poll(drive.bus.io())?;
 
-    port.offset(ATA_REG_DATA).write16_bulk(command);
+    unsafe { port.offset(ATA_REG_DATA).write16_bulk(command) };
 
     Ok(())
+}
+
+pub fn send_scsi8(drive: &ATAPhysicalDrive, lba: u16, command: &[u8]) -> ATAResult<()> {
+    // SAFETY: For ATAPI devices, the block size is always sepcified, so unwrap will always succeed.
+    let blksize = drive.block_size().unwrap();
+
+    assert!(command.len() == 12);
+
+    let command16 = [
+        (command[1] as u16) << 8 | (command[0] as u16),
+        (command[3] as u16) << 8 | (command[2] as u16),
+        (command[5] as u16) << 8 | (command[4] as u16),
+        (command[7] as u16) << 8 | (command[6] as u16),
+        (command[9] as u16) << 8 | (command[8] as u16),
+        (command[11] as u16) << 8 | (command[10] as u16),
+    ];
+
+    send_scsi(drive, blksize as _, &command16)
 }
 
 pub fn receive_size_of_transfer(drive: &ATAPhysicalDrive) -> ATAResult<u16> {
@@ -37,8 +57,8 @@ pub fn receive_size_of_transfer(drive: &ATAPhysicalDrive) -> ATAResult<u16> {
 
     let port = drive.pio_port();
 
-    let high = port.offset(ATA_REG_LBA2).read8() as u16;
-    let low = port.offset(ATA_REG_LBA1).read8() as u16;
+    let high = unsafe { port.offset(ATA_REG_LBA2).read8() } as u16;
+    let low = unsafe { port.offset(ATA_REG_LBA1).read8() } as u16;
 
     Ok((high << 8) | low)
 }
@@ -46,7 +66,7 @@ pub fn receive_size_of_transfer(drive: &ATAPhysicalDrive) -> ATAResult<u16> {
 pub fn read_result(drive: &ATAPhysicalDrive, buffer: &mut [u16]) {
     let port = drive.pio_port();
 
-    port.offset(ATA_REG_DATA).read16_bulk(buffer);
+    unsafe { port.offset(ATA_REG_DATA).read16_bulk(buffer) };
 }
 
 pub fn read_medium_capacity(drive: &ATAPhysicalDrive) -> ATAResult<(usize, usize)> {
@@ -98,16 +118,7 @@ pub fn read_sectors(drive: &ATAPhysicalDrive, lba: u32, buffer: &mut [u8]) -> AT
         0, // Control (usually zero)
     ];
 
-    let command16 = [
-        (command[1] as u16) << 8 | (command[0] as u16),
-        (command[3] as u16) << 8 | (command[2] as u16),
-        (command[5] as u16) << 8 | (command[4] as u16),
-        (command[7] as u16) << 8 | (command[6] as u16),
-        (command[9] as u16) << 8 | (command[8] as u16),
-        (command[11] as u16) << 8 | (command[10] as u16),
-    ];
-
-    send_scsi(drive, blksize as _, &command16).map_err(ATAIOError::ControllerError)?;
+    send_scsi8(drive, blksize as _, &command).map_err(ATAIOError::ControllerError)?;
 
     ide_poll(drive.bus.io()).map_err(ATAIOError::ControllerError)?;
 
@@ -126,7 +137,7 @@ pub fn read_sectors(drive: &ATAPhysicalDrive, lba: u32, buffer: &mut [u8]) -> AT
             core::slice::from_raw_parts_mut(slice.as_mut_ptr().cast::<u16>(), slice.len() / 2)
         };
 
-        data_port.read16_bulk(data_buf16);
+        unsafe { data_port.read16_bulk(data_buf16) };
     }
 
     Ok(())

@@ -69,19 +69,21 @@ impl ATAIO for ATAPIO<'_> {
                 readsize
             };
 
-            io.offset(ATA_REG_HDDEVSEL)
-                .write8(0x40 + ((is_slave as u8) << 4));
-            io.offset(ATA_REG_SECCOUNT0)
-                .write8((controller_read_size >> 8) as u8);
-            io.offset(ATA_REG_LBA0).write8(lbas[3]);
-            io.offset(ATA_REG_LBA1).write8(lbas[4]);
-            io.offset(ATA_REG_LBA2).write8(lbas[5]);
-            io.offset(ATA_REG_SECCOUNT0)
-                .write8((controller_read_size & 0xff) as u8);
-            io.offset(ATA_REG_LBA0).write8(lbas[0]);
-            io.offset(ATA_REG_LBA1).write8(lbas[1]);
-            io.offset(ATA_REG_LBA2).write8(lbas[2]);
-            io.offset(ATA_REG_COMMAND).write8(ATA_CMD_READ_PIO_EXT);
+            unsafe {
+                io.offset(ATA_REG_HDDEVSEL)
+                    .write8(0x40 + ((is_slave as u8) << 4));
+                io.offset(ATA_REG_SECCOUNT0)
+                    .write8((controller_read_size >> 8) as u8);
+                io.offset(ATA_REG_LBA0).write8(lbas[3]);
+                io.offset(ATA_REG_LBA1).write8(lbas[4]);
+                io.offset(ATA_REG_LBA2).write8(lbas[5]);
+                io.offset(ATA_REG_SECCOUNT0)
+                    .write8((controller_read_size & 0xff) as u8);
+                io.offset(ATA_REG_LBA0).write8(lbas[0]);
+                io.offset(ATA_REG_LBA1).write8(lbas[1]);
+                io.offset(ATA_REG_LBA2).write8(lbas[2]);
+                io.offset(ATA_REG_COMMAND).write8(ATA_CMD_READ_PIO_EXT);
+            }
 
             let data = io.offset(ATA_REG_DATA);
 
@@ -89,7 +91,7 @@ impl ATAIO for ATAPIO<'_> {
                 ide_poll(io.addr()).map_err(ATAIOError::ControllerError)?;
 
                 for i in (0..512).step_by(2) {
-                    let word = data.read16();
+                    let word = unsafe { data.read16() };
 
                     output[(sector * 512) + i] = word as u8;
                     output[(sector * 512) + i + 1] = (word >> 8) as u8;
@@ -154,19 +156,21 @@ impl ATAIO for ATAPIO<'_> {
                 writesize
             };
 
-            io.offset(ATA_REG_HDDEVSEL)
-                .write8(0x40 + ((is_slave as u8) << 4));
-            io.offset(ATA_REG_SECCOUNT0)
-                .write8((controller_write_size >> 8) as u8);
-            io.offset(ATA_REG_LBA0).write8(lbas[3]);
-            io.offset(ATA_REG_LBA1).write8(lbas[4]);
-            io.offset(ATA_REG_LBA2).write8(lbas[5]);
-            io.offset(ATA_REG_SECCOUNT0)
-                .write8((controller_write_size & 0xff) as u8);
-            io.offset(ATA_REG_LBA0).write8(lbas[0]);
-            io.offset(ATA_REG_LBA1).write8(lbas[1]);
-            io.offset(ATA_REG_LBA2).write8(lbas[2]);
-            io.offset(ATA_REG_COMMAND).write8(ATA_CMD_WRITE_PIO_EXT);
+            unsafe {
+                io.offset(ATA_REG_HDDEVSEL)
+                    .write8(0x40 + ((is_slave as u8) << 4));
+                io.offset(ATA_REG_SECCOUNT0)
+                    .write8((controller_write_size >> 8) as u8);
+                io.offset(ATA_REG_LBA0).write8(lbas[3]);
+                io.offset(ATA_REG_LBA1).write8(lbas[4]);
+                io.offset(ATA_REG_LBA2).write8(lbas[5]);
+                io.offset(ATA_REG_SECCOUNT0)
+                    .write8((controller_write_size & 0xff) as u8);
+                io.offset(ATA_REG_LBA0).write8(lbas[0]);
+                io.offset(ATA_REG_LBA1).write8(lbas[1]);
+                io.offset(ATA_REG_LBA2).write8(lbas[2]);
+                io.offset(ATA_REG_COMMAND).write8(ATA_CMD_WRITE_PIO_EXT);
+            }
 
             let data = io.offset(ATA_REG_DATA);
 
@@ -178,7 +182,7 @@ impl ATAIO for ATAPIO<'_> {
 
                     let word = ((v[1] as u16) << 8) | v[0] as u16;
 
-                    data.write16(word);
+                    unsafe { data.write16(word) };
                 }
 
                 unsafe {

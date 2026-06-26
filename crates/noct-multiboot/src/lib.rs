@@ -2,7 +2,7 @@
 
 use core::ffi::{CStr, c_char};
 
-use noct_boot::{MemoryInfo, ModuleIterator};
+use noct_boot::{BootVideoInfo, MemoryInfo, ModuleIterator};
 use noct_spec::KERNEL_BASE;
 
 #[repr(C, packed)]
@@ -123,6 +123,17 @@ impl noct_boot::BootInfo for MultibootHeader {
             (self.mods_addr as usize + KERNEL_BASE) as _,
             self.mods_count as _,
         )
+    }
+
+    fn video(&self) -> noct_boot::BootVideoInfo {
+        BootVideoInfo {
+            fb_addr: self.framebuffer_addr,
+            fb_pitch: self.framebuffer_pitch,
+            fb_width: self.framebuffer_width,
+            fb_height: self.framebuffer_height,
+            fb_bpp: self.framebuffer_bpp,
+            fb_type: self.framebuffer_type,
+        }
     }
 }
 

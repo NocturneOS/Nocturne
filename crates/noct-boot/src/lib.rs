@@ -65,6 +65,16 @@ impl<T: Module> Iterator for ModuleIterator<T> {
     }
 }
 
+#[derive(Debug)]
+pub struct BootVideoInfo {
+    pub fb_addr: u64,
+    pub fb_pitch: u32,
+    pub fb_width: u32,
+    pub fb_height: u32,
+    pub fb_bpp: u8,
+    pub fb_type: u8,
+}
+
 pub trait BootInfo {
     type ModuleType;
 
@@ -73,4 +83,5 @@ pub trait BootInfo {
     fn modules(&self) -> ModuleIterator<Self::ModuleType>
     where
         <Self as BootInfo>::ModuleType: Module;
+    fn video(&self) -> BootVideoInfo;
 }
