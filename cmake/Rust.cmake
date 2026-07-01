@@ -1,5 +1,5 @@
-set(RUST_TARGET "${CMAKE_SOURCE_DIR}/src/arch/${NOCTURNE_ARCH}/${RUST_TARGET_TRIPLE}.json")
-set(RUST_COMPILER_TOOLCHAIN "nightly-2026-01-01")
+#set(RUST_TARGET "${CMAKE_SOURCE_DIR}/src/arch/${NOCTURNE_ARCH}/${RUST_TARGET_TRIPLE}.json")
+set(RUST_COMPILER_TOOLCHAIN "nightly-2026-06-01")
 set(RUST_FLAGS
 	-Zbuild-std=core,compiler_builtins,alloc
 	-Znext-lockfile-bump
@@ -7,7 +7,14 @@ set(RUST_FLAGS
 	-C code-model=kernel
 	-C relocation-model=static
 )
-set(RUST_TOOLCHAIN_FULLNAME "${RUST_COMPILER_TOOLCHAIN}-x86_64-unknown-linux-gnu")  
+if(RUST_TARGET_TRIPLE STREQUAL "i686-unknown-none")
+  set(RUST_TARGET "${CMAKE_SOURCE_DIR}/src/arch/${NOCTURNE_ARCH}/${RUST_TARGET_TRIPLE}.json")
+  set(RUST_FLAGS -Zjson-target-spec ${RUST_FLAGS})
+else()
+  set(RUST_TARGET ${RUST_TARGET_TRIPLE})
+endif()
+
+set(RUST_TOOLCHAIN_FULLNAME "${RUST_COMPILER_TOOLCHAIN}-x86_64-unknown-none")  
 set(RUST_CARGO_PATH "~/.rustup/toolchains/${RUST_TOOLCHAIN_FULLNAME}/bin/src/cargo")
 
 add_custom_command(

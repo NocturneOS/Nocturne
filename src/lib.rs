@@ -135,17 +135,23 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
     noct_fsman::probe();
 
+    {
+        noct_tty::init(80, 25);
+
+        tty_println!("\x1b[33mHello, world!");
+    }
+
     syscalls::init();
 
-    // {
-    //     let handle = noct_elfloader::spawn("mem0:/prog2", &["abc", "def", "ghi"]).unwrap();
+    {
+        let handle = noct_elfloader::spawn("mem0:/prog4_64", &[]).unwrap();
 
-    //     qemu_log!("Started process {}", handle.pid);
+        qemu_log!("Started process {}", handle.pid);
 
-    //     let code = handle.wait();
+        let code = handle.wait();
 
-    //     qemu_log!("Process exited with code: {code:?}");
-    // }
+        qemu_log!("Process exited with code: {code:?}");
+    }
 
     {
         let (data, time) = noct_tools::measure_time_timer(|| noct_fs::read_file("ata0:/hello.txt"));
@@ -171,12 +177,6 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
     //     canvas.fill(0x00_00_00_ff << 16);   // AA_RR_GG_BB
     // }
-
-    {
-        noct_tty::init(80, 25);
-
-        tty_println!("\x1b[33mHello, world!");
-    }
 
     qemu_log!("It works!");
 

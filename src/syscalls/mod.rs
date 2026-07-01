@@ -4,6 +4,7 @@ use noct_logger::qemu_log;
 mod debug;
 mod error;
 mod exit;
+mod print;
 mod waitpid;
 
 pub type SyscallHandler = fn(usize, usize, usize, usize, usize) -> Option<usize>;
@@ -16,6 +17,7 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     exit::process_exit, // 3
     error::geterror,    // 4
     waitpid::waitpid,   // 5
+    print::write_tty,   // 6
 ];
 
 #[unsafe(no_mangle)]

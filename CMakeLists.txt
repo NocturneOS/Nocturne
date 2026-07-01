@@ -35,10 +35,8 @@ elseif(NOCTURNE_ARCH STREQUAL "x86_64")
 endif()
 
 if(NOCTURNE_ARCH STREQUAL "x86")
-	set(CLANG_ARCHITECTURE_TRIPLE "i386-pc-none")
 	set(RUST_TARGET_TRIPLE "i686-unknown-none")
 elseif(NOCTURNE_ARCH STREQUAL "x86_64")
-	set(CLANG_ARCHITECTURE_TRIPLE "x86_64-pc-none")
 	set(RUST_TARGET_TRIPLE "x86_64-unknown-none")
 endif()
 
