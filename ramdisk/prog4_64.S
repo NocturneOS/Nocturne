@@ -2,9 +2,10 @@
 .section .text
 .globl _start
 _start:
-  mov $6, %rax
-  mov $msg, %rdi
-  mov $11, %rsi
+  mov $10, %rax
+  mov $1, %rdi
+  mov $msg, %rsi
+  mov $11, %rdx
 
   syscall
 

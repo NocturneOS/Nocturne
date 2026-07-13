@@ -4,6 +4,7 @@ use noct_logger::qemu_log;
 mod debug;
 mod error;
 mod exit;
+mod fd;
 mod print;
 mod waitpid;
 
@@ -18,6 +19,13 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     error::geterror,    // 4
     waitpid::waitpid,   // 5
     print::write_tty,   // 6
+
+    fd::open,           // 7
+    fd::close,          // 8
+    fd::read,           // 9
+    fd::write,          // 10
+    fd::seek,           // 11
+    fd::tell,           // 12
 ];
 
 #[unsafe(no_mangle)]
@@ -77,7 +85,7 @@ pub fn init() {
         use noct_cpu::x86_64::registers::model_specific::{LStar, SFMask, Star};
         use noct_cpu::x86_64::registers::rflags::RFlags;
         use noct_cpu::x86_64::structures::gdt::SegmentSelector;
-use noct_logger::qemu_log;
+        use noct_logger::qemu_log;
 
         // Enable `syscall/sysret` support
         unsafe {

@@ -105,6 +105,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-descriptor"
+version = "0.1.0"
+dependencies = [
+ "noct-fsman",
+]
+
+[[package]]
 name = "noct-diskman"
 version = "0.1.0"
 dependencies = [
@@ -277,6 +284,7 @@ dependencies = [
  "bitflags 2.11.1",
  "lazy_static",
  "noct-cpu",
+ "noct-descriptor",
  "noct-elf",
  "noct-interrupts",
  "noct-logger",
@@ -367,6 +375,7 @@ dependencies = [
  "lazy_static",
  "noct-boot",
  "noct-cpu",
+ "noct-descriptor",
  "noct-diskman",
  "noct-elfloader",
  "noct-fs",

@@ -30,7 +30,7 @@ members = [
     "crates/noct-sched",
     "crates/noct-io",
     "crates/noct-elfloader",
-    "crates/noct-fs", "crates/noct-multiboot", "crates/noct-elf", "crates/noct-tty", "crates/noct-video"]
+    "crates/noct-fs", "crates/noct-multiboot", "crates/noct-elf", "crates/noct-tty", "crates/noct-video", "crates/noct-descriptor"]
 resolver = "2"
 
 [dependencies]
@@ -44,6 +44,7 @@ noct-cpu = { path = "crates/noct-cpu" }
 noct-diskman = { path = "crates/noct-diskman" }
 noct-fsman = { path = "crates/noct-fsman" }
 noct-fs = { path = "crates/noct-fs" }
+noct-descriptor = { path = "crates/noct-descriptor" }
 noct-mem = { path = "crates/noct-mem" }
 noct-interrupts = { path = "crates/noct-interrupts" }
 noct-iso9660 = { path = "crates/noct-iso9660" }

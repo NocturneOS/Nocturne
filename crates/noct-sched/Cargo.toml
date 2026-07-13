@@ -17,6 +17,7 @@ noct-spec = { path = "../noct-spec" }
 noct-tools = { path = "../noct-tools" }
 noct-time = { path = "../noct-time" }
 noct-sync = { path = "../noct-sync" }
+noct-descriptor = { path = "../noct-descriptor" }
 
 [target.'cfg(any(target_arch = "x86", target_arch = "x86_64"))'.dependencies]
 x86 = "0.52.0"

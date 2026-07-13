@@ -1,5 +1,5 @@
- use crate::qemu_log;
- use noct_tty::tty_print;
+use crate::qemu_log;
+use noct_tty::tty_print;
 
 pub fn write_tty(data: usize, len: usize, _: usize, _: usize, _: usize) -> Option<usize> {
     let data = data as *const u8;

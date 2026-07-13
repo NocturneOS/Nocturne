@@ -731,6 +731,10 @@ pub fn waitpid(hdl: &ProcessHandle) -> Option<u32> {
     Some(code)
 }
 
+pub fn set_error(value: usize) {
+    this_thread().last_error.store(value, Ordering::Release)
+}
+
 // Exit from this thread.
 pub fn thread_exit() -> ! {
     noct_interrupts::cpu::disable_interrupts();
@@ -741,6 +745,16 @@ pub fn thread_exit() -> ! {
         thread
             .state
             .store(thread::ThreadState::Dead as _, Ordering::Release);
+
+        // Process exit code is zero.
+        // I don't know is it a last thread of the process, so setting it shouldn't be an UB.
+        thread
+            .process
+            .handle
+            .as_ref()
+            .unwrap()
+            .exit_code
+            .store(0, Ordering::Release);
 
         {
             let mut lock = this();

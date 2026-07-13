@@ -7,6 +7,7 @@ use alloc::{ffi::CString, sync::Arc};
 use lazy_static::lazy_static;
 use noct_elf::ProgramImage;
 use noct_sync::pseudosync::PseudoSync;
+use spin::Mutex;
 
 use crate::qemu_log;
 
@@ -27,7 +28,9 @@ pub struct Process {
     pub cwd: AtomicPtr<c_char>,
 
     pub program_image: Option<PseudoSync<ProgramImage>>,
-    pub handle: Option<Arc<ProcessHandle>>
+    pub handle: Option<Arc<ProcessHandle>>,
+
+    pub resources: Mutex<noct_descriptor::Descriptors>,
 }
 
 pub struct ProcessHandle {
@@ -67,6 +70,8 @@ impl Process {
 
         let pid = next_pid();
 
+        let descriptors = noct_descriptor::Descriptors::new();
+
         Self {
             id: pid,
             address_space: address_space.into(),
@@ -74,13 +79,16 @@ impl Process {
             name: name_ptr.into(),
             cwd: cwd_ptr.into(),
             program_image: Some(ProgramImage::new().into()),
-            handle: Some(ProcessHandle::new(pid).into())
+            handle: Some(ProcessHandle::new(pid).into()),
+            resources: descriptors.into()
         }
     }
 
     pub fn with_predefined_page_roots(pageaddr_phys: usize, name: &str, cwd: &str) -> Self {
         let name_ptr = CString::new(name).unwrap().into_raw();
         let cwd_ptr = CString::new(cwd).unwrap().into_raw();
+
+        let descriptors = noct_descriptor::Descriptors::new();
 
         Self {
             id: next_pid(),
@@ -89,7 +97,8 @@ impl Process {
             name: name_ptr.into(),
             cwd: cwd_ptr.into(),
             program_image: None,
-            handle: None
+            handle: None,
+            resources: descriptors.into()
         }
     }
 
