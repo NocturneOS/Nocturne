@@ -33,7 +33,7 @@ pub struct Process {
     pub resources: Mutex<noct_descriptor::Descriptors>,
 
     // Heap goes there. Every `Heap`'s method should accept address_space as a parameter, so that it can be used in the context of the process.
-    pub heap: PseudoSync<Option<noct_mem::external_heap::Heap<GlobalPagingArchitecture>>>,
+    pub heap: Mutex<Option<noct_mem::external_heap::Heap<GlobalPagingArchitecture>>>,
 }
 
 pub struct ProcessHandle {
@@ -124,7 +124,7 @@ impl Process {
 
             qemu_log!("Process #{}: Heap recalculated: base = {heap_base:#x}, max = {heap_max:#x}", self.id);
 
-            unsafe { *self.heap.get_mut() = Some(noct_mem::external_heap::Heap::new(heap_base, heap_max)) }
+            *self.heap.lock() = Some(noct_mem::external_heap::Heap::new(heap_base, heap_max))
         }
     }
 }

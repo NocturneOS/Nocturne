@@ -5,6 +5,7 @@ mod debug;
 mod error;
 mod exit;
 mod fd;
+mod mem;
 mod print;
 mod waitpid;
 
@@ -26,6 +27,8 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     fd::write,          // 10
     fd::seek,           // 11
     fd::tell,           // 12
+
+    mem::sbrk,          // 13
 ];
 
 #[unsafe(no_mangle)]
