@@ -31,6 +31,9 @@ pub struct Process {
     pub handle: Option<Arc<ProcessHandle>>,
 
     pub resources: Mutex<noct_descriptor::Descriptors>,
+
+    // Heap goes there. Every `Heap`'s method should accept address_space as a parameter, so that it can be used in the context of the process.
+    pub heap: PseudoSync<Option<noct_mem::external_heap::Heap<GlobalPagingArchitecture>>>,
 }
 
 pub struct ProcessHandle {
@@ -80,7 +83,8 @@ impl Process {
             cwd: cwd_ptr.into(),
             program_image: Some(ProgramImage::new().into()),
             handle: Some(ProcessHandle::new(pid).into()),
-            resources: descriptors.into()
+            resources: descriptors.into(),
+            heap: None.into(), // heap will be initialized after the program image is loaded and the heap region is determined
         }
     }
 
@@ -98,12 +102,30 @@ impl Process {
             cwd: cwd_ptr.into(),
             program_image: None,
             handle: None,
-            resources: descriptors.into()
+            resources: descriptors.into(),
+            heap: None.into(), // this method is only used on kernel initialization, heap is managed externally.
         }
     }
 
     pub fn into_handle(this: Arc<Self>) -> Arc<ProcessHandle> {
         Arc::clone(this.handle.as_ref().expect("Cannot call `Process::into_handle` on kernel process image!"))
+    }
+
+    pub fn recalculate_heap(&self) {
+        if let Some(program_image) = &self.program_image {
+            let program_image = program_image.get();
+
+            let heap_base = program_image.loaded_segments.iter()
+                .map(|seg| seg.virtual_addr + seg.page_count * noct_mem::get_page_size())
+                .max()
+                .expect("Failed to determine heap bounds! (No program sections?)");
+
+            let heap_max = heap_base + (128 << 20); // 128 MiB heap limit for now, can be adjusted later.
+
+            qemu_log!("Process #{}: Heap recalculated: base = {heap_base:#x}, max = {heap_max:#x}", self.id);
+
+            unsafe { *self.heap.get_mut() = Some(noct_mem::external_heap::Heap::new(heap_base, heap_max)) }
+        }
     }
 }
 

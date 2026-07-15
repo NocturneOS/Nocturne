@@ -18,7 +18,7 @@ pub struct AddressSpaceVirtualBlock {
 }
 
 /// Address space. It's a representation of CR3 paging root, that can be edited.
-/// It uses temporary mappings to access physical regions.
+/// It uses temporary interprocess mappings to access their physical regions.
 #[repr(C)]
 pub struct AddressSpace<PG: PagingHierarchy> {
     phantom: PhantomData<PG>,
@@ -468,7 +468,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
 
 impl<PG: PagingHierarchy> Drop for AddressSpace<PG> {
     fn drop(&mut self) {
-        let mut physial_addresses = [0usize; 1024];
+        let mut physial_addresses = [0usize; 768];
 
         self.self_map_page(self.page_root_phys, |page_root| {
             // This region (0..user_root_entry_count) is dedicated to user-space memory.

@@ -149,6 +149,8 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
         }
     }
 
+    proc.recalculate_heap();
+
     qemu_log!("Args: {path:?} + {_args:?}");
 
     let all_args_count = 1 + _args.len(); // +1 for the program name

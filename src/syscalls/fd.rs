@@ -7,18 +7,13 @@ use noct_logger::qemu_log;
 pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Option<usize> {
     let cpath = unsafe { CStr::from_ptr(path as *const core::ffi::c_char) };
 
-    // ...
+    todo!("open: Not implemented");
 
     None
 }
 
 pub fn close(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
-    match fd {
-        0 => (),
-        1 => (),
-        2 => (),
-        _ => ()
-    }
+    todo!("close: Not implemented");
 
     None
 }
