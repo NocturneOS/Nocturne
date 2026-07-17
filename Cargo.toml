@@ -38,6 +38,7 @@ x86 = "0.52.0"
 lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
 spin = "0.10.0"
 cfg-if = "1.0.4"
+bitflags = "2.10.0"
 
 noct-boot = { path = "crates/noct-boot" }
 noct-cpu = { path = "crates/noct-cpu" }
@@ -78,6 +79,11 @@ opt-level = 2
 
 [profile.release_no_opt]
 inherits = "release"
+opt-level = 0
+
+[profile.release_no_opt_sym]
+inherits = "release"
+strip = false
 opt-level = 0
 
 [profile.release_opt_sym]

@@ -167,7 +167,8 @@ pub fn post_init(boot: &dyn BootInfo<ModuleType = MultibootModule>) {
 
     let ptr = unsafe { alloc::alloc::alloc(Layout::from_size_align_unchecked(size, 0x1000)) };
 
-    let flags = PageFlags::empty().with_pat(0b010) | PageFlags::Writeable;
+    // PAT = Write-Combining
+    let flags = PageFlags::empty().with_pat(0b100) | PageFlags::Writeable;
 
     noct_mem::paging::map_pages(phys_addr as _, ptr.addr(), size as _, flags);
 
@@ -181,19 +182,6 @@ pub fn post_init(boot: &dyn BootInfo<ModuleType = MultibootModule>) {
         )),
         (boot.video().fb_bpp >> 3) as _,
     ));
-
-    {
-        let starttime = noct_time::systemclock::get_uptime_nanos();
-
-        lock.as_mut().unwrap().buffer_mut().fill(0xff);
-        lock.as_mut().unwrap().buffer_mut().fill(0);
-        lock.as_mut().unwrap().buffer_mut().fill(0xff);
-        lock.as_mut().unwrap().buffer_mut().fill(0);
-
-        let elapsed = noct_time::systemclock::get_uptime_nanos() - starttime;
-
-        qemu_log!("{} ms", elapsed / 1_000_000);
-    }
 
     qemu_log!("Video initialized");
 }

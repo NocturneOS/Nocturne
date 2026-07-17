@@ -1,7 +1,7 @@
 #![no_std]
 
 use alloc::vec::Vec;
-use noct_fsman::{entity::{self, EntityType}, handles::file::{FileHandle, FileOpenMode}};
+use noct_fsman::{entity::{self, EntityType}, handles::{directory::{DirectoryEntry, DirectoryHandle}, file::{FileHandle, FileOpenMode}}};
 use noct_io::{Read, error::Error};
 
 extern crate alloc;
@@ -21,6 +21,18 @@ pub fn open_file(path: &str, mode: FileOpenMode) -> noct_io::Result<FileHandle> 
         .ok_or(noct_io::error::Error::NoDrive)?;
 
     handle.open(info.path(), mode)
+}
+
+pub fn open_directory(path: &str) -> noct_io::Result<DirectoryHandle> {
+    let info = parser::PathParserBuilder::new()
+        .build()
+        .parse(path)
+        .ok_or(noct_io::error::Error::InvalidPath)?;
+
+    let handle = noct_fsman::mount::get_handle(info.disk_id())
+        .ok_or(noct_io::error::Error::NoDrive)?;
+
+    handle.opendir(info.path())
 }
 
 pub fn info(path: &str) -> noct_io::Result<entity::EntityInfo> {

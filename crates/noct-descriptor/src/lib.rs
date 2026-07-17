@@ -15,7 +15,8 @@ pub enum ResourceDescriptor {
     // Emulates stdout / stderr
     TerminalOutput,
     
-    FileStream(noct_fsman::handles::file::FileHandle)
+    FileStream(noct_fsman::handles::file::FileHandle),
+    DirectoryHandle(noct_fsman::handles::directory::DirectoryHandle),
 }
 
 impl ResourceDescriptor {
@@ -86,5 +87,9 @@ impl Descriptors {
 
     pub fn find_mut(&mut self, id: usize) -> Option<&mut Descriptor> {
         self.descriptors.iter_mut().find(|x| x.id == id)
+    }
+
+    pub fn close(&mut self, id: usize) {
+        self.descriptors.retain(|hdl| hdl.id != id);
     }
 }

@@ -3,13 +3,14 @@ cmake_minimum_required(VERSION 4.2.1)
 project(NocturneOS VERSION 0.4.3)
 enable_language(ASM)
 
-set(CMAKE_CONFIGURATION_TYPES "Debug;Release;ReleaseOptimized;ReleaseOptSym" CACHE STRING "Available configurations" FORCE)
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release;ReleaseSym;ReleaseOptimized;ReleaseOptSym" CACHE STRING "Available configurations" FORCE)
 
 if(NOT CMAKE_BUILD_TYPE)
     message(WARNING
             "No build configuration selected! Please specify one of the following:\n"
             "  -DCMAKE_BUILD_TYPE=Debug\n"
             "  -DCMAKE_BUILD_TYPE=Release\n"
+            "  -DCMAKE_BUILD_TYPE=ReleaseSym\n"
             "  -DCMAKE_BUILD_TYPE=ReleaseOptimized\n"
             "  -DCMAKE_BUILD_TYPE=ReleaseOptSym\n"
             "Defaulting to: Debug"
@@ -104,6 +105,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_rust_integration("debug")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_rust_integration("release_no_opt")
+elseif(CMAKE_BUILD_TYPE STREQUAL "ReleaseSym")
+    add_rust_integration("release_no_opt_sym")
 elseif(CMAKE_BUILD_TYPE STREQUAL "OptSym")
     add_rust_integration("release_opt_sym")
 else()
@@ -128,17 +131,14 @@ add_custom_target(
 )
 
 if(
-	(NOT (${CMAKE_BUILD_TYPE} STREQUAL "Debug"))
-	AND
-	(NOT (${CMAKE_BUILD_TYPE} STREQUAL "Dev"))
-    AND
-	(NOT (${CMAKE_BUILD_TYPE} STREQUAL "OptSym"))
-	)
+	(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+	OR (${CMAKE_BUILD_TYPE} STREQUAL "ReleaseOptimized")
+)
     
 	add_custom_target(
 			strip_down
             COMMAND strip -s ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL}
-            COMMENT "Copying files..."
+            COMMENT "Stripping binary..."
 			DEPENDS copy_symbols
     )
 
@@ -147,7 +147,7 @@ if(
             COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL} ${ISO_DIR}/${KERNEL}
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             DEPENDS strip_down
-            COMMENT "Copying files..."
+            COMMENT "Copying kernel to iso..."
     )
 else()
     add_custom_target(
@@ -155,7 +155,7 @@ else()
             COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL} ${ISO_DIR}/${KERNEL}
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             DEPENDS copy_symbols
-            COMMENT "Copying files..."
+            COMMENT "Copying kernel to iso..."
     )
 endif()
 

@@ -5,6 +5,7 @@ use crate::{
     entity::EntityInfo,
 };
 
+#[derive(Debug)]
 pub struct DirectoryHandle {
     pub handle_id: u64,
 

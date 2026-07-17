@@ -1,5 +1,7 @@
 // use noct_video::screen_update;
 
+use noct_logger::qemu_log;
+
 use crate::console::{AttributeValue, Console};
 
 pub struct RenderedConsole {
@@ -72,7 +74,7 @@ impl RenderedConsole {
                     }
                 }
 
-                let char = unifont::get_glyph(*char).unwrap();
+                let char = unifont::get_glyph(*char).expect("Couldn't find a glyph for character!");
 
                 for i in 0..16_usize {
                     for j in 0..char.get_width() {

@@ -371,6 +371,7 @@ dependencies = [
 name = "nocturne"
 version = "0.1.0"
 dependencies = [
+ "bitflags 2.11.1",
  "cfg-if",
  "lazy_static",
  "noct-boot",
