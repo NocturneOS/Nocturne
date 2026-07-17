@@ -64,6 +64,7 @@ __pre_init:
 
     .no_remainder: # ...
 
+    # Store this count in the variable for now.
     mov %eax, bootstrap_page_count - 0xC0000000
 
     # Now EAX contains number of extended (4 MB) pages that kernel needs at least run all of its code.

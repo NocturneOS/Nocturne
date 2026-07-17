@@ -144,7 +144,7 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     syscalls::init();
 
     {
-        let handle = noct_elfloader::spawn("mem0:/prog5", &[]).unwrap();
+        let handle = noct_elfloader::spawn("mem0:/prog5_64", &[]).unwrap();
 
         qemu_log!("Started process {}", handle.pid);
 

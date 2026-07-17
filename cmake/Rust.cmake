@@ -5,7 +5,6 @@ set(RUST_FLAGS
 	-Znext-lockfile-bump
 	--
 	-C code-model=kernel
-	-C relocation-model=static
 )
 if(RUST_TARGET_TRIPLE STREQUAL "i686-unknown-none")
   set(RUST_TARGET "${CMAKE_SOURCE_DIR}/src/arch/${NOCTURNE_ARCH}/${RUST_TARGET_TRIPLE}.json")
