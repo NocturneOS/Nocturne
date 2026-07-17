@@ -11,7 +11,7 @@ cfg_if! {
         pub use arch_x86_64::*;
 
         mod arch_x86;
-        pub use arch_x86::{gdt, idt, halt};
+        pub use arch_x86::{gdt, idt, pat, halt};
 
         pub use x86_64;
     }

@@ -7,10 +7,7 @@ pub mod timer;
 
 use core::alloc::Layout;
 
-use crate::{
-    arch,
-    kmain, qemu_log,
-};
+use crate::{arch, kmain, qemu_log};
 
 use noct_boot::BootInfo;
 use noct_mem::paging::PageFlags;
@@ -151,6 +148,8 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
         info.available_memory_start = Some(available_memory_start);
     }
 
+    noct_cpu::pat::write_pat();
+
     timer::pit::init(1000);
 
     unsafe { x86::irq::enable() };
@@ -163,20 +162,38 @@ pub fn post_init(boot: &dyn BootInfo<ModuleType = MultibootModule>) {
 
     let phys_addr = boot.video().fb_addr;
 
-    let size = (boot.video().fb_width * boot.video().fb_height * (boot.video().fb_bpp as u32 >> 3)) as usize;
-
+    let size = (boot.video().fb_width * boot.video().fb_height * (boot.video().fb_bpp as u32 >> 3))
+        as usize;
 
     let ptr = unsafe { alloc::alloc::alloc(Layout::from_size_align_unchecked(size, 0x1000)) };
 
-    noct_mem::paging::map_pages(phys_addr as _, ptr.addr(), size as _, PageFlags::Writeable);
+    let flags = PageFlags::empty().with_pat(0b010) | PageFlags::Writeable;
+
+    noct_mem::paging::map_pages(phys_addr as _, ptr.addr(), size as _, flags);
 
     let mut lock = noct_video::CURRENT_VIDEO_MODE.lock();
 
     *lock = Some(VideoMode::new_graphics(
         ptr,
-        Size::from((boot.video().fb_width as usize, boot.video().fb_height as usize)),
-        (boot.video().fb_bpp >> 3) as _
+        Size::from((
+            boot.video().fb_width as usize,
+            boot.video().fb_height as usize,
+        )),
+        (boot.video().fb_bpp >> 3) as _,
     ));
+
+    {
+        let starttime = noct_time::systemclock::get_uptime_nanos();
+
+        lock.as_mut().unwrap().buffer_mut().fill(0xff);
+        lock.as_mut().unwrap().buffer_mut().fill(0);
+        lock.as_mut().unwrap().buffer_mut().fill(0xff);
+        lock.as_mut().unwrap().buffer_mut().fill(0);
+
+        let elapsed = noct_time::systemclock::get_uptime_nanos() - starttime;
+
+        qemu_log!("{} ms", elapsed / 1_000_000);
+    }
 
     qemu_log!("Video initialized");
 }

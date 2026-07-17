@@ -1,6 +1,7 @@
 pub mod gdt;
 pub mod halt;
 pub mod idt;
+pub mod pat;
 
 pub mod tss;
 

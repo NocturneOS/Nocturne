@@ -17,6 +17,29 @@ bitflags! {
     }
 }
 
+impl PageFlags {
+    pub fn with_pat(mut self, pat: u8) -> Self {
+        let low = pat & 0b1;
+        let mid = pat & (0b10);
+        let hi = pat & (0b100);
+
+        if low != 0 {
+            self |= Self::WriteThrough;
+        }
+
+        if mid != 0 {
+            self |= Self::CacheDisable;
+        }
+
+        // WARNING: Using bit 2 in PAT while working with PDE (Page Directory Entry) is dangerous!
+        if hi != 0 {
+            self |= Self::Extended;
+        }
+
+        self
+    }
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct Page(pub usize);

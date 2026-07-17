@@ -115,6 +115,10 @@ impl Process {
         if let Some(program_image) = &self.program_image {
             let program_image = program_image.get();
 
+            for i in program_image.loaded_segments.iter() {
+                qemu_log!("{i:x?}");
+            }
+
             let heap_base = program_image.loaded_segments.iter()
                 .map(|seg| seg.virtual_addr + seg.page_count * noct_mem::get_page_size())
                 .max()

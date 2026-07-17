@@ -1,5 +1,12 @@
 use crate::{addrspace_manager::AddressSpace, paging::{PageFlags, PagingHierarchy}};
 
+#[derive(Debug)]
+pub enum HeapError {
+    AccessBeyondLimits,
+    AddressSpaceFail,
+    AddressOverflow
+}
+
 pub struct Heap<PG: PagingHierarchy> {
     phantom: core::marker::PhantomData<PG>,
 
@@ -10,6 +17,9 @@ pub struct Heap<PG: PagingHierarchy> {
 
 impl<PG: PagingHierarchy> Heap<PG> {
     pub fn new(heap_base: usize, heap_max: usize) -> Self {
+        let heap_base = heap_base.next_multiple_of(crate::get_page_size());
+        let heap_max = heap_max.next_multiple_of(crate::get_page_size());
+
         Self {
             phantom: core::marker::PhantomData,
             heap_base,
@@ -18,12 +28,24 @@ impl<PG: PagingHierarchy> Heap<PG> {
         }
     }
 
-    pub fn sbrk(&mut self, addrspace: &mut AddressSpace<PG>, increment: isize) -> Result<usize, ()> {
+    pub fn base(&self) -> usize {
+        self.heap_base
+    }
+
+    pub fn end(&self) -> usize {
+        self.heap_end
+    }
+
+    pub fn max(&self) -> usize {
+        self.heap_max
+    }
+
+    pub fn sbrk(&mut self, addrspace: &mut AddressSpace<PG>, increment: isize) -> Result<usize, HeapError> {
         let old_end = self.heap_end;
-        let new_end = old_end.checked_add_signed(increment).ok_or(())?;
+        let new_end = old_end.checked_add_signed(increment).ok_or(HeapError::AddressOverflow)?;
 
         if new_end > self.heap_max || new_end < self.heap_base {
-            return Err(());
+            return Err(HeapError::AccessBeyondLimits);
         }
 
         let page_size = crate::get_page_size();
@@ -34,7 +56,7 @@ impl<PG: PagingHierarchy> Heap<PG> {
             addrspace.alloc_map_multiple_pages(
                 old_top, new_top - old_top,
                 PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace,
-            )?;
+            ).map_err(|_| HeapError::AddressSpaceFail)?;
         } else if new_top < old_top {
             addrspace.unmap_pages(new_top, old_top - new_top);
         }

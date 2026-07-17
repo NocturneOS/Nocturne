@@ -146,6 +146,8 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
         );
     }
 
+    noct_cpu::pat::write_pat();
+
     timer::pit::init(1000);
 
     unsafe { x86::irq::enable() };
