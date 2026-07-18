@@ -34,6 +34,12 @@ pub struct Descriptor {
     pub res: ResourceDescriptor
 }
 
+impl Descriptor {
+    pub fn id(&self) -> usize {
+        self.id
+    }
+}
+
 #[derive(Default)]
 struct DescriptorFactory {
     current_id: usize

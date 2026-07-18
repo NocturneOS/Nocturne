@@ -136,15 +136,15 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     noct_fsman::probe();
 
     {
-        noct_tty::init(80, 25);
+        noct_tty::init(25, 80);
 
-        tty_println!("\x1b[33mHello, world!");
+        tty_println!("\x1b[33mNocturneOS {}", env!("CARGO_PKG_VERSION"));
     }
 
     syscalls::init();
 
     {
-        let handle = noct_elfloader::spawn("mem0:/prog5_64", &[]).unwrap();
+        let handle = noct_elfloader::spawn("mem0:/hello", &[]).unwrap();
 
         qemu_log!("Started process {}", handle.pid);
 

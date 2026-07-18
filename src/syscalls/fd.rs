@@ -11,14 +11,8 @@ use bitflags::bitflags;
 bitflags! {
     #[derive(Debug, Clone, Copy)]
     pub struct OpenFlags: u32 {
-        // These flags should copy FileOpenMode from noct_fsman
-        const Read = 1 << 0;
-        const Write = 1 << 1;
-        const Truncate = 1 << 2;
-
-        // Additional flags go here.
-
-        const Directory = 1 << 3;
+        // First flags are copied from noct_fsman::FileOpenFlags
+        const Directory = 1 << 5;
     }
 }
 
@@ -38,7 +32,7 @@ pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Option<us
             Err(e) => {
                 noct_sched::set_error(e as _);
 
-                return None;
+                return Some((-1_isize) as usize);
             }
         };
 
@@ -49,7 +43,7 @@ pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Option<us
             Err(e) => {
                 noct_sched::set_error(e as _);
 
-                return None;
+                return Some((-1_isize) as usize);
             }
         };
 
@@ -60,9 +54,9 @@ pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Option<us
 
     let mut reslock = process.resources.lock();
 
-    reslock.make(handle);
+    let descr = reslock.make(handle);
 
-    None
+    Some(descr.id())
 }
 
 pub fn close(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
@@ -165,7 +159,9 @@ pub fn seek(fd: usize, offset: usize, whence: usize, _: usize, _: usize) -> Opti
 
     match &mut fd_val.res {
         ResourceDescriptor::Null => return Some(0),
-        ResourceDescriptor::TerminalInput | ResourceDescriptor::TerminalOutput | ResourceDescriptor::DirectoryHandle(_) => {
+        ResourceDescriptor::TerminalInput
+        | ResourceDescriptor::TerminalOutput
+        | ResourceDescriptor::DirectoryHandle(_) => {
             noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
         }
         ResourceDescriptor::FileStream(file_handle) => {
@@ -201,7 +197,9 @@ pub fn tell(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> 
 
     match &mut fd_val.res {
         ResourceDescriptor::Null => return Some(0),
-        ResourceDescriptor::TerminalInput | ResourceDescriptor::TerminalOutput | ResourceDescriptor::DirectoryHandle(_) => {
+        ResourceDescriptor::TerminalInput
+        | ResourceDescriptor::TerminalOutput
+        | ResourceDescriptor::DirectoryHandle(_) => {
             noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
         }
         ResourceDescriptor::FileStream(file_handle) => {

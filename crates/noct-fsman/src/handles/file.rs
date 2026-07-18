@@ -11,7 +11,9 @@ bitflags! {
     pub struct FileOpenMode: u32 {
         const Read = 1 << 0;
         const Write = 1 << 1;
-        const Truncate = 1 << 2;
+        const Create = 1 << 2;
+        const Append = 1 << 3;
+        const Truncate = 1 << 4;
     }
 }
 
