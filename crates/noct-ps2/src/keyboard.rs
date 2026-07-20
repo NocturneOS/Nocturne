@@ -62,19 +62,19 @@ pub extern "C" fn init() {
     unsafe { write_configuration_byte(conf | 0b0100_0001) };
 }
 
-#[unsafe(no_mangle)]
 pub extern "C" fn keyboard_handler(_regs: &mut CPURegisters) {
     let kbdstatus = unsafe { inb(PS2_STATE_REG) };
 
     if (kbdstatus & 0x01) != 0 {
-        // keyboard_buffer_put(ps2_read() as u32);
+        let scancode = controller::read();
 
-        let key = controller::read();
+        let code = scancode & 0x7f;
+        let pressed = (scancode & 0x80) == 0;
 
-        qemu_log!("{key}");
+        noct_input::put(noct_input::event::InputEvent::Key { code, pressed });
+
+        qemu_log!("{scancode} (code: {code}, pressed: {pressed})");
     }
-
-    //qemu_ok!("Key!");
 }
 
 #[unsafe(no_mangle)]
