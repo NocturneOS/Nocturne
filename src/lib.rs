@@ -26,6 +26,8 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
     crate::arch::post_init(boot_info);
 
+    noct_input::init();
+
     noct_sched::init();
 
     // {

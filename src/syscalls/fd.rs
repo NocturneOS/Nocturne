@@ -21,8 +21,18 @@ pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Option<us
     // TODO: Set error on utf8 encoding failure
     let path = unsafe { CStr::from_ptr(path as *const core::ffi::c_char) }
         .to_str()
-        .ok()?
-        .to_owned();
+        .map(|path| path.to_owned());
+
+    let path = match path {
+        Ok(path) => path,
+        Err(e) => {
+            qemu_log!("open: Error while decoding UTF-8 path: {e:?}");
+
+            noct_sched::set_error(noct_io::error::Error::InvalidPath as _);
+
+            return None;
+        }
+    };
 
     let flags = OpenFlags::from_bits_truncate(mode as _);
 
