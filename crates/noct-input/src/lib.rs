@@ -49,18 +49,6 @@ impl EventQueue {
         
         bind.pop_front()
     }
-
-    /// Polls for a event from a buffer.
-    pub fn get(&mut self) -> InputEvent {
-        while self.buffer.is_empty() {
-            // TODO: Uncomment that when SMP is implemented.
-            // core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::Acquire);
-
-            noct_sched::yield_now();
-        }
-
-        self.get_raw().unwrap()
-    }
 }
 
 /// Initializes the global keyboard buffer.
@@ -82,7 +70,16 @@ pub fn put(event: InputEvent) {
 
 /// Gets a character from a buffer.
 pub fn get() -> InputEvent {
-    without_interrupts(|| {
-        EVENT_QUEUE.write().get_mut().unwrap().get()
-    })
+    loop {
+        if let Some(event) = without_interrupts(|| {
+            EVENT_QUEUE.write().get_mut().unwrap().get_raw()
+        }) {
+            return event;
+        }
+
+        // TODO: Uncomment that when SMP is implemented.
+        // core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::Acquire);
+
+        noct_sched::yield_now();
+    }
 }
