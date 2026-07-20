@@ -60,8 +60,17 @@ impl ThreadPriority {
     }
 }
 
+#[repr(usize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ThreadWaitReason {
+    None,
+    User
+}
+
 #[repr(C)]
 pub struct Thread {
+    // WARNING: DON'T add / remove / change fields here, it will break the scheduler. Use SAFE ZONE below for that. 
+    // WARNING: The scheduler uses offsets to access fields directly, so changing the layout will break it.
     pub id: usize,
 
     pub process: super::SharedProcess,
@@ -76,6 +85,8 @@ pub struct Thread {
 
     // SAFE ZONE: Add or remove fields here, it won't change the scheduler behaviour.
     pub last_error: AtomicUsize,
+
+    pub wait_reason: AtomicUsize,
 
     pub priority: ThreadPriority,
     pub time_quantum: AtomicUsize,

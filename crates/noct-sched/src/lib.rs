@@ -50,6 +50,7 @@ pub struct Scheduler {
 
     working_queue: LinkedList<SharedThread>,
     sleeping_queue: VecDeque<(SharedThread, u128)>,
+    waiting_queue: VecDeque<(SharedThread, u128)>,
     dead_queue: LinkedList<SharedThread>,
 
     idle_task: Option<SharedThread>,
@@ -81,6 +82,7 @@ impl Scheduler {
 
             working_queue: LinkedList::new(),
             sleeping_queue: VecDeque::new(),
+            waiting_queue: VecDeque::new(),
             dead_queue: LinkedList::new(),
 
             idle_task: None,
@@ -124,6 +126,7 @@ impl Scheduler {
 
             // Those fields will be filled automatically on context change
             entry_point: 0,
+            wait_reason: (thread::ThreadWaitReason::None as usize).into()
         };
 
         let kernel_thread = Arc::new(kernel_thread);
@@ -270,6 +273,7 @@ impl Scheduler {
             last_error: 0.into(),
             time_quantum: priority.to_ticks().into(),
             priority,
+            wait_reason: (thread::ThreadWaitReason::None as usize).into()
         };
 
         let tcb = Arc::new(tcb);
@@ -331,19 +335,90 @@ impl Scheduler {
 
     /// Puts current thread into sleep state.
     fn sleep_this(&mut self, wakeup_time_ticks: u128) {
+        // Set Sleeping state
         self.current_thread
             .as_ref()
             .unwrap()
             .state
             .store(ThreadState::Sleeping as usize, Ordering::Release);
 
+        // Remove this thread from working queue.
         self.working_queue
             .retain(|x| x.id != self.current_thread.as_ref().unwrap().id);
 
+        // Push it to sleeping queue.
         self.sleeping_queue
             .push_back((Arc::clone(self.this_task()), wakeup_time_ticks));
 
         self.schedule();
+    }
+
+    // Puts current thread into waiting state with specific reason.
+    fn pause(&mut self, reason: thread::ThreadWaitReason) {
+        // Set Waiting state
+        self.current_thread
+            .as_ref()
+            .unwrap()
+            .state
+            .store(ThreadState::Waiting as usize, Ordering::Release);
+
+        self.current_thread
+            .as_ref()
+            .unwrap()
+            .wait_reason
+            .store(reason as _, Ordering::Release);
+
+        // Remove this thread from working queue.
+        self.working_queue
+            .retain(|x| x.id != self.current_thread.as_ref().unwrap().id);
+
+        // Push it to waiting queue.
+        self.waiting_queue
+            .push_back((Arc::clone(self.this_task()), 0));
+
+        self.schedule();
+    }
+
+    // Resumes a specific thread from waiting state.
+    fn resume(&mut self, thread: SharedThread) {
+        // Set Ready state
+        thread
+            .state
+            .store(ThreadState::Ready as usize, Ordering::Release);
+
+        // Remove this thread from waiting queue.
+        self.waiting_queue.retain(|(x, _)| x.id != thread.id);
+
+        // Push it to working queue.
+        self.working_queue.push_back(thread);
+    }
+
+    // Resumes all threads from waiting state with specific reason.
+    fn resume_group(&mut self, reason: thread::ThreadWaitReason) {
+        if reason == thread::ThreadWaitReason::None {
+            return;
+        }
+
+        if reason == thread::ThreadWaitReason::User {
+            qemu_log!("Cannot bulk-resume threads paused by the user. Use `resume` instead.");
+            
+            return;
+        }
+
+        // Collect threads into a dedicated Vec to avoid double borrow of self.waiting_queue.
+        let mut to_resume = Vec::new();
+
+        for (thread, _) in self.waiting_queue.iter() {
+            let wait_reason = thread.wait_reason.load(Ordering::Acquire);
+
+            if wait_reason == reason as usize {
+                to_resume.push(Arc::clone(thread));
+            }
+        }
+
+        for thread in to_resume {
+            self.resume(thread);
+        }
     }
 
     #[inline(always)]
