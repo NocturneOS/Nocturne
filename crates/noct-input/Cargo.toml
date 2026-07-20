@@ -1,0 +1,9 @@
+[package]
+name = "noct-input"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+spin = "0.10.0"
+noct-logger = { path = "../noct-logger" }
+noct-sched = { path = "../noct-sched" }

@@ -170,6 +170,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-input"
+version = "0.1.0"
+dependencies = [
+ "noct-logger",
+ "noct-sched",
+ "spin 0.10.0",
+]
+
+[[package]]
 name = "noct-interrupts"
 version = "0.1.0"
 dependencies = [
@@ -381,6 +390,7 @@ dependencies = [
  "noct-elfloader",
  "noct-fs",
  "noct-fsman",
+ "noct-input",
  "noct-interrupts",
  "noct-io",
  "noct-iso9660",
