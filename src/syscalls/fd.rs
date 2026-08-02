@@ -7,6 +7,7 @@ use noct_io::{Read, Seek, SeekOffset, Write};
 use noct_logger::qemu_log;
 
 use bitflags::bitflags;
+use noct_sched::thread::ThreadWaitReason;
 
 bitflags! {
     #[derive(Debug, Clone, Copy)]
@@ -94,6 +95,8 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<us
 
     qemu_log!("read: fd {fd} -> {:?}", fd_val.res);
 
+    let mut input_needs_waiting = false;
+
     match &mut fd_val.res {
         ResourceDescriptor::Null => return Some(0),
         ResourceDescriptor::TerminalInput => {
@@ -105,6 +108,23 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<us
         ResourceDescriptor::DirectoryHandle(_) => {
             noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
         }
+        ResourceDescriptor::EventQueue(queue) => {
+            if len < 32 {
+                noct_sched::set_error(noct_io::error::Error::MemoryError as _);
+
+                return None;
+            }
+
+            if queue.is_empty() {
+                input_needs_waiting = true;
+            } else {
+                qemu_log!("Got past checking!");
+
+                let event = queue.get_raw().unwrap().serialize();
+
+                slice[..event.len()].copy_from_slice(&event);
+            }
+        }
         ResourceDescriptor::FileStream(file_handle) => {
             let value = file_handle.read(slice);
 
@@ -113,6 +133,12 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<us
                 Ok(read_bytes) => return Some(read_bytes as _),
             }
         }
+    }
+
+    drop(lock);
+
+    if input_needs_waiting {
+        noct_sched::pause(ThreadWaitReason::InputEvent);
     }
 
     None
@@ -155,6 +181,9 @@ pub fn write(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<u
         ResourceDescriptor::DirectoryHandle(_) => {
             noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
         }
+        ResourceDescriptor::EventQueue(_) => {
+            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
+        }
     }
 
     None
@@ -171,7 +200,8 @@ pub fn seek(fd: usize, offset: usize, whence: usize, _: usize, _: usize) -> Opti
         ResourceDescriptor::Null => return Some(0),
         ResourceDescriptor::TerminalInput
         | ResourceDescriptor::TerminalOutput
-        | ResourceDescriptor::DirectoryHandle(_) => {
+        | ResourceDescriptor::DirectoryHandle(_)
+        | ResourceDescriptor::EventQueue(_) => {
             noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
         }
         ResourceDescriptor::FileStream(file_handle) => {
@@ -209,7 +239,8 @@ pub fn tell(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> 
         ResourceDescriptor::Null => return Some(0),
         ResourceDescriptor::TerminalInput
         | ResourceDescriptor::TerminalOutput
-        | ResourceDescriptor::DirectoryHandle(_) => {
+        | ResourceDescriptor::DirectoryHandle(_)
+        | ResourceDescriptor::EventQueue(_) => {
             noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
         }
         ResourceDescriptor::FileStream(file_handle) => {

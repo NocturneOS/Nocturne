@@ -26,7 +26,7 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
     crate::arch::post_init(boot_info);
 
-    noct_input::init();
+    // noct_input::init();
 
     noct_sched::init();
 
@@ -146,7 +146,7 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     syscalls::init();
 
     {
-        let handle = noct_elfloader::spawn("mem0:/hello", &[]).unwrap();
+        let handle = noct_elfloader::spawn("mem0:/prog_input", &[]).unwrap();
 
         qemu_log!("Started process {}", handle.pid);
 

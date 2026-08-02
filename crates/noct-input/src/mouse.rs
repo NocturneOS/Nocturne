@@ -9,8 +9,20 @@ pub enum MouseButton {
     Custom(u8)
 }
 
+impl MouseButton {
+    pub fn serialize(&self) -> u8 {
+        match self {
+            Self::Left => 0,
+            Self::Middle => 1,
+            Self::Right => 2,
+            Self::Custom(cusbtn) => 3 + cusbtn,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
+#[repr(u8)]
 pub enum MouseWheelDirection {
-    Up,
-    Down
+    Up = 0,
+    Down = 1
 }

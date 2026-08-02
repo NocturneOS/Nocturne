@@ -64,7 +64,8 @@ impl ThreadPriority {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ThreadWaitReason {
     None,
-    User
+    User,
+    InputEvent
 }
 
 #[repr(C)]

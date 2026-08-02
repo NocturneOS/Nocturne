@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 noct-cpu = { path = "../noct-cpu" }
-noct-input = { path = "../noct-input" }
+noct-input-dispatcher = { path = "../noct-input-dispatcher" }
 noct-interrupts = { path = "../noct-interrupts" }
 noct-logger = { path = "../noct-logger" }
 

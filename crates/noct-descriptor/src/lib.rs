@@ -17,12 +17,30 @@ pub enum ResourceDescriptor {
     
     FileStream(noct_fsman::handles::file::FileHandle),
     DirectoryHandle(noct_fsman::handles::directory::DirectoryHandle),
+
+    EventQueue(noct_input::EventQueue)
 }
 
 impl ResourceDescriptor {
     pub fn as_filestream(&self) -> Option<&noct_fsman::handles::file::FileHandle> {
         if let Self::FileStream(fh) = self {
             Some(fh)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_event_queue(&self) -> Option<&noct_input::EventQueue> {
+        if let Self::EventQueue(eq) = self {
+            Some(eq)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_event_queue_mut(&mut self) -> Option<&mut noct_input::EventQueue> {
+        if let Self::EventQueue(eq) = self {
+            Some(eq)
         } else {
             None
         }
@@ -79,6 +97,14 @@ impl Descriptors {
         descriptors.make(ResourceDescriptor::TerminalOutput);
 
         descriptors
+    }
+
+    pub fn iter(&self) -> core::slice::Iter<'_, Descriptor> {
+        self.descriptors.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> core::slice::IterMut<'_, Descriptor> {
+        self.descriptors.iter_mut()
     }
 
     pub fn make(&mut self, res: ResourceDescriptor) -> &mut Descriptor {

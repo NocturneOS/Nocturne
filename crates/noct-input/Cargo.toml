@@ -6,5 +6,4 @@ edition = "2024"
 [dependencies]
 spin = "0.10.0"
 noct-logger = { path = "../noct-logger" }
-noct-sched = { path = "../noct-sched" }
 noct-tools = { path = "../noct-tools" }

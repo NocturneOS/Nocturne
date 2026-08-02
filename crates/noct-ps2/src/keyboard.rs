@@ -70,8 +70,10 @@ pub extern "C" fn keyboard_handler(_regs: &mut CPURegisters) {
 
         let code = scancode & 0x7f;
         let pressed = (scancode & 0x80) == 0;
+        
+        qemu_log!("Keyboard event! Sending it...");
 
-        noct_input::put(noct_input::event::InputEvent::Key { code, pressed });
+        noct_input_dispatcher::deliver_event(noct_input_dispatcher::event::InputEvent::Key { code, pressed });
 
         qemu_log!("{scancode} (code: {code}, pressed: {pressed})");
     }

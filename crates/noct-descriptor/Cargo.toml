@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 noct-fsman = { path = "../noct-fsman" }
+noct-input = { path = "../noct-input" }

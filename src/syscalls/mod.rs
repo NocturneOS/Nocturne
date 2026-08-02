@@ -4,6 +4,7 @@ use noct_logger::qemu_log;
 mod debug;
 mod error;
 mod exit;
+mod event;
 mod fd;
 mod mem;
 mod print;
@@ -29,6 +30,8 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     fd::tell,           // 12
 
     mem::sbrk,          // 13
+
+    event::open,        // 14
 ];
 
 #[unsafe(no_mangle)]

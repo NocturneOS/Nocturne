@@ -50,7 +50,7 @@ pub struct Scheduler {
 
     working_queue: LinkedList<SharedThread>,
     sleeping_queue: VecDeque<(SharedThread, u128)>,
-    waiting_queue: VecDeque<(SharedThread, u128)>,
+    waiting_queue: VecDeque<SharedThread>,
     dead_queue: LinkedList<SharedThread>,
 
     idle_task: Option<SharedThread>,
@@ -374,7 +374,7 @@ impl Scheduler {
 
         // Push it to waiting queue.
         self.waiting_queue
-            .push_back((Arc::clone(self.this_task()), 0));
+            .push_back(Arc::clone(self.this_task()));
 
         self.schedule();
     }
@@ -387,7 +387,7 @@ impl Scheduler {
             .store(ThreadState::Ready as usize, Ordering::Release);
 
         // Remove this thread from waiting queue.
-        self.waiting_queue.retain(|(x, _)| x.id != thread.id);
+        self.waiting_queue.retain(|x| x.id != thread.id);
 
         // Push it to working queue.
         self.working_queue.push_back(thread);
@@ -408,7 +408,7 @@ impl Scheduler {
         // Collect threads into a dedicated Vec to avoid double borrow of self.waiting_queue.
         let mut to_resume = Vec::new();
 
-        for (thread, _) in self.waiting_queue.iter() {
+        for thread in self.waiting_queue.iter() {
             let wait_reason = thread.wait_reason.load(Ordering::Acquire);
 
             if wait_reason == reason as usize {
@@ -758,6 +758,60 @@ pub fn sleep(dur: core::time::Duration) {
     }
 
     drop(il);
+}
+
+pub fn pause(reason: thread::ThreadWaitReason) {
+    let il = InterruptLocker::lock();
+
+    {
+        let mut sched = this();
+
+        sched.pause(reason);
+    }
+
+    drop(il);
+}
+
+pub fn resume(thread: SharedThread) {
+    let il = InterruptLocker::lock();
+
+    {
+        let mut sched = this();
+
+        sched.resume(thread);
+    }
+
+    drop(il);
+}
+
+pub fn resume_group(reason: thread::ThreadWaitReason) {
+    let il = InterruptLocker::lock();
+
+    {
+        let mut sched = this();
+
+        sched.resume_group(reason);
+    }
+
+    drop(il);
+}
+
+pub fn get_process(pid: usize) -> Option<Arc<Process>> {
+    
+    let il = InterruptLocker::lock();
+    
+    unsafe { SCHEDULER.force_unlock() };
+    
+    let sched = this();
+    let result = sched
+        .thread_list
+        .iter()
+        .find(|x| x.process.id == pid)
+        .map(|x| Arc::clone(&x.process));
+
+    drop(il);
+
+    result
 }
 
 pub fn get_process_handle(pid: usize) -> Option<Arc<ProcessHandle>> {
