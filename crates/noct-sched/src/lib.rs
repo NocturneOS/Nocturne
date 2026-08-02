@@ -126,7 +126,7 @@ impl Scheduler {
 
             // Those fields will be filled automatically on context change
             entry_point: 0,
-            wait_reason: (thread::ThreadWaitReason::None as usize).into()
+            wait_reason: (thread::ThreadWaitReason::None as usize).into(),
         };
 
         let kernel_thread = Arc::new(kernel_thread);
@@ -231,7 +231,10 @@ impl Scheduler {
 
             if is_user_proc {
                 // todo!("Usermode trampoline for x86_64")
-                stack.push(process.address_space.get_mut(), thread_trampoline_usermode64 as *const () as usize);
+                stack.push(
+                    process.address_space.get_mut(),
+                    thread_trampoline_usermode64 as *const () as usize,
+                );
             } else {
                 stack.push(
                     process.address_space.get_mut(),
@@ -273,7 +276,7 @@ impl Scheduler {
             last_error: 0.into(),
             time_quantum: priority.to_ticks().into(),
             priority,
-            wait_reason: (thread::ThreadWaitReason::None as usize).into()
+            wait_reason: (thread::ThreadWaitReason::None as usize).into(),
         };
 
         let tcb = Arc::new(tcb);
@@ -356,25 +359,22 @@ impl Scheduler {
     // Puts current thread into waiting state with specific reason.
     fn pause(&mut self, reason: thread::ThreadWaitReason) {
         // Set Waiting state
-        self.current_thread
-            .as_ref()
-            .unwrap()
+        let thread = self.this_task();
+
+        thread
             .state
             .store(ThreadState::Waiting as usize, Ordering::Release);
 
-        self.current_thread
-            .as_ref()
-            .unwrap()
-            .wait_reason
-            .store(reason as _, Ordering::Release);
+        thread.wait_reason.store(reason as _, Ordering::Release);
+
+        let thread = Arc::clone(thread);
 
         // Remove this thread from working queue.
         self.working_queue
-            .retain(|x| x.id != self.current_thread.as_ref().unwrap().id);
+            .retain(|x| x.id != thread.id);
 
         // Push it to waiting queue.
-        self.waiting_queue
-            .push_back(Arc::clone(self.this_task()));
+        self.waiting_queue.push_back(thread);
 
         self.schedule();
     }
@@ -391,6 +391,8 @@ impl Scheduler {
 
         // Push it to working queue.
         self.working_queue.push_back(thread);
+
+        self.schedule();
     }
 
     // Resumes all threads from waiting state with specific reason.
@@ -401,7 +403,7 @@ impl Scheduler {
 
         if reason == thread::ThreadWaitReason::User {
             qemu_log!("Cannot bulk-resume threads paused by the user. Use `resume` instead.");
-            
+
             return;
         }
 
@@ -595,7 +597,7 @@ pub fn init() {
 
 fn this_process_unlocked() -> SharedProcess {
     unsafe { SCHEDULER.force_unlock() };
-    
+
     let lock = this();
 
     let proc = lock.current_process.as_ref().unwrap();
@@ -797,11 +799,10 @@ pub fn resume_group(reason: thread::ThreadWaitReason) {
 }
 
 pub fn get_process(pid: usize) -> Option<Arc<Process>> {
-    
     let il = InterruptLocker::lock();
-    
+
     unsafe { SCHEDULER.force_unlock() };
-    
+
     let sched = this();
     let result = sched
         .thread_list
@@ -832,6 +833,7 @@ pub fn get_process_handle(pid: usize) -> Option<Arc<ProcessHandle>> {
 /// Waits for process with specific PID to complete and returns its exit code
 pub fn waitpid(hdl: &ProcessHandle) -> Option<u32> {
     // TODO: Make a ThreadState::WaitingFor(pid: usize) enum variant and set that state for this thread.
+    // to avoid infinite CPU spinning.
     fn does_exist(pid: usize) -> bool {
         let il = InterruptLocker::lock();
 
@@ -851,11 +853,7 @@ pub fn waitpid(hdl: &ProcessHandle) -> Option<u32> {
         schedule();
     }
 
-    let il = InterruptLocker::lock();
-
     let code = hdl.exit_code.load(Ordering::Acquire);
-
-    drop(il);
 
     Some(code)
 }
