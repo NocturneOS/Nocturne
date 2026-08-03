@@ -832,7 +832,7 @@ pub fn get_process_handle(pid: usize) -> Option<Arc<ProcessHandle>> {
 
 /// Waits for process with specific PID to complete and returns its exit code
 pub fn waitpid(hdl: &ProcessHandle) -> Option<u32> {
-    // TODO: Make a ThreadState::WaitingFor(pid: usize) enum variant and set that state for this thread.
+    // TODO: Make a ThreadState::WaitingFor(pid: usize) or ThreadWaitReason::WaitingFor(pid: usize) enum variant and set that state for this thread.
     // to avoid infinite CPU spinning.
     fn does_exist(pid: usize) -> bool {
         let il = InterruptLocker::lock();

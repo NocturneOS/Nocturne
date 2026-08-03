@@ -48,7 +48,11 @@ int main() {
       char key = ev.event.keyboard.code;
 
       if (ev.event.keyboard.pressed) {
-        printf("Scancode: 0x%x\n", ev.event.keyboard.code);
+        printf("Scancode: 0x%x\n", key);
+
+        if (key == 0x1) {
+          break;
+        }
       }
     }
   }
