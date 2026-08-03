@@ -60,12 +60,11 @@ impl ThreadPriority {
     }
 }
 
-#[repr(usize)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ThreadWaitReason {
     None,
     User,
-    InputEvent
+    InputEvent,
 }
 
 #[repr(C)]
@@ -87,7 +86,7 @@ pub struct Thread {
     // SAFE ZONE: Add or remove fields here, it won't change the scheduler behaviour.
     pub last_error: AtomicUsize,
 
-    pub wait_reason: AtomicUsize,
+    pub wait_reason: spin::Mutex<ThreadWaitReason>,
 
     pub priority: ThreadPriority,
     pub time_quantum: AtomicUsize,

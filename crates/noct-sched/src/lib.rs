@@ -4,8 +4,7 @@
 extern crate alloc;
 
 use core::{
-    ffi::CStr,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+    ffi::CStr, sync::atomic::{AtomicBool, AtomicUsize, Ordering}, time::Duration,
 };
 
 use alloc::{
@@ -126,7 +125,7 @@ impl Scheduler {
 
             // Those fields will be filled automatically on context change
             entry_point: 0,
-            wait_reason: (thread::ThreadWaitReason::None as usize).into(),
+            wait_reason: (thread::ThreadWaitReason::None).into(),
         };
 
         let kernel_thread = Arc::new(kernel_thread);
@@ -276,7 +275,7 @@ impl Scheduler {
             last_error: 0.into(),
             time_quantum: priority.to_ticks().into(),
             priority,
-            wait_reason: (thread::ThreadWaitReason::None as usize).into(),
+            wait_reason: (thread::ThreadWaitReason::None).into(),
         };
 
         let tcb = Arc::new(tcb);
@@ -365,7 +364,7 @@ impl Scheduler {
             .state
             .store(ThreadState::Waiting as usize, Ordering::Release);
 
-        thread.wait_reason.store(reason as _, Ordering::Release);
+        *thread.wait_reason.lock() = reason;
 
         let thread = Arc::clone(thread);
 
@@ -379,8 +378,9 @@ impl Scheduler {
         self.schedule();
     }
 
-    // Resumes a specific thread from waiting state.
-    fn resume(&mut self, thread: SharedThread) {
+    /// Resumes a specific thread from waiting state.
+    /// If reschedule is true, it will immediately schedule the next thread.
+    fn resume(&mut self, thread: SharedThread, reschedule: bool) {
         // Set Ready state
         thread
             .state
@@ -392,7 +392,9 @@ impl Scheduler {
         // Push it to working queue.
         self.working_queue.push_back(thread);
 
-        self.schedule();
+        if reschedule {
+            self.schedule();
+        }
     }
 
     // Resumes all threads from waiting state with specific reason.
@@ -411,16 +413,18 @@ impl Scheduler {
         let mut to_resume = Vec::new();
 
         for thread in self.waiting_queue.iter() {
-            let wait_reason = thread.wait_reason.load(Ordering::Acquire);
+            let wait_reason = *thread.wait_reason.lock();
 
-            if wait_reason == reason as usize {
+            if wait_reason == reason {
                 to_resume.push(Arc::clone(thread));
             }
         }
 
         for thread in to_resume {
-            self.resume(thread);
+            self.resume(thread, false);
         }
+
+        self.schedule();
     }
 
     #[inline(always)]
@@ -687,9 +691,9 @@ pub fn schedule() {
 
     {
         // SAFETY: After `__context_switch` we can't get back to the scheduler handler.
-        // After `ret` in `__context_switch` we will immediately jump to the entry point,
-        // so `SCHEDULER` remains locked forever.
-        // Our real guard are interrupt enabling and disabling, so we can safely unlock this mutex.
+        //         After `ret` in `__context_switch` we will immediately jump to the entry point,
+        //         so `SCHEDULER` remains locked forever.
+        //         Our real guard are interrupt enabling and disabling, so we can safely unlock this mutex.
         unsafe { SCHEDULER.force_unlock() };
 
         let mut binding = this();
@@ -716,9 +720,9 @@ pub fn this_thread() -> SharedThread {
 
     {
         // SAFETY: After `__context_switch` we can't get back to the scheduler handler.
-        // After `ret` in `__context_switch` we will immediately jump to the entry point,
-        // so `SCHEDULER` remains locked forever.
-        // Our real guard are interrupt enabling and disabling, so we can safely unlock this mutex.
+        //         After `ret` in `__context_switch` we will immediately jump to the entry point,
+        //         so `SCHEDULER` remains locked forever.
+        //         Our real guard are interrupt enabling and disabling, so we can safely unlock this mutex.
         unsafe { SCHEDULER.force_unlock() };
 
         let lock = this();
@@ -774,13 +778,13 @@ pub fn pause(reason: thread::ThreadWaitReason) {
     drop(il);
 }
 
-pub fn resume(thread: SharedThread) {
+pub fn resume(thread: SharedThread, reschedule: bool) {
     let il = InterruptLocker::lock();
 
     {
         let mut sched = this();
 
-        sched.resume(thread);
+        sched.resume(thread, reschedule);
     }
 
     drop(il);
@@ -830,10 +834,10 @@ pub fn get_process_handle(pid: usize) -> Option<Arc<ProcessHandle>> {
     result
 }
 
-/// Waits for process with specific PID to complete and returns its exit code
+/// Waits for process with specific PID (from hdl) to complete and returns its exit code
 pub fn waitpid(hdl: &ProcessHandle) -> Option<u32> {
-    // TODO: Make a ThreadState::WaitingFor(pid: usize) or ThreadWaitReason::WaitingFor(pid: usize) enum variant and set that state for this thread.
-    // to avoid infinite CPU spinning.
+    // TODO: Make a ThreadState::WaitingFor(pid: usize) and ThreadWaitReason::WaitingFor enum variant and set that state for this thread.
+    //       to avoid infinite CPU spinning.
     fn does_exist(pid: usize) -> bool {
         let il = InterruptLocker::lock();
 
@@ -850,7 +854,11 @@ pub fn waitpid(hdl: &ProcessHandle) -> Option<u32> {
     }
 
     while does_exist(hdl.pid) {
-        schedule();
+        // FIXME: This is a temporary solution to avoid infinite CPU spinning.
+        //        We should implement a proper waiting mechanism.
+        sleep(Duration::from_millis(1));
+
+        // schedule();
     }
 
     let code = hdl.exit_code.load(Ordering::Acquire);
@@ -873,15 +881,16 @@ pub fn thread_exit() -> ! {
             .state
             .store(thread::ThreadState::Dead as _, Ordering::Release);
 
-        // Process exit code is zero.
-        // I don't know is it a last thread of the process, so setting it shouldn't be an UB.
-        thread
-            .process
-            .handle
-            .as_ref()
-            .unwrap()
-            .exit_code
-            .store(0, Ordering::Release);
+        if thread.process.thread_count.load(Ordering::Acquire) == 1 {
+            // If this is the last thread of the process, set exit code to 0.
+            thread
+                .process
+                .handle
+                .as_ref()
+                .unwrap()
+                .exit_code
+                .store(0, Ordering::Release);
+        }
 
         {
             let mut lock = this();
