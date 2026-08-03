@@ -27,11 +27,15 @@ pub fn unregister(pid: usize, descriptor_id: usize) {
 pub fn deliver_event(ev: InputEvent) {
     qemu_log!("Listeners: {}", EVENT_LISTENERS.lock().len());
 
+    let mut unavailable_processes: Vec<usize> = Vec::new();
+
     for &(pid, fd) in EVENT_LISTENERS.lock().iter() {
         qemu_log!("- Listener: {:?}", (pid, fd));
 
         let Some(proc) = noct_sched::get_process(pid) else {
-            qemu_log!("Failed to get a process");
+            qemu_log!("Failed to get a process, scheduled to remove from listeners");
+
+            unavailable_processes.push(pid);
 
             continue;
         };
@@ -47,6 +51,12 @@ pub fn deliver_event(ev: InputEvent) {
         };
 
         res.res.as_event_queue_mut().unwrap().push(ev.clone());
+    }
+
+    for pid in unavailable_processes {
+        qemu_log!("Removing unavailable process from listeners: {}", pid);
+
+        EVENT_LISTENERS.lock().retain(|&(p, _)| p != pid);
     }
 
     noct_sched::resume_group(ThreadWaitReason::InputEvent);
