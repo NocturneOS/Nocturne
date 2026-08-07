@@ -1,5 +1,5 @@
 #set(RUST_TARGET "${CMAKE_SOURCE_DIR}/src/arch/${NOCTURNE_ARCH}/${RUST_TARGET_TRIPLE}.json")
-set(RUST_COMPILER_TOOLCHAIN "nightly-2026-06-01")
+set(RUST_COMPILER_TOOLCHAIN "nightly-2026-07-01")
 set(RUST_FLAGS
 	-Zbuild-std=core,compiler_builtins,alloc
 	-Znext-lockfile-bump
