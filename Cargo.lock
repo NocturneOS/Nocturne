@@ -184,6 +184,7 @@ name = "noct-input-dispatcher"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
+ "noct-descriptor",
  "noct-input",
  "noct-logger",
  "noct-sched",
