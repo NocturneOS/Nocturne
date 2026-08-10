@@ -81,6 +81,8 @@ pub fn close(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize>
 }
 
 pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<usize> {
+    // FIXME: VERIFY THE POINTER IS WITHIN USERSPACE AREA!
+
     let ptr = data as *mut u8;
     let slice = unsafe { core::slice::from_raw_parts_mut(ptr, len) };
 
@@ -100,7 +102,29 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<us
     match &mut fd_val.res {
         ResourceDescriptor::Null => return Some(0),
         ResourceDescriptor::TerminalInput => {
-            todo!("Implement input from terminal!");
+            let ifd = noct_tty::input::input_fd();
+
+            // Kernel TTY is always in kernel process.
+            let kproc = noct_sched::this().kernel_process().clone();
+
+            let mut kres = kproc.resources.lock();
+
+            let evq = kres
+                .find_mut(ifd)?
+                .res
+                .as_event_queue_mut()
+                .expect("Input FD is not an EventQueue!");
+
+            match noct_tty::input::get_char(evq) {
+                Some(0) | None => {
+                    input_needs_waiting = true;
+                }
+                Some(ch) => {
+                    slice[0] = ch;
+
+                    return Some(1);
+                }
+            }
         }
         ResourceDescriptor::TerminalOutput => {
             noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
@@ -141,10 +165,12 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<us
         noct_sched::pause(ThreadWaitReason::InputEvent);
     }
 
-    None
+    Some(0)
 }
 
 pub fn write(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<usize> {
+    // FIXME: VERIFY THE POINTER IS WITHIN USERSPACE AREA!
+
     let ptr = data as *const u8;
     let slice = unsafe { core::slice::from_raw_parts(ptr, len) };
 
@@ -249,6 +275,37 @@ pub fn tell(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> 
             match value {
                 Err(e) => noct_sched::set_error(e as _),
                 Ok(position) => return Some(position as _),
+            }
+        }
+    }
+
+    None
+}
+
+pub fn flush(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
+    let process = &noct_sched::this_thread().process;
+
+    let mut lock = process.resources.lock();
+
+    let fd_val = lock.find_mut(fd)?;
+
+    match &mut fd_val.res {
+        ResourceDescriptor::Null => return Some(0),
+        ResourceDescriptor::TerminalOutput => {
+            noct_tty::WRITER.try_lock()?.flush();
+            return Some(0);
+        }
+        ResourceDescriptor::TerminalInput
+        | ResourceDescriptor::DirectoryHandle(_)
+        | ResourceDescriptor::EventQueue(_) => {
+            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
+        }
+        ResourceDescriptor::FileStream(file_handle) => {
+            let value = file_handle.flush();
+
+            match value {
+                Err(e) => noct_sched::set_error(e as _),
+                Ok(_) => return Some(0),
             }
         }
     }

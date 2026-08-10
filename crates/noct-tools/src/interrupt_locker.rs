@@ -1,3 +1,5 @@
+use core::sync::atomic::AtomicBool;
+
 pub struct InterruptLocker {
     interrupt_state_enabled: bool,
 }

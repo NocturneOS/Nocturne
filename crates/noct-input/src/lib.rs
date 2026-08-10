@@ -57,9 +57,7 @@ impl EventQueue {
 
     /// Pop a event from a buffer, just calls for Vec::pop().
     pub fn get_raw(&mut self) -> Option<InputEvent> {
-        let bind = &mut self.buffer;
-        
-        bind.pop_front()
+        self.buffer.pop_front()
     }
 }
 

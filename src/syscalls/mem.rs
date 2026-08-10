@@ -17,7 +17,7 @@ pub fn sbrk(increment: usize, _: usize, _: usize, _: usize, _: usize) -> Option<
 
     match next_value {
         Ok(next_address) => {
-            qemu_log!("sbrk: +{}: new address is (start: {:#x?}; end: {:#x?}; max: {:#x?})", increment, heap.base(), heap.end(), heap.max());
+            qemu_log!("sbrk: {}{}: new address is (start: {:#x?}; end: {:#x?}; max: {:#x?})", if increment.is_negative() { "-" } else { "" }, increment, heap.base(), heap.end(), heap.max());
 
             Some(next_address)
         },

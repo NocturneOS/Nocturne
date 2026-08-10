@@ -1,6 +1,6 @@
 #![no_std]
 
-use core::panic::PanicInfo;
+use core::{panic::PanicInfo, sync::atomic::AtomicBool};
 
 use alloc::boxed::Box;
 use noct_boot::{BootInfo, Module};
@@ -211,7 +211,15 @@ fn __panic_handler(info: &PanicInfo) -> ! {
         qemu_log!("Kernel panicked: {:?}", info.message());
     }
 
-    unsafe { unwind::backtrace() };
+    let proc = noct_sched::this_process().id;
+
+    if proc == 0 {
+        unsafe { unwind::backtrace() };
+    } else {
+        qemu_log!("Cannot backtrace user threads");
+
+        noct_sched::thread_exit();
+    }
 
     arch::halt_forever()
 }

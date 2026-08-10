@@ -2,6 +2,7 @@
 
 extern crate alloc;
 
+pub mod input;
 pub mod console;
 pub mod renderer;
 
@@ -48,6 +49,16 @@ impl fmt::Write for Writer {
     }
 }
 
+impl Writer {
+    pub fn flush(&mut self) {
+        assert!(self.console.is_some(), "Attempted usage of uninitialized console!");
+
+        self.console.as_mut().unwrap().render(None);
+    }
+}
+
 pub fn init(console_rows: usize, console_columns: usize) {
     *WRITER.lock() = Writer { console: Some(RenderedConsole::new(Console::new(console_rows, console_columns))) };
+
+    input::init();
 }

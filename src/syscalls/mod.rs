@@ -32,6 +32,8 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     mem::sbrk,          // 13
 
     event::open,        // 14
+
+    fd::flush,          // 15
 ];
 
 #[unsafe(no_mangle)]

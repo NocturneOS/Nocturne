@@ -897,6 +897,7 @@ pub fn thread_exit() -> ! {
 
             lock.sleeping_queue.retain(|(x, _)| x.id != thread.id);
             lock.working_queue.retain(|x| x.id != thread.id);
+            lock.waiting_queue.retain(|x| x.id != thread.id);
 
             lock.dead_queue.push_back(thread);
         }

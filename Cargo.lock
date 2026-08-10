@@ -375,8 +375,11 @@ dependencies = [
 name = "noct-tty"
 version = "0.1.0"
 dependencies = [
+ "bitflags 2.11.1",
  "lazy_static",
+ "noct-input-dispatcher",
  "noct-logger",
+ "noct-sched",
  "noct-video",
  "spin 0.10.0",
  "unifont",

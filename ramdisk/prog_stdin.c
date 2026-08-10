@@ -9,9 +9,15 @@ int main() {
   char ch;
 
   while (true) {
-    read(FD_STDIN, 1, 1, &ch);
+    int rd_bytes = read(FD_STDIN, 1, 1, &ch);
+
+    if (rd_bytes == 0) {
+      continue;
+    }
 
     printf("%c", ch);
+
+    flush(FD_STDOUT);
 
     if (ch == '0') {
       break;
