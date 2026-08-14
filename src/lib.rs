@@ -154,13 +154,18 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     syscalls::init();
 
     {
-        let handle = noct_elfloader::spawn("mem0:/prog_stdin", &[]).unwrap();
+        match noct_elfloader::spawn("mem0:/prog_stdin", &[]) {
+            Ok(handle) => {
+                qemu_log!("Started process {}", handle.pid);
 
-        qemu_log!("Started process {}", handle.pid);
+                let code = handle.wait();
 
-        let code = handle.wait();
-
-        qemu_log!("Process exited with code: {code:?}");
+                qemu_log!("Process exited with code: {code:?}");
+            }
+            Err(e) => {
+                qemu_log!("Failed to spawn process: {e:?}");
+            }
+        }
     }
 
     {

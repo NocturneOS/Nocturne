@@ -10,8 +10,6 @@
 .int INIT_MBOOT_HEADER_FLAGS
 .int INIT_MBOOT_CHECKSUM
 
-# My laptop has screen resolution 1366x768, and with QEMU with 800x600 fits really well
-# I'll set higher resolution in the future (if it won't brake development)
 .long 0, 0, 0, 0, 0     # Unused
 .long 0                 # 0 - graphical mode
 .long 800, 600, 32      # Width, height, depth
@@ -25,7 +23,6 @@
 
 .section .bootstrap_paging, "aw", @nobits
     .align 4096
-    .global boot_pml4
     boot_pml4t:
         .skip 4096
     boot_pdpt:
@@ -36,13 +33,7 @@
 .section .rodata
 .align 8
 fpu_main_init_word:
-    .word 0x37f
-
-fpu_invop:
-    .word 0x37e
-
-fpu_zerodiv_err:
-    .word 0x37a
+    .word 0x37f & ~0x1 & ~0x4
 
 .section .text
 .type __pre_init, %function
@@ -134,6 +125,9 @@ __pre_init:
     add $0x200000, %esi
     mov %esi, 56(%edi)
 
+    add $0x200000, %esi
+    mov %esi, 64(%edi)
+
     # Now, load PML4T to CR3
     lea (boot_pml4t), %eax
     mov %eax, %cr3
@@ -203,27 +197,25 @@ go64_p2:
     # init SSE
 
     mov %cr0, %rax
-    and $~0x04, %ax
-    or $0x2, %ax
+    and $~0x04, %eax
+    or $0x2, %eax
     mov %rax, %cr0
 
     mov %cr4, %rax
-    or $(3 << 9), %ax
+    or $(3 << 9), %eax
     mov %rax, %cr4
-
-    mov %cr4, %rax
-    or $0x200, %rax
-    mov %rax, %cr4
-
-    # Use RIP-relative addressing for conword access
-    fldcw fpu_main_init_word
-    fldcw fpu_invop
-    fldcw fpu_zerodiv_err
 
     # init FPU
     finit
 
+    # Use RIP-relative addressing for conword access
+    fldcw fpu_main_init_word
+
+    # Pop multiboot header address from stack
     pop %rdi
+
+    # Add 0xFFFFFFFF80000000 to multiboot header address to convert it to higher-half address
+    add $0xFFFFFFFF80000000, %rdi
 
     xor %rbp, %rbp
 

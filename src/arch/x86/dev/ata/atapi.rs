@@ -35,21 +35,21 @@ pub fn send_scsi(drive: &ATAPhysicalDrive, lba: u16, command: &[u16]) -> ATAResu
 }
 
 pub fn send_scsi8(drive: &ATAPhysicalDrive, lba: u16, command: &[u8]) -> ATAResult<()> {
-    // SAFETY: For ATAPI devices, the block size is always sepcified, so unwrap will always succeed.
-    let blksize = drive.block_size().unwrap();
-
     assert!(command.len() == 12);
 
-    let command16 = [
-        (command[1] as u16) << 8 | (command[0] as u16),
-        (command[3] as u16) << 8 | (command[2] as u16),
-        (command[5] as u16) << 8 | (command[4] as u16),
-        (command[7] as u16) << 8 | (command[6] as u16),
-        (command[9] as u16) << 8 | (command[8] as u16),
-        (command[11] as u16) << 8 | (command[10] as u16),
-    ];
+    // SAFETY: `assert!` checked that slice has needed amount of bytes.
+    let command16 = unsafe {
+        [
+            (*command.get_unchecked(1) as u16) << 8 | (*command.get_unchecked(0) as u16),
+            (*command.get_unchecked(3) as u16) << 8 | (*command.get_unchecked(2) as u16),
+            (*command.get_unchecked(5) as u16) << 8 | (*command.get_unchecked(4) as u16),
+            (*command.get_unchecked(7) as u16) << 8 | (*command.get_unchecked(6) as u16),
+            (*command.get_unchecked(9) as u16) << 8 | (*command.get_unchecked(8) as u16),
+            (*command.get_unchecked(11) as u16) << 8 | (*command.get_unchecked(10) as u16),
+        ]
+    };
 
-    send_scsi(drive, blksize as _, &command16)
+    send_scsi(drive, lba, &command16)
 }
 
 pub fn receive_size_of_transfer(drive: &ATAPhysicalDrive) -> ATAResult<u16> {
@@ -105,7 +105,7 @@ pub fn read_sectors(drive: &ATAPhysicalDrive, lba: u32, buffer: &mut [u8]) -> AT
 
     let command: [u8; 12] = [
         ATAPI_CMD_READ,
-        0, // Reserved or flags (usually zero)
+        0,                            // Reserved or flags (usually zero)
         ((lba >> 0x18) & 0xFF) as u8, // LBA
         ((lba >> 0x10) & 0xFF) as u8,
         ((lba >> 0x08) & 0xFF) as u8,
@@ -126,7 +126,7 @@ pub fn read_sectors(drive: &ATAPhysicalDrive, lba: u32, buffer: &mut [u8]) -> AT
 
     for i in 0..count {
         ide_poll(drive.bus.io()).map_err(ATAIOError::ControllerError)?;
-        
+
         let ts = receive_size_of_transfer(drive).map_err(ATAIOError::ControllerError)?;
 
         let slice = &mut buffer[i * blksize..][..ts as usize];
@@ -156,14 +156,14 @@ pub fn start_stop(drive: &ATAPhysicalDrive, op: StartStopOperation) -> ATAIOResu
     let mut command: [u16; 6] = [(ATAPI_CMD_START_STOP as u16), 0, 0, 0, 0, 0];
 
     // Byte 4:
-	//   Bit 0: Start
-	//   Bit 1: LoEj
+    //   Bit 0: Start
+    //   Bit 1: LoEj
 
-	// LoEj      Start      Result
-	//  0          0     Stop the Disc
-	//  0          1     Start the Disc
-	//  1          0     Eject Disc
-	//  1          1     Close the Tray (Load the Disc)
+    // LoEj      Start      Result
+    //  0          0     Stop the Disc
+    //  0          1     Start the Disc
+    //  1          0     Eject Disc
+    //  1          1     Close the Tray (Load the Disc)
 
     unsafe { command.as_mut_ptr().cast::<u8>().add(4).write(op as u8) };
 

@@ -9,11 +9,11 @@ use noct_boot::{BootInfo, Module};
 use noct_multiboot::MultibootModule;
 
 #[unsafe(no_mangle)]
-pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
+pub extern "C" fn __arch_init(multiboot_header_address: *const MultibootHeader) -> ! {
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
 
     let mb = unsafe {
-        &*((multiboot_header_address + noct_spec::KERNEL_BASE) as *const MultibootHeader)
+        &*multiboot_header_address
     };
 
     qemu_log!("Command line: {:?}", mb.cmdline());

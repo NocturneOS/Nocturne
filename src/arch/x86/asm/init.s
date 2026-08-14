@@ -33,7 +33,7 @@
 .section .data
 .align 4
 fpu_control_word:
-    .word 0x37f
+    .word 0x37f & ~0x1 & ~0x4
 
 .align 4
 bootstrap_page_count:
@@ -162,13 +162,14 @@ __init:
     mov $stack_top, %esp
 
     # init FPU
-    fninit
-    finit
     fldcw (fpu_control_word)
 
-    mov %cr4, %eax
-    or $0x200, %eax
-    mov %eax, %cr4
+    fninit
+    finit
+
+    # mov %cr4, %eax
+    # or $0x200, %eax
+    # mov %eax, %cr4
 
     # init SSE
 
@@ -180,6 +181,8 @@ __init:
     mov %cr4, %eax
     or $(3 << 9), %ax
     mov %eax, %cr4
+
+    add $0xC0000000, %ebx
 
     push	%ebx
 

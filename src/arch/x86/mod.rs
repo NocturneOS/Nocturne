@@ -17,7 +17,7 @@ use noct_video::video_mode::VideoMode;
 
 #[cfg(target_arch = "x86")]
 #[unsafe(no_mangle)]
-pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
+pub extern "C" fn __arch_init(multiboot_header: *const MultibootHeader) -> ! {
     use noct_boot::BootInfo;
     use noct_cpu::{gdt, idt, tss};
     use noct_multiboot::MultibootMMapType;
@@ -25,8 +25,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: usize) -> ! {
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
 
     let mb = unsafe {
-        use noct_spec::KERNEL_BASE;
-        &*((multiboot_header_address + KERNEL_BASE) as *const MultibootHeader)
+        &*multiboot_header
     };
 
     qemu_log!("Command line: {:?}", mb.cmdline());
