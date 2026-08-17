@@ -805,15 +805,14 @@ pub fn resume_group(reason: thread::ThreadWaitReason) {
 pub fn get_process(pid: usize) -> Option<Arc<Process>> {
     let il = InterruptLocker::lock();
 
-    unsafe { SCHEDULER.force_unlock() };
+    // unsafe { SCHEDULER.force_unlock() };
 
-    let sched = this();
-    let result = sched
+    let result = this()
         .thread_list
         .iter()
         .find(|x| x.process.id == pid)
         .map(|x| Arc::clone(&x.process));
-
+    
     drop(il);
 
     result
@@ -822,8 +821,7 @@ pub fn get_process(pid: usize) -> Option<Arc<Process>> {
 pub fn get_process_handle(pid: usize) -> Option<Arc<ProcessHandle>> {
     let il = InterruptLocker::lock();
 
-    let sched = this();
-    let result = sched
+    let result = this()
         .thread_list
         .iter()
         .find(|x| x.process.id == pid)
@@ -847,7 +845,8 @@ pub fn waitpid(hdl: &ProcessHandle) -> Option<u32> {
             .iter()
             .find(|x| x.process.id == pid)
             .is_some();
-
+        
+        drop(sched);
         drop(il);
 
         result

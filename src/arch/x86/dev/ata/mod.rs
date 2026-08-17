@@ -81,6 +81,7 @@ fn ide_select_drive(bus: ATABus, drive: ATADrive) {
     ide_400ns_delay(io);
 }
 
+#[inline]
 fn ide_400ns_delay(io: u16) {
     unsafe {
         inb(io + ATA_REG_ALTSTATUS);

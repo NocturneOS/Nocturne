@@ -1,12 +1,10 @@
 use alloc::vec;
 use noct_diskman::drive::Drive;
-use noct_logger::qemu_log;
 
 use crate::arch::x86::dev::ata::{
-    ATABus, ATADrive,
     commands::{ATA_CMD_PACKET, ATAPI_CMD_READ, ATAPI_CMD_READ_CAPACITY, ATAPI_CMD_START_STOP},
     drive::ATAPhysicalDrive,
-    error::{ATAError, ATAIOError, ATAIOResult, ATAResult},
+    error::{ATAIOError, ATAIOResult, ATAResult},
     ide_400ns_delay, ide_poll, ide_select_drive,
     regs::{ATA_REG_COMMAND, ATA_REG_DATA, ATA_REG_ERROR, ATA_REG_LBA1, ATA_REG_LBA2},
 };
@@ -64,9 +62,7 @@ pub fn receive_size_of_transfer(drive: &ATAPhysicalDrive) -> ATAResult<u16> {
 }
 
 pub fn read_result(drive: &ATAPhysicalDrive, buffer: &mut [u16]) {
-    let port = drive.pio_port();
-
-    unsafe { port.offset(ATA_REG_DATA).read16_bulk(buffer) };
+    unsafe { drive.pio_port().offset(ATA_REG_DATA).read16_bulk(buffer) };
 }
 
 pub fn read_medium_capacity(drive: &ATAPhysicalDrive) -> ATAResult<(usize, usize)> {

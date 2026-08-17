@@ -30,3 +30,15 @@ pub fn disable_interrupts() {
         x86::irq::disable()
     };
 }
+
+pub fn get_interrupt_state() -> bool {
+    are_interrupts_enabled()
+}
+
+pub fn set_interrupt_state(enabled: bool) {
+    if enabled {
+        enable_interrupts();
+    } else {
+        disable_interrupts();
+    }
+}

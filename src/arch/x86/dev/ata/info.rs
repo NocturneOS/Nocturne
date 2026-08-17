@@ -21,14 +21,17 @@ impl ATADriveInfo {
         unsafe { str::from_utf8_unchecked(&self.identity[offset..offset + length]).trim() }
     }
 
+    #[inline]
     pub fn model_name(&self) -> &str {
         self.name_conv(54, 40)
     }
 
+    #[inline]
     pub fn firmware(&self) -> &str {
         self.name_conv(46, 8)
     }
 
+    #[inline]
     pub fn serial(&self) -> &str {
         self.name_conv(20, 20)
     }

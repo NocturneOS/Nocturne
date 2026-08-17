@@ -10,11 +10,11 @@ SECTIONS {
         *(.multiboot_header*)
     }
 
-    .bootstrap_stack : {
+    .bootstrap_stack ALIGN(4K) : {
         *(.bootstrap_stack*)
     }
 
-    .bootstrap_paging : {
+    .bootstrap_paging ALIGN(4K) : {
         *(.bootstrap_paging*)
     }
 

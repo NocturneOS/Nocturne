@@ -31,7 +31,7 @@ pub struct TSSEntry {
 #[unsafe(no_mangle)]
 pub static mut BSP_TSS: PseudoSync<TSSEntry> = unsafe { core::mem::zeroed() };
 
-const DUMB_STACK_SIZE: usize = 0x1000;
+const DUMB_STACK_SIZE: usize = 0x4000;
 
 // TODO: Dynamically allocate the stack!
 #[repr(align(16))]

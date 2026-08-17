@@ -30,10 +30,12 @@ pub struct ATAPhysicalDrive {
 }
 
 impl ATAPhysicalDrive {
+    #[inline]
     pub fn info(&self) -> &ATADriveInfo {
         &self.identity
     }
 
+    #[inline]
     pub fn pio_port(&self) -> IOPort {
         IOPort::new(self.bus.io())
     }

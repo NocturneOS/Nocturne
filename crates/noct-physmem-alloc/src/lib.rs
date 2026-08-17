@@ -13,7 +13,7 @@ use noct_boot::Module;
 use noct_logger::qemu_log;
 use noct_multiboot::MultibootModule;
 use noct_spec::{WORD_SIZE, WORD_SIZE_BITS};
-use noct_tools::interrupt_locker::InterruptLocker;
+use noct_tools::{interrupt_locker::InterruptLocker, without_interrupts::without_interrupts};
 
 unsafe extern "C" {
     static IMAGE_VIRT_END: *const ();
@@ -79,54 +79,44 @@ fn indices_to_addr(index: usize, bit_index: usize) -> usize {
 }
 
 fn is_used(address: usize) -> bool {
-    let il = InterruptLocker::lock();
-
     let (idx, bitidx) = addr_to_indices(address);
 
-    let result = bitmap()[idx] & (1 << bitidx) != 0;
-
-    drop(il);
+    let result = without_interrupts(|| bitmap()[idx] & (1 << bitidx) != 0);
 
     result
 }
 
 /// Mark one page at `address` used or free.
 pub fn mark_page(address: usize, is_used: bool) {
-    let il = InterruptLocker::lock();
-
     let (idx, bitidx) = addr_to_indices(address);
 
-    let data = bitmap()[idx];
+    without_interrupts(|| {
+        let data = bitmap()[idx];
 
-    if is_used {
-        bitmap_mut()[idx] = data | (1 << bitidx);
-    } else {
-        bitmap_mut()[idx] = data & !(1 << bitidx);
-    }
-
-    drop(il);
+        if is_used {
+            bitmap_mut()[idx] = data | (1 << bitidx);
+        } else {
+            bitmap_mut()[idx] = data & !(1 << bitidx);
+        }
+    });
 }
 
 /// Finds first free page
 /// Returns an address in physical memory of free page
 fn first_free_page() -> Option<usize> {
-    let il = InterruptLocker::lock();
+    without_interrupts(|| {
+        for (n, i) in bitmap().iter().enumerate() {
+            for nb in 0..WORD_SIZE_BITS {
+                let element = i & (1 << nb);
 
-    for (n, i) in bitmap().iter().enumerate() {
-        for nb in 0..WORD_SIZE_BITS {
-            let element = i & (1 << nb);
-
-            if element == 0 {
-                drop(il);
-
-                return Some(indices_to_addr(n, nb));
+                if element == 0 {
+                    return Some(indices_to_addr(n, nb));
+                }
             }
         }
-    }
 
-    drop(il);
-
-    None
+        None
+    })
 }
 
 /// Finds first cluster of free pages.
@@ -178,15 +168,13 @@ fn first_free_cluster(cluster_size: usize) -> Option<usize> {
 /// Allocate one page of physical memory.
 /// Returns an address in physical memory, guaranteed to be pagesize-aligned.
 pub fn allocate_one() -> Option<usize> {
-    let il = InterruptLocker::lock();
+    without_interrupts(|| {
+        let first_free = first_free_page()?;
 
-    let first_free = first_free_page()?;
+        mark_page(first_free, true);
 
-    mark_page(first_free, true);
-
-    drop(il);
-
-    Some(first_free)
+        Some(first_free)
+    })
 }
 
 /// Allocate one page of physical memory.
@@ -195,12 +183,6 @@ pub fn allocate_bulk(page_count: usize) -> Option<usize> {
     let il = InterruptLocker::lock();
 
     let first_free = first_free_cluster(page_count)?;
-
-    // qemu_log!(
-    //     "Bulk found first free block: {:x} (with page count: {})",
-    //     first_free,
-    //     page_count
-    // );
 
     for i in 0..page_count {
         let addr = first_free + (i * arch::get_page_size());
@@ -213,14 +195,17 @@ pub fn allocate_bulk(page_count: usize) -> Option<usize> {
     Some(first_free)
 }
 
+#[inline]
 pub fn free_one(address: usize) {
     mark_page(address, false);
 }
 
 pub fn free_bulk(address: usize, page_count: usize) {
-    for i in 0..page_count {
-        mark_page(address + (i * arch::get_page_size()), false);
-    }
+    without_interrupts(|| {
+        for i in 0..page_count {
+            mark_page(address + (i * arch::get_page_size()), false);
+        }
+    });
 }
 
 pub fn init(boot: &impl noct_boot::BootInfo<ModuleType = MultibootModule>) {
@@ -229,8 +214,11 @@ pub fn init(boot: &impl noct_boot::BootInfo<ModuleType = MultibootModule>) {
             let last_mod_addr = mo.end();
 
             qemu_log!("Last module ends at: {last_mod_addr:x?}");
-    
-            unsafe { BITMAP_START_VIRT = (last_mod_addr + noct_spec::KERNEL_BASE).next_multiple_of(0x1000) };
+
+            unsafe {
+                BITMAP_START_VIRT =
+                    (last_mod_addr + noct_spec::KERNEL_BASE).next_multiple_of(0x1000)
+            };
         } else {
             unsafe { BITMAP_START_VIRT = (&IMAGE_VIRT_END as *const *const ()).addr() };
         }
@@ -257,9 +245,9 @@ pub fn init(boot: &impl noct_boot::BootInfo<ModuleType = MultibootModule>) {
 
     let start = unsafe { BITMAP_START_VIRT } - noct_spec::KERNEL_BASE;
 
-    for page in (start..start+size).step_by(arch::get_page_size()) {
+    for page in (start..start + size).step_by(arch::get_page_size()) {
         mark_page(page, true);
     }
-    
-    qemu_log!("Marked page range: {:x?} as used", start..start+size);
+
+    qemu_log!("Marked page range: {:x?} as used", start..start + size);
 }
