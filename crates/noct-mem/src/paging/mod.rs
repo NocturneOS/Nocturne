@@ -31,7 +31,7 @@ pub trait PagingHierarchy {
     fn user_root_entry_count() -> usize;
 
     /// Gets paging root (for x86 is PD, for x86_64 it's a PML4T)
-    fn root() -> &'static [usize];
+    fn root() -> &'static [Page];
 }
 
 // Good for temporary mappings

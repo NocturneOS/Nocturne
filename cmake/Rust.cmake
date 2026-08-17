@@ -7,13 +7,13 @@ set(RUST_FLAGS
 	-C code-model=kernel
 )
 if(RUST_TARGET_TRIPLE STREQUAL "i686-unknown-none")
-  set(RUST_TARGET "${CMAKE_SOURCE_DIR}/src/arch/${NOCTURNE_ARCH}/${RUST_TARGET_TRIPLE}.json")
-  set(RUST_FLAGS -Zjson-target-spec ${RUST_FLAGS})
+	set(RUST_TARGET "${CMAKE_SOURCE_DIR}/src/arch/${NOCTURNE_ARCH}/${RUST_TARGET_TRIPLE}.json")
+	set(RUST_FLAGS -Zjson-target-spec ${RUST_FLAGS})
 else()
-  set(RUST_TARGET ${RUST_TARGET_TRIPLE})
+	set(RUST_TARGET ${RUST_TARGET_TRIPLE})
 endif()
 
-set(RUST_TOOLCHAIN_FULLNAME "${RUST_COMPILER_TOOLCHAIN}-x86_64-unknown-none")  
+set(RUST_TOOLCHAIN_FULLNAME "${RUST_COMPILER_TOOLCHAIN}-x86_64-unknown-none")
 set(RUST_CARGO_PATH "~/.rustup/toolchains/${RUST_TOOLCHAIN_FULLNAME}/bin/src/cargo")
 
 add_custom_command(

@@ -36,7 +36,7 @@ pub struct TSSEntry {
     pub iomap_base: u16,
 }
 
-pub const TSS_KERNEL_STACK_SIZE: usize = 0x1000;
+pub const TSS_KERNEL_STACK_SIZE: usize = 0x4000;
 
 #[cfg(target_arch = "x86")]
 #[unsafe(no_mangle)]

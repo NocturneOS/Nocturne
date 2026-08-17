@@ -1,5 +1,5 @@
 // use crate::paging::PageFlags;
-use crate::paging::{PageFlags, PagingHierarchy};
+use crate::paging::{Page, PageFlags, PagingHierarchy};
 use noct_logger::qemu_log;
 
 pub const PAGE_SIZE: usize = 0x1000;
@@ -29,8 +29,8 @@ impl PagingHierarchy for X86_64Paging {
         256
     }
 
-    fn root() -> &'static [usize] {
-        unsafe { core::slice::from_raw_parts(PML4T as *const usize, 512) }
+    fn root() -> &'static [Page] {
+        unsafe { core::slice::from_raw_parts(PML4T as *const Page, 512) }
     }
 }
 

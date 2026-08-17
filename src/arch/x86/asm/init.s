@@ -121,9 +121,8 @@ __pre_init:
         jnz .map_iteration
 
     # Recursive paging
-    movl $(boot_page_directory - 0xC0000000), %eax
+    lea boot_page_directory - 0xC0000000, %eax
     orl $0b11, %eax
-
     mov %eax, boot_page_directory - 0xC0000000 + 1023 * 4
 
     movl $(boot_page_directory - 0xC0000000), %eax
@@ -159,17 +158,20 @@ __init:
         test %ecx, %ecx
         jnz .unmap_loop
 
+    .continue:
+
     mov $stack_top, %esp
 
     # init FPU
+
+    # fninit
+    finit
+    
     fldcw (fpu_control_word)
 
-    fninit
-    finit
-
-    # mov %cr4, %eax
-    # or $0x200, %eax
-    # mov %eax, %cr4
+    mov %cr4, %eax
+    or $0x200, %eax
+    mov %eax, %cr4
 
     # init SSE
 
@@ -182,6 +184,7 @@ __init:
     or $(3 << 9), %ax
     mov %eax, %cr4
 
+    # GRUB's Multiboot1 boot parameters are stored in lower half. Add kernel base to the address.
     add $0xC0000000, %ebx
 
     push	%ebx

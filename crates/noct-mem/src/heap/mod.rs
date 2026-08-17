@@ -114,14 +114,9 @@ impl InnerArenaAllocator {
 
     // Returns Option<(INDEX, ADDRESS)>
     fn find_suitable_block(&self, layout: &Layout) -> Option<(usize, usize)> {
-        // let mut index = 0usize;
-
         for (index, i) in self.blocks().windows(2).enumerate() {
             let this_block = &i[0];
             let next_block = &i[1];
-
-            // THIS THING IS OVERFLOWING!
-            // let this_block_end = this_block.address + this_block.size;
 
             let this_block_end = if let Some(a) = this_block.address.checked_add(this_block.size) {
                 a
@@ -144,8 +139,6 @@ impl InnerArenaAllocator {
             if aligned_new_block_addr + layout.size() < next_block.address {
                 return Some((index + 1, aligned_new_block_addr));
             }
-
-            // index += 1;
         }
 
         None
@@ -154,7 +147,7 @@ impl InnerArenaAllocator {
     fn add_block(&mut self, index: usize, addr: usize, size: usize) {
         let arena = self.arena.as_mut().unwrap();
 
-        if self.alloc_count >= arena.len() - 1 {
+        if self.alloc_count > arena.len() {
             panic!("Arena overflow!");
         }
 

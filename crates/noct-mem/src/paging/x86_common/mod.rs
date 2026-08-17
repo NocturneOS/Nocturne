@@ -65,6 +65,10 @@ impl Page {
         PageFlags::from_bits(self.0 & 0x1FF).unwrap()
     }
 
+    pub fn set_flags(&mut self, flags: PageFlags) {
+        self.0 = (self.0 & !0x1FF) | flags.bits();
+    }
+
     pub fn is_present(&self) -> bool {
         self.flags().contains(PageFlags::Present)
     }

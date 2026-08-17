@@ -42,10 +42,10 @@ __pre_init:
     cli
     cld
 
-    // Load stack - use physical address
+    # Load stack - use physical address
     lea (stack_top), %esp
 
-    // Save multiboot header address on stack
+    # Save multiboot header address on stack
     push $0
     push %ebx
 
@@ -65,8 +65,8 @@ __pre_init:
     lea (boot_pdt), %edi
     rep stosl
 
-    // Setup paging hierarchy
-    // PML4T
+    # Setup paging hierarchy
+    # PML4T
     lea (boot_pml4t), %edi
     lea (boot_pdpt), %esi
     or $(1 << 0 | 1 << 1), %esi  # Present + Writeable
@@ -74,10 +74,10 @@ __pre_init:
     # Identity mapping V0x0 = P0x0, we will unmap it later
     mov %esi, (%edi)
 
-    // Higher half mapping - entry 511 (0xFFFF_FFFF_8000_0000)
+    # Higher half mapping - entry 511 (0xFFFF_FFFF_8000_0000)
     mov %esi, (511 * 8)(%edi)
 
-    // Recursive paging at entry 510
+    # Recursive paging at entry 510
     lea (boot_pml4t), %esi
     or $(1 << 0 | 1 << 1), %esi
     mov %esi, (510 * 8)(%edi)

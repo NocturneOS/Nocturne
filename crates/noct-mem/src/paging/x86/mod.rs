@@ -26,8 +26,8 @@ impl PagingHierarchy for X86Paging {
         768
     }
 
-    fn root() -> &'static [usize] {
-        unsafe { core::slice::from_raw_parts(0xFFFF_F000 as *const usize, 1023) }
+    fn root() -> &'static [Page] {
+        unsafe { core::slice::from_raw_parts(0xFFFF_F000 as *const Page, 1023) }
     }
 }
 

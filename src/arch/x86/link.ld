@@ -39,14 +39,6 @@ SECTIONS {
         PROVIDE(RODATA_end = .);
     }
 
-    .bootstrap_stack : {
-        *(.bootstrap_stack*)
-    }
-
-    .bootstrap_paging : {
-        *(.bootstrap_paging*)
-    }
-
     .bss ALIGN (4K) : AT(ADDR (.bss) - 0xC0000000) {
         *(COMMON)
 
@@ -59,6 +51,14 @@ SECTIONS {
 
     .debug_symbols ALIGN(4K) : {
         *(.debug_symbols*)
+    }
+
+    .bootstrap_stack : {
+        *(.bootstrap_stack*)
+    }
+
+    .bootstrap_paging : {
+        *(.bootstrap_paging*)
     }
 
     /DISCARD/ : {
