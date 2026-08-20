@@ -5,14 +5,53 @@
 .include "./common.s"
 
 .section .multiboot_header, "a", @progbits
-.align 4
-.int INIT_MBOOT_HEADER_MAGIC
-.int INIT_MBOOT_HEADER_FLAGS
-.int INIT_MBOOT_CHECKSUM
+.align 8
+mb2_header:
+    .long MBOOT2_HEADER_MAGIC
+    .long MBOOT2_ARCH
+    .long MBOOT2_HEADER_LENGTH
+    .long MBOOT2_CHECKSUM
 
-.long 0, 0, 0, 0, 0     # Unused
-.long 0                 # 0 - graphical mode
-.long 800, 600, 32      # Width, height, depth
+    # Information request tag
+    .align 8
+    .short 1  # Type: Information request
+    .short 0  # Flags: None
+    .int 24  # Size: 24 bytes
+    .long 4   # Request memory information
+    .long 6   # Request boot loader name
+    .long 8   # Request BIOS boot device
+    .long 9   # Request memory map
+
+    # IMPORTANT: On ELF64 address tag shouldn't be used! All info in ELF file itself!
+
+    # Entry address tag
+    .align 8
+    .short 3  # Type: Entry address
+    .short 0  # Flags: None
+    .int 12  # Size: 12 bytes
+    .long __pre_init - 0xFFFFFFFF80000000 # Entry point address
+
+    # Framebuffer tag
+    .align 8
+    .short 5  # Type: Framebuffer
+    .short 0  # Flags: None
+    .int 20  # Size: 20 bytes
+    .long 1280  # Width
+    .long 720   # Height
+    .long 32    # Depth
+
+    # Module page-alignment tag
+    .align 8
+    .short 6
+    .short 0
+    .long 8
+
+    # End tag
+    .align 8
+    .short 0  # Type: End
+    .short 0  # Flags: None
+    .int 8   # Size: 8 bytes
+mb2_header_end:
 
 .section .bootstrap_stack, "aw", @nobits
     .global stack_bottom
@@ -43,7 +82,7 @@ __pre_init:
     cld
 
     # Load stack - use physical address
-    lea (stack_top), %esp
+    lea (stack_top - 0xFFFFFFFF80000000), %esp
 
     # Save multiboot header address on stack
     push $0
@@ -104,6 +143,8 @@ __pre_init:
     or $(1 << 0 | 1 << 1 | 1 << 7), %esi  # Present + Writable + Page Size
     mov %esi, (%edi)
 
+    # TODO: Make it a loop, instead of manually setting this manually.
+
     add $0x200000, %esi
     mov %esi, 8(%edi)
 
@@ -127,6 +168,12 @@ __pre_init:
 
     add $0x200000, %esi
     mov %esi, 64(%edi)
+
+    add $0x200000, %esi
+    mov %esi, 72(%edi)
+    
+    add $0x200000, %esi
+    mov %esi, 80(%edi)
 
     # Now, load PML4T to CR3
     lea (boot_pml4t), %eax

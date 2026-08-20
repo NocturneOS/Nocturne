@@ -47,10 +47,10 @@ set(KERNEL nocturne.elf)
 
 if(NOCTURNE_ARCH STREQUAL "x86")
 	set(LINKER_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/src/arch/x86/link.ld")
-	set(CMAKE_EXE_LINKER_FLAGS "-Wl,-T ${LINKER_SCRIPT_FILE} -nostdlib -fno-pic -static -Wl,-znoexecstack -Wl,--stats")
+	set(CMAKE_EXE_LINKER_FLAGS "-Wl,-T${LINKER_SCRIPT_FILE} -nostdlib -fno-pic -static -Wl,-znoexecstack -Wl,--stats -Wl,-zmax-page-size=4096")
 elseif(NOCTURNE_ARCH STREQUAL "x86_64")
 	set(LINKER_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/src/arch/x86_64/link.ld")
-	set(CMAKE_EXE_LINKER_FLAGS "-Wl,-T ${LINKER_SCRIPT_FILE} -nostdlib -fno-pic -static -Wl,-znoexecstack -Wl,--stats")
+	set(CMAKE_EXE_LINKER_FLAGS "-Wl,-T${LINKER_SCRIPT_FILE} -nostdlib -fno-pic -static -Wl,-znoexecstack -Wl,--stats -Wl,-zmax-page-size=4096")
 endif()
 
 set(ISO_FILE "NocturneOS_${NOCTURNE_ARCH}_${CMAKE_BUILD_TYPE}.iso")
@@ -123,10 +123,18 @@ add_custom_command(
 )
 
 add_custom_target(
+	check_mb2
+	COMMAND grub-file --is-x86-multiboot2 ${KERNEL}
+	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+	DEPENDS ${KERNEL}
+	COMMENT "Checking Multiboot2 header..."
+)
+
+add_custom_target(
 	copy_symbols
 	COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL}.map ${ISO_DIR}/${KERNEL}.map
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-	DEPENDS ${KERNEL}
+	DEPENDS check_mb2
 	COMMENT "Copying files..."
 )
 
@@ -136,42 +144,34 @@ if(
 )
 
 	add_custom_target(
-			strip_down
-												COMMAND strip -s ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL}
-												COMMENT "Stripping binary..."
-			DEPENDS copy_symbols
-				)
+		strip_down
+		COMMAND strip -s ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL}
+		COMMENT "Stripping binary..."
+		DEPENDS copy_symbols
+	)
 
 	add_custom_target(
-												copy_kernel
-												COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL} ${ISO_DIR}/${KERNEL}
-												WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-												DEPENDS strip_down
-												COMMENT "Copying kernel to iso..."
-				)
+		copy_kernel
+		COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL} ${ISO_DIR}/${KERNEL}
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		DEPENDS strip_down
+		COMMENT "Copying kernel to iso..."
+	)
 else()
 	add_custom_target(
-												copy_kernel
-												COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL} ${ISO_DIR}/${KERNEL}
-												WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-												DEPENDS copy_symbols
-												COMMENT "Copying kernel to iso..."
-				)
+		copy_kernel
+		COMMAND cp ${CMAKE_CURRENT_BINARY_DIR}/${KERNEL} ${ISO_DIR}/${KERNEL}
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		DEPENDS copy_symbols
+		COMMENT "Copying kernel to iso..."
+	)
 endif()
 
 add_custom_target(
 	clippy
-				COMMAND cargo +${RUST_COMPILER_TOOLCHAIN} clippy --target ${RUST_TARGET} ${RUST_FLAGS}
+	COMMAND cargo +${RUST_COMPILER_TOOLCHAIN} clippy --target ${RUST_TARGET} ${RUST_FLAGS}
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 	USES_TERMINAL
-	VERBATIM
-)
-
-add_custom_target(
-	clippy-fix
-				COMMAND cargo +${RUST_COMPILER_TOOLCHAIN} clippy --fix --target ${RUST_TARGET} ${RUST_FLAGS}
-				WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-				USES_TERMINAL
 	VERBATIM
 )
 
@@ -208,10 +208,10 @@ add_custom_target(
 )
 
 add_custom_target(
-				ramdisk
-				COMMAND tar cvf ${ISO_DIR}/ramdisk -C ramdisk/ .
-				WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-				DEPENDS copy_kernel
+	ramdisk
+	COMMAND tar cvf ${ISO_DIR}/ramdisk -C ramdisk/ .
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	DEPENDS copy_kernel
 )
 
 add_custom_target(
@@ -221,10 +221,10 @@ add_custom_target(
 )
 
 add_custom_command(
-				OUTPUT "${CMAKE_SOURCE_DIR}/test_disk.img"
-				COMMAND dd if=/dev/zero of=${CMAKE_SOURCE_DIR}/test_disk.img bs=1K count=64000
-				COMMENT "Making disk..."
-				VERBATIM
+	OUTPUT "${CMAKE_SOURCE_DIR}/test_disk.img"
+	COMMAND dd if=/dev/zero of=${CMAKE_SOURCE_DIR}/test_disk.img bs=1K count=64000
+	COMMENT "Making disk..."
+	VERBATIM
 )
 
 add_custom_target(create_disk DEPENDS ${CMAKE_SOURCE_DIR}/test_disk.img)

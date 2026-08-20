@@ -5,13 +5,61 @@
 .include "./common.s"
 
 .section .multiboot_header, "a", @progbits
-.align 4
-.int INIT_MBOOT_HEADER_MAGIC
-.int INIT_MBOOT_HEADER_FLAGS
-.int INIT_MBOOT_CHECKSUM
-.long 0, 0, 0, 0, 0     # Unused
-.long 0                 # 0 - graphical mode
-.long 800, 600, 32      # Width, height, depth
+.align 8
+mb2_header:
+    .int MBOOT2_HEADER_MAGIC
+    .int MBOOT2_ARCH
+    .int MBOOT2_HEADER_LENGTH
+    .int MBOOT2_CHECKSUM
+
+    # Information request tag
+    .align 8
+    .short 1  # Type: Information request
+    .short 0  # Flags: None
+    .int 24  # Size: 20 bytes
+    .int 4   # Request memory information
+    .int 6   # Request boot loader name
+    .int 8   # Request BIOS boot device
+    .int 9   # Request memory map
+
+   # Address tag
+    .align 8
+    .short 2  # Type: Address
+    .short 0  # Flags: None
+    .int 24  # Size: 24 bytes
+    .int mb2_header        # Header address
+    .int IMAGE_PHYS_START  # Load address
+    .int BSS_phys_start    # Load end address
+    .int BSS_phys_end      # BSS end address
+
+    # Entry address tag
+    .align 8
+    .short 3  # Type: Entry address
+    .short 0  # Flags: None
+    .int 12  # Size: 12 bytes
+    .int __pre_init - 0xC0000000  # Entry point address
+
+    # Framebuffer tag
+    .align 8
+    .short 5  # Type: Framebuffer
+    .short 0  # Flags: None
+    .int 20  # Size: 20 bytes
+    .int 1280  # Width
+    .int 720   # Height
+    .int 32    # Depth
+
+    # Module page-alignment tag
+    .align 8
+    .short 6
+    .short 0
+    .int 8
+
+    # End tag
+    .align 8
+    .short 0  # Type: End
+    .short 0  # Flags: None
+    .int 8   # Size: 8 bytes
+mb2_header_end:
 
 .section .bootstrap_stack, "aw", @nobits
     .global stack_bottom
@@ -27,13 +75,10 @@
     boot_page_directory:
         .skip 4096
 
-.extern IMAGE_PHYS_START
-.extern IMAGE_PHYS_END
-
 .section .data
 .align 4
 fpu_control_word:
-    .word 0x37f & ~0x1 & ~0x4
+    .word 0x37f
 
 .align 4
 bootstrap_page_count:
@@ -42,14 +87,30 @@ bootstrap_page_count:
 .section .text
 .global __pre_init
 __pre_init:
+    # EAX = Magic
+    # EBX = Multiboot2 info structure
+
     cli
 
-    # Compute the size of the kernel image.
+    # Compute the size of the kernel image starting from the memory beginning.
+    # P(0x0000_0000..=kernel end) = V(0xC000_0000..=kernel end)
 
-    movl $(IMAGE_PHYS_START), %ecx
     movl $(IMAGE_PHYS_END), %eax
 
-    sub %eax, %ecx
+    # image end = max(mb2 header address, actually image end);
+    # Because Multiboot2 info structure address can be placed after image end, and we need to map it too.
+
+    cmp %eax, %ebx
+    jbe .multiboot_header_is_within_kernel
+
+    # Image end = Multiboot2 info structure address
+    mov %ebx, %eax
+
+    # Round up address to next extended page boundary (4 MB)
+    add $0x3FFFFF, %eax
+    and $0xFFC00000, %eax
+
+    .multiboot_header_is_within_kernel:
 
     # kernel_size / 0x400000   (0x400000 is 4 MB - the size of one extended page)
     xor %edx, %edx
@@ -146,7 +207,7 @@ __init:
             
     mov bootstrap_page_count, %ecx
 
-    mov $(boot_page_directory), %edi
+    lea boot_page_directory, %edi
 
     .unmap_loop:
         movl $0, (%edi)
@@ -159,6 +220,12 @@ __init:
         jnz .unmap_loop
 
     .continue:
+
+    xor %al, %al
+    lea stack_bottom, %edi
+    mov $STACK_SIZE, %ecx
+    cld
+    rep stosb
 
     mov $stack_top, %esp
 
@@ -184,7 +251,7 @@ __init:
     or $(3 << 9), %ax
     mov %eax, %cr4
 
-    # GRUB's Multiboot1 boot parameters are stored in lower half. Add kernel base to the address.
+    # GRUB's Multiboot2 info structure address is physical. Add kernel base to the that address to make it virtual.
     add $0xC0000000, %ebx
 
     push	%ebx

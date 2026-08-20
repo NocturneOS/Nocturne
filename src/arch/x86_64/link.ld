@@ -10,16 +10,9 @@ SECTIONS {
         *(.multiboot_header*)
     }
 
-    .bootstrap_stack ALIGN(4K) : {
-        *(.bootstrap_stack*)
-    }
-
     .bootstrap_paging ALIGN(4K) : {
         *(.bootstrap_paging*)
     }
-
-    /* Store physical end of bootstrap sections */
-    BOOTSTRAP_PHYS_END = .;
 
     /* Now move to higher half for the rest */
     . += 0xFFFFFFFF80000000;
@@ -56,15 +49,8 @@ SECTIONS {
         PROVIDE(DATA_end = .);
     }
 
-    .bss ALIGN (4K) : AT(ADDR (.bss) - 0xFFFFFFFF80000000) {
-        *(COMMON)
-
-        PROVIDE(BSS_start = .);
-
-        *(.lbss*)
-        *(.bss*)
-
-        PROVIDE(BSS_end = .);
+    .debug_symbols ALIGN(4K) : AT(ADDR (.debug_symbols) - 0xFFFFFFFF80000000) {
+        *(.debug_symbols*)
     }
 
     /* TEMPLATE for PerCPU */
@@ -76,14 +62,26 @@ SECTIONS {
         _percpu_end = .;
     }
 
-    .debug_symbols ALIGN(4K) : AT(ADDR (.debug_symbols) - 0xFFFFFFFF80000000) {
-        *(.debug_symbols*)
+    .bss ALIGN (4K) : AT(ADDR (.bss) - 0xFFFFFFFF80000000) {
+        PROVIDE(BSS_start = .);
+        PROVIDE(BSS_phys_start = . - 0xFFFFFFFF80000000);
+
+        *(COMMON)
+        
+        *(.lbss*)
+        *(.bss*)
+
+        *(.bootstrap_stack*)
+
+        PROVIDE(BSS_end = .);
+        PROVIDE(BSS_phys_end = . - 0xFFFFFFFF80000000);
     }
 
     /DISCARD/ : {
+        *(.eh_frame)
         *(.note.gnu.property)
         *(.debug_gdb_scripts)
-        *(.eh_frame)
+        *(.note.gnu.build-id)
     }
 
     . = ALIGN(4K);

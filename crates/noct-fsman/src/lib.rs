@@ -61,4 +61,6 @@ pub fn probe() {
     }
 
     mount::scan_and_mount();
+
+    qemu_log!("Probe finished");
 }

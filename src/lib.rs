@@ -2,7 +2,8 @@
 
 use core::{panic::PanicInfo, sync::atomic::AtomicBool};
 
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec};
+use multiboot2::BootInformation;
 use noct_boot::{BootInfo, Module};
 use noct_logger::qemu_log;
 use noct_mem::{heap, paging::PageFlags};
@@ -18,15 +19,13 @@ mod unwind;
 extern crate alloc;
 
 // This entry point is called from `arch_init`.
-fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
+fn kmain(boot_info: BootInformation) -> ! {
     // Now `__arch_init` initialized paging and PMM for us.
     // To make kernel fully initialized we should initialize heap.
 
     heap::init();
 
-    crate::arch::post_init(boot_info);
-
-    // noct_input::init();
+    crate::arch::post_init(&boot_info);
 
     noct_sched::init();
 
@@ -93,11 +92,12 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
 
     noct_ps2::init();
 
+    
     // clear_screen();
     // test_write();
-
+    
     crate::arch::x86::dev::ata::init();
-
+    
     for (idx, disk) in noct_diskman::disk_list().iter().enumerate() {
         qemu_log!(
             "#{}: id={}, name={}, type={:?}, capacity={} blocks {} bytes each, is_partition={}",
@@ -116,21 +116,23 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     noct_fsman::store::register_filesystem(Box::new(noct_tarfs::TarFilesystem));
     // noct_fsman::store::register_filesystem(Box::new(noct_fsman::debugfs::DebugFilesystem));
 
-    for i in boot_info.modules() {
+    for i in boot_info.module_tags() {
         if i.cmdline().map(|x| x == "ramdisk").unwrap_or(false) {
             qemu_log!(
                 "Would make disk from module: {:X} - {:X} ({:?})",
-                i.start(),
-                i.end(),
+                i.start_address(),
+                i.end_address(),
                 i.cmdline()
+            );
+
+            let disk = MemoryDisk::raw_virtual(
+                (i.start_address() as usize + noct_spec::KERNEL_BASE) as _,
+                i.module_size() as _
             );
 
             qemu_log!(
                 "Result: {:?}",
-                noct_diskman::register_drive(Box::new(MemoryDisk::raw_physical(
-                    i.start(),
-                    i.size()
-                )))
+                noct_diskman::register_drive(Box::new(disk))
             );
         }
     }
@@ -152,14 +154,15 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
     }
 
     syscalls::init();
-
+    
+    
     {
-        match noct_elfloader::spawn("mem0:/prog_stdin", &[]) {
+        match noct_elfloader::spawn("mem0:/prog_stdin32", &[]) {
             Ok(handle) => {
                 qemu_log!("Started process {}", handle.pid);
-
+                
                 let code = handle.wait();
-
+                
                 qemu_log!("Process exited with code: {code:?}");
             }
             Err(e) => {
@@ -167,12 +170,12 @@ fn kmain(boot_info: &dyn BootInfo<ModuleType = MultibootModule>) -> ! {
             }
         }
     }
-
+    
     {
         let (data, time) = noct_tools::measure_time_timer(|| noct_fs::read_file("ata0:/hello.txt"));
-
+        
         qemu_log!("Time: {} ms", time);
-
+        
         match data {
             Ok(data) => {
                 let s = str::from_utf8(&data).unwrap();
@@ -216,14 +219,16 @@ fn __panic_handler(info: &PanicInfo) -> ! {
         qemu_log!("Kernel panicked: {:?}", info.message());
     }
 
-    let proc = noct_sched::this_process().id;
+    if noct_sched::is_intiialized() {
+        let proc = noct_sched::this_process().id;
 
-    if proc == 0 {
-        unsafe { unwind::backtrace() };
-    } else {
-        qemu_log!("Cannot backtrace user threads");
+        if proc == 0 {
+            unsafe { unwind::backtrace() };
+        } else {
+            qemu_log!("Cannot backtrace user threads");
 
-        noct_sched::thread_exit();
+            noct_sched::thread_exit();
+        }
     }
 
     arch::halt_forever()

@@ -1,8 +1,20 @@
-.set ALIGN,    1 << 0      # Alignment of loaded modules by page boundaries
-.set MEMINFO,  1 << 1      # Request to provide memory map
-.set VBE_MODE, 1 << 2      # VBE mode flag. GRUB will set it for us and provide info about it.
-.set INIT_MBOOT_HEADER_MAGIC,           0x1BADB002
-.set INIT_MBOOT_HEADER_FLAGS,           ALIGN | MEMINFO | VBE_MODE
-.set INIT_MBOOT_CHECKSUM,               0x00000000 - (INIT_MBOOT_HEADER_MAGIC + INIT_MBOOT_HEADER_FLAGS)
+.extern IMAGE_PHYS_START
+.extern IMAGE_VIRT_START
 
-.set STACK_SIZE, 64 * 1024  # 64 KB
+.extern IMAGE_PHYS_END
+.extern IMAGE_VIRT_END
+
+.extern .BSS_start
+.extern .BSS_end
+
+.extern .BSS_phys_start
+.extern .BSS_phys_end
+
+# https://github.com/CIS-osdev/kernel/blob/ff134e1768febeb626ede12f2823afe3477ed1f8/kernel/arch/amd64/boot.s#L8
+
+.set MBOOT2_HEADER_MAGIC,      0xE85250D6
+.set MBOOT2_ARCH,              0    # I386
+.set MBOOT2_HEADER_LENGTH,     (mb2_header_end - mb2_header)
+.set MBOOT2_CHECKSUM,          -(MBOOT2_HEADER_MAGIC + MBOOT2_ARCH + MBOOT2_HEADER_LENGTH)
+
+.set STACK_SIZE, 128 * 1024  # 128 KB

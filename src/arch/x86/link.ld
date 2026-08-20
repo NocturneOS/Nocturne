@@ -6,7 +6,7 @@ SECTIONS {
     IMAGE_PHYS_START = .;
     IMAGE_VIRT_START = . + 0xC0000000;
 
-    .multiboot_header : {
+    .multiboot_header ALIGN(8) : {
         *(.multiboot_header*)
     }
 
@@ -22,6 +22,8 @@ SECTIONS {
 
     .data ALIGN (4K) : AT(ADDR (.data) - 0xC0000000) {
         PROVIDE(DATA_start = .);
+
+        *(.bootstrap_paging*)
 
         *(.data*)
 
@@ -39,30 +41,28 @@ SECTIONS {
         PROVIDE(RODATA_end = .);
     }
 
-    .bss ALIGN (4K) : AT(ADDR (.bss) - 0xC0000000) {
-        *(COMMON)
+    .debug_symbols ALIGN (4K) : AT(ADDR (.debug_symbols) - 0xC0000000) {
+        *(.debug_symbols*)
+    }
 
+    .bss ALIGN (4K) : AT(ADDR (.bss) - 0xC0000000) {
         PROVIDE(BSS_start = .);
+        PROVIDE(BSS_phys_start = . - 0xC0000000);
+
+        *(.bootstrap_stack*)
+
+        *(COMMON)
 
         *(.bss*)
 
         PROVIDE(BSS_end = .);
-    }
-
-    .debug_symbols ALIGN(4K) : {
-        *(.debug_symbols*)
-    }
-
-    .bootstrap_stack : {
-        *(.bootstrap_stack*)
-    }
-
-    .bootstrap_paging : {
-        *(.bootstrap_paging*)
+        PROVIDE(BSS_phys_end = . - 0xC0000000);
     }
 
     /DISCARD/ : {
         *(.note.gnu.property)
+        *(.eh_frame)
+        *(.note.gnu.build-id)
         *(.debug_gdb_scripts)
     }
     

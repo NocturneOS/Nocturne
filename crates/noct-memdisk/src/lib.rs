@@ -85,6 +85,19 @@ impl MemoryDisk {
             },
         }
     }
+
+    pub fn raw_virtual(virt_addr: usize, size: usize) -> Self {
+        assert!(virt_addr > 0);
+
+        Self {
+            diskman_id: noct_diskman::generate_new_id("mem"),
+            data: MemoryDiskSource::Predefined {
+                physical: virt_addr,
+                buffer: unsafe { core::slice::from_raw_parts_mut(virt_addr as *mut u8, size) },
+                layout: unsafe { Layout::from_size_align_unchecked(size, 1) }
+            },
+        }
+    }
 }
 
 impl Drop for MemoryDisk {

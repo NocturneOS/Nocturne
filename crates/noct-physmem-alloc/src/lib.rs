@@ -9,6 +9,7 @@
 
 use core::ops::Range;
 
+use multiboot2::BootInformation;
 use noct_boot::Module;
 use noct_logger::qemu_log;
 use noct_multiboot::MultibootModule;
@@ -208,20 +209,11 @@ pub fn free_bulk(address: usize, page_count: usize) {
     });
 }
 
-pub fn init(boot: &impl noct_boot::BootInfo<ModuleType = MultibootModule>) {
+pub fn init(boot: &BootInformation) {
     {
-        if let Some(mo) = boot.modules().last() {
-            let last_mod_addr = mo.end();
+        let available_mem = noct_sysinfo::info().kernel_area_end;
 
-            qemu_log!("Last module ends at: {last_mod_addr:x?}");
-
-            unsafe {
-                BITMAP_START_VIRT =
-                    (last_mod_addr + noct_spec::KERNEL_BASE).next_multiple_of(0x1000)
-            };
-        } else {
-            unsafe { BITMAP_START_VIRT = (&IMAGE_VIRT_END as *const *const ()).addr() };
-        }
+        unsafe { BITMAP_START_VIRT = available_mem.next_multiple_of(0x1000) };
     }
 
     qemu_log!("BITMAP START AT: {:x?}", unsafe { BITMAP_START_VIRT });

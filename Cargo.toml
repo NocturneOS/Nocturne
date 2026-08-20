@@ -70,6 +70,7 @@ noct-io = { path = "crates/noct-io" }
 noct-multiboot = { path = "crates/noct-multiboot" }
 noct-tty = { path = "crates/noct-tty" }
 noct-video = { path = "crates/noct-video" }
+multiboot2 = "0.25.1"
 
 
 # Profiles

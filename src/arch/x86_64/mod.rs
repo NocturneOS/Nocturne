@@ -1,3 +1,4 @@
+use multiboot2::{BootInformation, BootInformationHeader};
 use noct_cpu::{gdt, idt, tss};
 use noct_mem::paging;
 use noct_multiboot::{MultibootHeader, MultibootMMapType};
@@ -6,53 +7,54 @@ use crate::arch::x86::{interrupts, sys, timer};
 use crate::{arch, kmain, qemu_log};
 
 use noct_boot::{BootInfo, Module};
-use noct_multiboot::MultibootModule;
 
 #[unsafe(no_mangle)]
-pub extern "C" fn __arch_init(multiboot_header_address: *const MultibootHeader) -> ! {
+pub extern "C" fn __arch_init(header: *const BootInformationHeader) -> ! {
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
 
-    let mb = unsafe {
-        &*multiboot_header_address
-    };
+    let bootinfo = unsafe { BootInformation::load(header).unwrap() };
 
-    qemu_log!("Command line: {:?}", mb.cmdline());
-    qemu_log!("Modules count: {}", mb.modules().count());
+    qemu_log!(
+        "Header area: {:#x?} - {:#x?}",
+        bootinfo.start_address(),
+        bootinfo.end_address()
+    );
 
-    for i in mb.modules() {
-        qemu_log!("- {:?} <{:#x} - {:#x}>", i.cmdline(), i.start(), i.end());
+    qemu_log!(
+        "Bootloader: {:?}",
+        bootinfo.boot_loader_name_tag().unwrap().name()
+    );
+
+    qemu_log!("Command line: {:?}", bootinfo.command_line_tag());
+    qemu_log!("Modules count: {:?}", bootinfo.module_tags().count());
+
+    for i in bootinfo.module_tags() {
+        qemu_log!(
+            "- {:?} <{:#x?} - {:#x?}>",
+            i.cmdline().unwrap(),
+            i.start_address() as *const usize,
+            i.end_address() as *const usize
+        );
     }
 
     qemu_log!(
         "Memory: {} KB (lower) / {} KB (upper)",
-        mb.memory().lower() >> 10,
-        mb.memory().higher() >> 10
+        bootinfo.basic_memory_info_tag().unwrap().memory_lower(),
+        bootinfo.basic_memory_info_tag().unwrap().memory_upper()
     );
 
-    for i in mb.mmap() {
+    for i in bootinfo.memory_map_tag().unwrap().memory_areas() {
         qemu_log!(
-            "- {:?} <{:#x} - {:#x}>",
-            i.ty(),
-            i.addr(),
-            i.addr() + i.length()
+            "- {:?} <{:08x} - {:08x}>",
+            i.typ(),
+            i.start_address(),
+            i.end_address()
         );
-    }
-
-    {
-        let num = mb.num;
-        let size = mb.size;
-        let addr = mb.addr;
-        let shndx = mb.shndx;
-
-        qemu_log!("NUM: {:#x}", num);
-        qemu_log!("SIZE: {:#x}", size);
-        qemu_log!("ADDR: {:#x}", addr);
-        qemu_log!("SHNDX: {:#x}", shndx);
     }
 
     // Fill system info
 
-    sys::init(mb);
+    sys::init(&bootinfo);
 
     gdt::init();
     idt::init();
@@ -60,17 +62,25 @@ pub extern "C" fn __arch_init(multiboot_header_address: *const MultibootHeader) 
     interrupts::exceptions::register_exceptions();
     interrupts::pic::init();
 
-    paging::preinit(mb.memory().total());
+    let total_memory_size = (bootinfo
+        .basic_memory_info_tag()
+        .map(|x| x.memory_lower() + x.memory_upper())
+        .unwrap()
+        << 10) as _;
 
-    noct_physmem_alloc::init(mb);
+    paging::preinit(total_memory_size);
+
+    noct_physmem_alloc::init(&bootinfo);
 
     tss::init();
 
-    for i in mb
-        .mmap()
+    for i in bootinfo
+        .memory_map_tag()
+        .unwrap()
+        .memory_areas()
         .iter()
-        .filter(|x| x.ty() != MultibootMMapType::Available)
-        .map(|x| (x.addr(), x.length()))
+        .filter(|x| x.typ() != multiboot2::MemoryAreaType::Available)
+        .map(|x| (x.start_address(), x.size()))
     {
         let addr_start = noct_tools::align_value(i.0.try_into().unwrap(), arch::get_page_size());
 
@@ -81,7 +91,7 @@ pub extern "C" fn __arch_init(multiboot_header_address: *const MultibootHeader) 
         let addr_end =
             noct_tools::align_value((i.0 + i.1 - 1).try_into().unwrap(), arch::get_page_size());
 
-        if addr_start > mb.memory().total() {
+        if addr_start > total_memory_size {
             continue;
         }
 
@@ -111,39 +121,54 @@ pub extern "C" fn __arch_init(multiboot_header_address: *const MultibootHeader) 
     // Reserve memory for modules we load.
 
     {
-        for (n, i) in mb.modules().enumerate() {
-            let start_addr = i.mod_start as usize;
-            let end_addr = noct_tools::align_value(i.mod_end as usize, arch::get_page_size());
+        let kernel_area = noct_sysinfo::info().kernel_area_end - noct_spec::KERNEL_BASE;
 
-            for addr in (start_addr..end_addr).step_by(arch::get_page_size()) {
+        for addr in (0..kernel_area).step_by(arch::get_page_size()) {
+            noct_physmem_alloc::mark_page(addr, true);
+        }
+
+        qemu_log!(
+            "[kernel area] Marked area {:08x} - {:08x} as reserved.",
+            0,
+            kernel_area
+        );
+    }
+
+    {
+        if let Some(mo) = bootinfo.module_tags().last() {
+            let module_end_addr =
+                (mo.end_address() as usize).next_multiple_of(arch::get_page_size());
+
+            for addr in (0..module_end_addr).step_by(arch::get_page_size()) {
                 noct_physmem_alloc::mark_page(addr, true);
             }
 
             qemu_log!(
-                "Marked module #{} {:#?} ({:#x} - {:#x}) as reserved.",
-                n,
-                i.cmdline(),
-                start_addr,
-                end_addr
+                "[module] Marked area ({:08x} - {:08x}) as reserved.",
+                0,
+                module_end_addr
             );
         }
     }
 
     // Update info for `kmain`
     {
-        let kernel_end = noct_sysinfo::info().kernel_end;
+        let bitmap_end = noct_physmem_alloc::get_bitmap_range();
+        let available_memory_start = bitmap_end.end.next_multiple_of(arch::get_page_size());
+
         let mut info = noct_sysinfo::info_mut();
 
-        info.installed_memory = Some(mb.memory().total());
+        info.installed_memory = Some(total_memory_size);
 
         // Set the start of `free memory zone` to the end of last module.
         // If no modules specified, use kernel end address.
-        info.available_memory_start = Some(
+        info.available_memory_start = Some(available_memory_start);
+        /* Some(
             mb.modules()
                 .last()
                 .map(|x| x.mod_end as usize)
                 .unwrap_or(kernel_end - noct_spec::KERNEL_BASE),
-        );
+        );*/
     }
 
     noct_cpu::pat::write_pat();
@@ -152,12 +177,11 @@ pub extern "C" fn __arch_init(multiboot_header_address: *const MultibootHeader) 
 
     unsafe { x86::irq::enable() };
 
-    kmain(mb);
+    kmain(bootinfo);
 }
 
-
 // After memory is initialized, some hardware will require additional setup.
-pub fn post_init(boot: &dyn BootInfo<ModuleType = MultibootModule>) {
+pub fn post_init(boot: &BootInformation) {
     // qemu_log!("Post init...");
 
     crate::arch::x86::post_init(boot);

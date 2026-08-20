@@ -9,69 +9,67 @@ use core::alloc::Layout;
 
 use crate::{arch, kmain, qemu_log};
 
-use noct_boot::BootInfo;
 use noct_mem::paging::PageFlags;
-use noct_multiboot::{MultibootHeader, MultibootModule};
 use noct_spec::units::Size;
 use noct_video::video_mode::VideoMode;
 
+use multiboot2::{BootInformation, BootInformationHeader};
+
 #[cfg(target_arch = "x86")]
 #[unsafe(no_mangle)]
-pub extern "C" fn __arch_init(multiboot_header: *const MultibootHeader) -> ! {
-    use noct_boot::BootInfo;
+pub extern "C" fn __arch_init(multiboot_header: *const BootInformationHeader) -> ! {
     use noct_cpu::{gdt, idt, tss};
-    use noct_multiboot::MultibootMMapType;
 
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
+    
+    let bootinfo = unsafe { BootInformation::load(multiboot_header).unwrap() };
 
-    let mb = unsafe {
-        &*multiboot_header
-    };
+    qemu_log!("Header area: {:#x?} - {:#x?}", bootinfo.start_address(), bootinfo.end_address());
 
-    qemu_log!("Command line: {:?}", mb.cmdline());
-    qemu_log!("Modules count: {}", mb.modules().count());
+    qemu_log!("Bootloader: {:?}", bootinfo.boot_loader_name_tag().unwrap().name());
 
-    for i in mb.modules() {
-        use noct_boot::Module;
+    qemu_log!("Command line: {:?}", bootinfo.command_line_tag());
+    qemu_log!("Modules count: {:?}", bootinfo.module_tags().count());
 
+    for i in bootinfo.module_tags() {
         qemu_log!(
             "- {:?} <{:#x?} - {:#x?}>",
             i.cmdline().unwrap(),
-            i.start() as *const usize,
-            i.end() as *const usize
+            i.start_address() as *const usize,
+            i.end_address() as *const usize
         );
     }
 
     qemu_log!(
         "Memory: {} KB (lower) / {} KB (upper)",
-        mb.memory().lower() >> 10,
-        mb.memory().higher() >> 10
+        bootinfo.basic_memory_info_tag().unwrap().memory_lower(),
+        bootinfo.basic_memory_info_tag().unwrap().memory_upper()
     );
 
-    for i in mb.mmap() {
+    for i in bootinfo.memory_map_tag().unwrap().memory_areas() {
         qemu_log!(
             "- {:?} <{:08x} - {:08x}>",
-            i.ty(),
-            i.addr(),
-            i.addr() + i.length()
+            i.typ(),
+            i.start_address(),
+            i.end_address()
         );
     }
 
-    {
-        let num = mb.num;
-        let size = mb.size;
-        let addr = mb.addr;
-        let shndx = mb.shndx;
+    // {
+    //     let num = mb.num;
+    //     let size = mb.size;
+    //     let addr = mb.addr;
+    //     let shndx = mb.shndx;
 
-        qemu_log!("NUM: {:08x}", num);
-        qemu_log!("SIZE: {:08x}", size);
-        qemu_log!("ADDR: {:08x}", addr);
-        qemu_log!("SHNDX: {:08x}", shndx);
-    }
+    //     qemu_log!("NUM: {:08x}", num);
+    //     qemu_log!("SIZE: {:08x}", size);
+    //     qemu_log!("ADDR: {:08x}", addr);
+    //     qemu_log!("SHNDX: {:08x}", shndx);
+    // }
 
     // Fill system info
 
-    sys::init(mb);
+    sys::init(&bootinfo);
 
     gdt::init();
     idt::init();
@@ -79,18 +77,26 @@ pub extern "C" fn __arch_init(multiboot_header: *const MultibootHeader) -> ! {
     interrupts::exceptions::register_exceptions();
     interrupts::pic::init();
 
-    mem::paging::preinit(mb.memory().total(), mb);
+    let total_memory_size = (bootinfo
+        .basic_memory_info_tag()
+        .map(|x| x.memory_lower() + x.memory_upper())
+        .unwrap()
+        << 10) as _;
 
-    noct_physmem_alloc::init(mb);
+    mem::paging::preinit(total_memory_size, &bootinfo);
+
+    noct_physmem_alloc::init(&bootinfo);
 
     tss::init();
 
     // After physical memory initialization we have to mark reserved memory as used.
-    for i in mb
-        .mmap()
+    for i in bootinfo
+        .memory_map_tag()
+        .unwrap()
+        .memory_areas()
         .iter()
-        .filter(|x| x.ty() != MultibootMMapType::Available)
-        .map(|x| (x.addr(), x.length()))
+        .filter(|x| x.typ() != multiboot2::MemoryAreaType::Available)
+        .map(|x| (x.start_address(), x.size()))
     {
         let addr_start = noct_tools::align_value(i.0.try_into().unwrap(), arch::get_page_size());
 
@@ -101,7 +107,7 @@ pub extern "C" fn __arch_init(multiboot_header: *const MultibootHeader) -> ! {
         let addr_end =
             noct_tools::align_value((i.0 + i.1 - 1).try_into().unwrap(), arch::get_page_size());
 
-        if addr_start > mb.memory().total() {
+        if addr_start > total_memory_size {
             continue;
         }
 
@@ -109,22 +115,34 @@ pub extern "C" fn __arch_init(multiboot_header: *const MultibootHeader) -> ! {
             noct_physmem_alloc::mark_page(addr.try_into().unwrap(), true);
         }
 
-        qemu_log!("Marked {:#x?} - {:#x?} as reserved.", addr_start, addr_end);
+        qemu_log!("[reserved memmap] Marked {:#x?} - {:#x?} as reserved.", addr_start, addr_end);
     }
 
     // Reserve memory for modules we load.
 
-    if let Some(mo) = mb.modules().last() {
-        use noct_boot::Module;
+    {
+        let kernel_area = noct_sysinfo::info().kernel_area_end - noct_spec::KERNEL_BASE;
 
-        let module_end_addr = mo.end().next_multiple_of(arch::get_page_size());
+        for addr in (0..kernel_area).step_by(arch::get_page_size()) {
+            noct_physmem_alloc::mark_page(addr, true);
+        }
+
+        qemu_log!(
+            "[kernel area] Marked area {:08x} - {:08x} as reserved.",
+            0,
+            kernel_area
+        );
+    }
+
+    if let Some(mo) = bootinfo.module_tags().last() {
+        let module_end_addr = (mo.end_address() as usize).next_multiple_of(arch::get_page_size());
 
         for addr in (0..module_end_addr).step_by(arch::get_page_size()) {
             noct_physmem_alloc::mark_page(addr, true);
         }
 
         qemu_log!(
-            "Marked area ({:08x} - {:08x}) as reserved.",
+            "[module] Marked area ({:08x} - {:08x}) as reserved.",
             0,
             module_end_addr
         );
@@ -140,7 +158,7 @@ pub extern "C" fn __arch_init(multiboot_header: *const MultibootHeader) -> ! {
 
         let mut info = noct_sysinfo::info_mut();
 
-        info.installed_memory = Some(mb.memory().total());
+        info.installed_memory = Some(total_memory_size);
 
         // Set the start of `free memory zone` to the end of last module.
         // If no modules specified, use kernel end address.
@@ -153,18 +171,21 @@ pub extern "C" fn __arch_init(multiboot_header: *const MultibootHeader) -> ! {
 
     unsafe { x86::irq::enable() };
 
-    kmain(mb)
+    kmain(bootinfo);
 }
 
-pub fn post_init(boot: &dyn BootInfo<ModuleType = MultibootModule>) {
+pub fn post_init(boot: &BootInformation) {
     qemu_log!("Post init...");
 
-    let phys_addr = boot.video().fb_addr;
+    let fb = boot.framebuffer_tag().unwrap().unwrap();
 
-    let size = (boot.video().fb_width * boot.video().fb_height * (boot.video().fb_bpp as u32 >> 3))
-        as usize;
+    let phys_addr = fb.address();
 
-    let ptr = unsafe { alloc::alloc::alloc(Layout::from_size_align_unchecked(size, 0x1000)) };
+    let size = (fb.width() * fb.height() * (fb.bpp() as u32 >> 3)) as usize;
+
+    qemu_log!("Framebuffer @ {:#x?} ({}x{}@{})", phys_addr, fb.width(), fb.height(), fb.bpp());
+
+    let ptr = unsafe { noct_mem::heap::allocate_no_map(Layout::from_size_align_unchecked(size, 0x1000)) };
 
     // PAT = Write-Combining
     let flags = PageFlags::empty().with_pat(0b100) | PageFlags::Writeable;
@@ -176,10 +197,10 @@ pub fn post_init(boot: &dyn BootInfo<ModuleType = MultibootModule>) {
     *lock = Some(VideoMode::new_graphics(
         ptr,
         Size::from((
-            boot.video().fb_width as usize,
-            boot.video().fb_height as usize,
+            fb.width() as _,
+            fb.height() as _,
         )),
-        (boot.video().fb_bpp >> 3) as _,
+        (fb.bpp() >> 3) as _,
     ));
 
     qemu_log!("Video initialized");

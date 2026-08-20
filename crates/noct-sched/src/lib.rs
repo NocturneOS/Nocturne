@@ -4,7 +4,9 @@
 extern crate alloc;
 
 use core::{
-    ffi::CStr, sync::atomic::{AtomicBool, AtomicUsize, Ordering}, time::Duration,
+    ffi::CStr,
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+    time::Duration,
 };
 
 use alloc::{
@@ -33,7 +35,7 @@ pub mod process;
 mod stack_manager;
 pub mod thread;
 
-pub const KERNEL_THREAD_DEFAULT_STACK_SIZE: usize = 64 << 10; // 64 KB
+pub const KERNEL_THREAD_DEFAULT_STACK_SIZE: usize = 256 << 10; // 256 KB
 
 lazy_static! {
     static ref IS_SCHEDULER_INITIALIZED: AtomicBool = AtomicBool::default();
@@ -137,7 +139,7 @@ impl Scheduler {
             .create_thread(
                 Arc::clone(&kernel_process),
                 idle_task,
-                0x1000,
+                16 << 10,    // 16 KB should be enough.
                 ThreadPriority::Low,
                 ThreadFlags::Raw,
                 &[],
@@ -178,7 +180,12 @@ impl Scheduler {
             ThreadStack::new(stack_size)
         };
 
-        qemu_log!("Stack allocated: base @ {:#x?}", stack.stack_addr);
+        qemu_log!(
+            "Stack allocated: base @ {:#x?} [{:#x?} - {:#x?}]",
+            stack.stack_addr,
+            stack.stack_addr,
+            stack.stack_addr + stack.stack_size
+        );
 
         let id = next_tid();
         let archspec = ArchitectureSpecificRegion::new();
@@ -369,8 +376,7 @@ impl Scheduler {
         let thread = Arc::clone(thread);
 
         // Remove this thread from working queue.
-        self.working_queue
-            .retain(|x| x.id != thread.id);
+        self.working_queue.retain(|x| x.id != thread.id);
 
         // Push it to waiting queue.
         self.waiting_queue.push_back(thread);
@@ -812,7 +818,7 @@ pub fn get_process(pid: usize) -> Option<Arc<Process>> {
         .iter()
         .find(|x| x.process.id == pid)
         .map(|x| Arc::clone(&x.process));
-    
+
     drop(il);
 
     result
@@ -845,7 +851,7 @@ pub fn waitpid(hdl: &ProcessHandle) -> Option<u32> {
             .iter()
             .find(|x| x.process.id == pid)
             .is_some();
-        
+
         drop(sched);
         drop(il);
 

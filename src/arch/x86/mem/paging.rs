@@ -3,6 +3,8 @@ use noct_mem::paging::{self, GlobalPagingArchitecture, Page, PageFlags, PagingHi
 use noct_multiboot::MultibootModule;
 use noct_spec::WORD_SIZE;
 
+use multiboot2::BootInformation;
+
 use crate::qemu_log;
 
 // Kernel memory layout:
@@ -12,7 +14,7 @@ use crate::qemu_log;
 
 pub fn preinit(
     available_memory_size: usize,
-    boot: &impl noct_boot::BootInfo<ModuleType = MultibootModule>,
+    boot: &BootInformation,
 ) {
     let kernel_start = noct_sysinfo::info().kernel_start;
     let kernel_end = noct_sysinfo::info().kernel_end;
