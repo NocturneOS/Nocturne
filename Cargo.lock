@@ -22,9 +22,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.11.1"
+version = "2.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
+checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 
 [[package]]
 name = "cfg-if"
@@ -50,7 +50,7 @@ version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24bb0456b675bf7afaa0071c16879703ba487431d68f7f6e3c70540100799e3d"
 dependencies = [
- "bitflags 2.11.1",
+ "bitflags 2.13.1",
  "ucs2",
  "zerocopy",
 ]
@@ -61,7 +61,7 @@ version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 dependencies = [
- "spin 0.9.8",
+ "spin 0.9.9",
 ]
 
 [[package]]
@@ -75,15 +75,15 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.33"
+version = "0.4.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
+checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
 name = "memchr"
-version = "2.8.1"
+version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b947ae49db0d222b1dbc6b113ce7248a3fc3a6ca21b696717bfc000ba4484d8"
+checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "multiboot2"
@@ -91,7 +91,7 @@ version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6760efa924ec07b86ae4de352624143d08424b7a040a9fcb808c1421e63718dd"
 dependencies = [
- "bitflags 2.11.1",
+ "bitflags 2.13.1",
  "elf",
  "log",
  "multiboot2-common",
@@ -130,7 +130,7 @@ dependencies = [
  "cfg-if",
  "lazy_static",
  "noct-sync",
- "spin 0.10.0",
+ "spin 0.10.1",
  "x86",
  "x86_64",
 ]
@@ -153,7 +153,7 @@ dependencies = [
  "noct-mbr",
  "num-derive",
  "num-traits",
- "spin 0.10.0",
+ "spin 0.10.1",
 ]
 
 [[package]]
@@ -192,13 +192,13 @@ dependencies = [
 name = "noct-fsman"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.11.1",
+ "bitflags 2.13.1",
  "lazy_static",
  "noct-diskman",
  "noct-io",
  "noct-logger",
  "noct-time",
- "spin 0.10.0",
+ "spin 0.10.1",
 ]
 
 [[package]]
@@ -207,7 +207,7 @@ version = "0.1.0"
 dependencies = [
  "noct-logger",
  "noct-tools",
- "spin 0.10.0",
+ "spin 0.10.1",
 ]
 
 [[package]]
@@ -251,7 +251,7 @@ dependencies = [
  "noct-io",
  "noct-logger",
  "noct-time",
- "spin 0.10.0",
+ "spin 0.10.1",
 ]
 
 [[package]]
@@ -271,14 +271,14 @@ version = "0.1.0"
 name = "noct-mem"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.11.1",
+ "bitflags 2.13.1",
  "cfg-if",
  "noct-logger",
  "noct-physmem-alloc",
  "noct-spec",
  "noct-sysinfo",
  "noct-tools",
- "spin 0.10.0",
+ "spin 0.10.1",
  "x86",
 ]
 
@@ -305,7 +305,7 @@ version = "0.1.0"
 dependencies = [
  "noct-logger",
  "noct-time",
- "spin 0.10.0",
+ "spin 0.10.1",
  "x86",
 ]
 
@@ -337,7 +337,7 @@ dependencies = [
 name = "noct-sched"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.11.1",
+ "bitflags 2.13.1",
  "lazy_static",
  "noct-cpu",
  "noct-descriptor",
@@ -349,7 +349,7 @@ dependencies = [
  "noct-sync",
  "noct-time",
  "noct-tools",
- "spin 0.10.0",
+ "spin 0.10.1",
  "x86",
 ]
 
@@ -370,7 +370,7 @@ name = "noct-sysinfo"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
- "spin 0.10.0",
+ "spin 0.10.1",
 ]
 
 [[package]]
@@ -382,7 +382,7 @@ dependencies = [
  "noct-fsman",
  "noct-io",
  "noct-logger",
- "spin 0.10.0",
+ "spin 0.10.1",
  "tarfs",
 ]
 
@@ -407,13 +407,13 @@ dependencies = [
 name = "noct-tty"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.11.1",
+ "bitflags 2.13.1",
  "lazy_static",
  "noct-input-dispatcher",
  "noct-logger",
  "noct-sched",
  "noct-video",
- "spin 0.10.0",
+ "spin 0.10.1",
  "unifont",
 ]
 
@@ -423,14 +423,14 @@ version = "0.1.0"
 dependencies = [
  "lazy_static",
  "noct-spec",
- "spin 0.10.0",
+ "spin 0.10.1",
 ]
 
 [[package]]
 name = "nocturne"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.11.1",
+ "bitflags 2.13.1",
  "cfg-if",
  "lazy_static",
  "multiboot2",
@@ -463,7 +463,7 @@ dependencies = [
  "noct-tools",
  "noct-tty",
  "noct-video",
- "spin 0.10.0",
+ "spin 0.10.1",
  "x86",
 ]
 
@@ -475,7 +475,7 @@ checksum = "ed3955f1a9c7c0c15e092f9c887db08b1fc683305fdf6eb6684f22555355e202"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.117",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -489,9 +489,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.106"
+version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
+checksum = "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9"
 dependencies = [
  "unicode-ident",
 ]
@@ -518,9 +518,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.45"
+version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41f2619966050689382d2b44f664f4bc593e129785a36d6ee376ddf37259b924"
+checksum = "1fbf4db142a473a8d80c26bbf18454ed458bf8d26c8219c331daecfdbd079001"
 dependencies = [
  "proc-macro2",
 ]
@@ -536,9 +536,9 @@ dependencies = [
 
 [[package]]
 name = "rustversion"
-version = "1.0.22"
+version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
+checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
 name = "scopeguard"
@@ -554,24 +554,24 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "spin"
-version = "0.9.8"
+version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
+checksum = "3763264f6b73151db08c50ff20d7d8a0b8796e021cdea7ceedad07b80155fa0e"
 
 [[package]]
 name = "spin"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5fe4ccb98d9c292d56fec89a5e07da7fc4cf0dc11e156b41793132775d3e591"
+checksum = "023a211cb3138dbc438680b32560ad89f699977624c9f8dbb95a47d5b4c07dd3"
 dependencies = [
  "lock_api",
 ]
 
 [[package]]
 name = "syn"
-version = "2.0.117"
+version = "2.0.119"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e665b8803e7b1d2a727f4023456bbbbe74da67099c585258af0ad9c5013b9b99"
+checksum = "872831b642d1a07999a962a351ed35b955ea2cfc8f3862091e2a240a84f17297"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -634,7 +634,7 @@ version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a36f49db0b04a8dfd246a26ddf8d2526a2ffd8cf946ae7fe603fd0c5fbd2786"
 dependencies = [
- "bitflags 2.11.1",
+ "bitflags 2.13.1",
  "uguid",
 ]
 
@@ -675,12 +675,12 @@ dependencies = [
 
 [[package]]
 name = "x86_64"
-version = "0.15.4"
+version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7841fa0098ceb15c567d93d3fae292c49e10a7662b4936d5f6a9728594555ba"
+checksum = "be4ec631e1a81d50e46c35a4a00322bd076c47491b64c2fb10a7ffa89002c697"
 dependencies = [
  "bit_field",
- "bitflags 2.11.1",
+ "bitflags 2.13.1",
  "const_fn",
  "rustversion",
  "volatile",
@@ -688,20 +688,20 @@ dependencies = [
 
 [[package]]
 name = "zerocopy"
-version = "0.8.50"
+version = "0.8.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b065d4f0e55f82fae73202e189638116a87c55ab6b8e6c2721e13dd9d854ad1"
+checksum = "556764e583adb45a9f8d413c2a147fa7e8d821e48e12b14fd560b607998b75eb"
 dependencies = [
  "zerocopy-derive",
 ]
 
 [[package]]
 name = "zerocopy-derive"
-version = "0.8.50"
+version = "0.8.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b631b19d36a892ab55420c92dbc83ccd79274f25be714855d3074aa71cab639"
+checksum = "f2ab42fc20575779bd240faa45f94a74256f755c0fa9e89f0ede20d91d0cdfc1"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.117",
+ "syn 2.0.119",
 ]
