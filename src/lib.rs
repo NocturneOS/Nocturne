@@ -77,27 +77,21 @@ fn kmain(boot_info: BootInformation) -> ! {
     }
 
     {
-        noct_mem::paging::map_pages(0xf_0000, 0xf_0000, 0x1_0000, PageFlags::Present);
+        noct_mem::paging::with_mapping_cx(0xf_0000, 0xf_0000, 0x1_0000, PageFlags::Present, || {
+            if let Some(smbios) = noct_smbios::find_smbios() {
+                let values = smbios.scan();
 
-        if let Some(smbios) = noct_smbios::find_smbios() {
-            let values = smbios.scan();
-
-            for i in values {
-                qemu_log!("{i:#?}");
+                for i in values {
+                    qemu_log!("{i:#?}");
+                }
             }
-        }
-
-        noct_mem::paging::unmap_pages(0xf_0000, 0x1_0000);
+        });
     }
 
     noct_ps2::init();
 
-    
-    // clear_screen();
-    // test_write();
-    
     crate::arch::x86::dev::ata::init();
-    
+
     for (idx, disk) in noct_diskman::disk_list().iter().enumerate() {
         qemu_log!(
             "#{}: id={}, name={}, type={:?}, capacity={} blocks {} bytes each, is_partition={}",
@@ -127,13 +121,10 @@ fn kmain(boot_info: BootInformation) -> ! {
 
             let disk = MemoryDisk::raw_virtual(
                 (i.start_address() as usize + noct_spec::KERNEL_BASE) as _,
-                i.module_size() as _
+                i.module_size() as _,
             );
 
-            qemu_log!(
-                "Result: {:?}",
-                noct_diskman::register_drive(Box::new(disk))
-            );
+            qemu_log!("Result: {:?}", noct_diskman::register_drive(Box::new(disk)));
         }
     }
 
@@ -154,15 +145,14 @@ fn kmain(boot_info: BootInformation) -> ! {
     }
 
     syscalls::init();
-    
-    
+
     {
         match noct_elfloader::spawn("mem0:/prog_stdin32", &[]) {
             Ok(handle) => {
                 qemu_log!("Started process {}", handle.pid);
-                
+
                 let code = handle.wait();
-                
+
                 qemu_log!("Process exited with code: {code:?}");
             }
             Err(e) => {
@@ -170,12 +160,12 @@ fn kmain(boot_info: BootInformation) -> ! {
             }
         }
     }
-    
+
     {
         let (data, time) = noct_tools::measure_time_timer(|| noct_fs::read_file("ata0:/hello.txt"));
-        
+
         qemu_log!("Time: {} ms", time);
-        
+
         match data {
             Ok(data) => {
                 let s = str::from_utf8(&data).unwrap();

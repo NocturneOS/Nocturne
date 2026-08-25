@@ -64,3 +64,13 @@ impl Drop for MappingContext {
         );
     }
 }
+
+pub fn with_mapping_cx<T>(phys_addr: usize, virt_addr: usize, byte_count: usize, flags: PageFlags, f: impl FnOnce() -> T) -> T {
+    let cx = MappingContext::map(phys_addr, virt_addr, byte_count, flags);
+
+    let value = f();
+
+    drop(cx);
+
+    value
+}
