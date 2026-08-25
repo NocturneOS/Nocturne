@@ -7,6 +7,7 @@ pub mod tss;
 
 use core::fmt::Debug;
 
+#[allow(unused)]   // This struct is really never constructed, it's used only for handling interrupts.
 #[repr(C, packed(4))]
 pub struct CPURegisters {
     pub ds: u32,

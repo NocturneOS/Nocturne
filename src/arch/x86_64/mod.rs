@@ -1,7 +1,6 @@
 use multiboot2::{BootInformation, BootInformationHeader};
 use noct_cpu::{gdt, idt, tss};
 use noct_mem::paging;
-use noct_multiboot::{MultibootHeader, MultibootMMapType};
 
 use crate::arch::x86::{interrupts, sys, timer};
 use crate::{arch, kmain, qemu_log};

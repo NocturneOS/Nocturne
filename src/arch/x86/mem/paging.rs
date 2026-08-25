@@ -1,6 +1,5 @@
 use noct_boot::Module;
 use noct_mem::paging::{self, GlobalPagingArchitecture, Page, PageFlags, PagingHierarchy};
-use noct_multiboot::MultibootModule;
 use noct_spec::WORD_SIZE;
 
 use multiboot2::BootInformation;

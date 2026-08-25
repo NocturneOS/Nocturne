@@ -8,7 +8,6 @@ noct-spec = { path = "../noct-spec" }
 noct-tools = { path = "../noct-tools" }
 noct-logger = { path = "../noct-logger" }
 noct-sysinfo = { path = "../noct-sysinfo" }
-noct-multiboot = { path = "../noct-multiboot" }
 noct-boot = { path = "../noct-boot" }
 
 multiboot2 = "0.25.1"

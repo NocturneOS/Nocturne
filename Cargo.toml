@@ -40,6 +40,7 @@ lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
 spin = "0.10.0"
 cfg-if = "1.0.4"
 bitflags = "2.11.1"
+multiboot2 = "0.25.1"
 
 noct-boot = { path = "crates/noct-boot" }
 noct-cpu = { path = "crates/noct-cpu" }
@@ -67,11 +68,8 @@ noct-tools = { path = "crates/noct-tools" }
 noct-sched = { path = "crates/noct-sched" }
 noct-elfloader = { path = "crates/noct-elfloader" }
 noct-io = { path = "crates/noct-io" }
-noct-multiboot = { path = "crates/noct-multiboot" }
 noct-tty = { path = "crates/noct-tty" }
 noct-video = { path = "crates/noct-video" }
-multiboot2 = "0.25.1"
-
 
 # Profiles
 

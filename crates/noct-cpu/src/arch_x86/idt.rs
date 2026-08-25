@@ -5,9 +5,9 @@ const PRESENT: u8 = 1 << 7;
 const DPL_0: u8 = 0 << 5;
 const DPL_3: u8 = 3 << 5;
 
-const GATE_TASK: u8 = 0b0101;
-const GATE_16_INTERRUPT: u8 = 0b0110;
-const GATE_16_TRAP: u8 = 0b0111;
+// const GATE_TASK: u8 = 0b0101;
+// const GATE_16_INTERRUPT: u8 = 0b0110;
+// const GATE_16_TRAP: u8 = 0b0111;
 const GATE_32_INTERRUPT: u8 = 0b1110;
 const GATE_32_TRAP: u8 = 0b1111;
 

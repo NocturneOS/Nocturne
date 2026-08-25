@@ -12,7 +12,6 @@ use core::ops::Range;
 use multiboot2::BootInformation;
 use noct_boot::Module;
 use noct_logger::qemu_log;
-use noct_multiboot::MultibootModule;
 use noct_spec::{WORD_SIZE, WORD_SIZE_BITS};
 use noct_tools::{interrupt_locker::InterruptLocker, without_interrupts::without_interrupts};
 

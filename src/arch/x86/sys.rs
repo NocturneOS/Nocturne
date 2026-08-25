@@ -1,6 +1,5 @@
 use multiboot2::BootInformation;
 use noct_logger::qemu_log;
-use noct_multiboot::MultibootModule;
 
 unsafe extern "C" {
     // Defined in linker script src/arch/x86{,_64}/link.ld

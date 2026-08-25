@@ -1,14 +1,12 @@
 #![no_std]
 
-use core::{panic::PanicInfo, sync::atomic::AtomicBool};
+use core::panic::PanicInfo;
 
-use alloc::{boxed::Box, vec};
+use alloc::boxed::Box;
 use multiboot2::BootInformation;
-use noct_boot::{BootInfo, Module};
 use noct_logger::qemu_log;
 use noct_mem::{heap, paging::PageFlags};
 use noct_memdisk::MemoryDisk;
-use noct_multiboot::MultibootModule;
 use noct_tty::tty_println;
 
 mod arch;
