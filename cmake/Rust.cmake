@@ -40,7 +40,7 @@ function(add_rust_integration build_type)
 
 	add_custom_command(
 		OUTPUT "${CMAKE_SOURCE_DIR}/target/${RUST_TARGET_TRIPLE}/${build_type}/libnocturne.a" "fake.a"
-		COMMAND cargo +${RUST_COMPILER_TOOLCHAIN} rustc --target ${RUST_TARGET} --profile ${rust_profile} ${RUST_FLAGS}
+		COMMAND cargo +${RUST_COMPILER_TOOLCHAIN} rustc --target ${RUST_TARGET} --profile ${rust_profile} --timings ${RUST_FLAGS}
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		COMMENT "Building Rust files..."
 		DEPENDS "${CMAKE_SOURCE_DIR}/src"

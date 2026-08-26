@@ -93,7 +93,7 @@ pub fn read_medium_capacity(drive: &ATAPhysicalDrive) -> ATAResult<(usize, usize
 
 pub fn read_sectors(drive: &ATAPhysicalDrive, lba: u32, buffer: &mut [u8]) -> ATAIOResult<()> {
     // SAFETY: For ATAPI devices, the block size is always sepcified, so unwrap will always succeed.
-    let blksize = drive.block_size().unwrap();
+    let blksize = unsafe { drive.block_size().unwrap_unchecked() };
 
     assert!(buffer.len().is_multiple_of(blksize));
 

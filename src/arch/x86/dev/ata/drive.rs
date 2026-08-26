@@ -58,7 +58,9 @@ impl ATAPhysicalDrive {
 
         if self.identity.is_dma_supported() {
             if self.identity.is_removable_media_device() {
-                todo!("DMA reading for removable media devices is not yet implemented");
+                todo!("WARNING: DMA reading for removable media devices is not yet implemented");
+
+                // return super::atapi::read_sectors(self, lba as u32, output);
             }
 
             super::dma::ATADMA { drive: self }.read(lba, output)
