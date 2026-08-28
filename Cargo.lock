@@ -124,6 +124,15 @@ name = "noct-boot"
 version = "0.1.0"
 
 [[package]]
+name = "noct-cmos"
+version = "0.1.0"
+dependencies = [
+ "noct-cpu",
+ "noct-ioport",
+ "noct-time",
+]
+
+[[package]]
 name = "noct-cpu"
 version = "0.1.0"
 dependencies = [
@@ -239,6 +248,13 @@ version = "0.1.0"
 dependencies = [
  "num-derive",
  "num-traits",
+]
+
+[[package]]
+name = "noct-ioport"
+version = "0.1.0"
+dependencies = [
+ "x86",
 ]
 
 [[package]]
@@ -434,6 +450,7 @@ dependencies = [
  "lazy_static",
  "multiboot2",
  "noct-boot",
+ "noct-cmos",
  "noct-cpu",
  "noct-descriptor",
  "noct-diskman",
@@ -444,6 +461,7 @@ dependencies = [
  "noct-input-dispatcher",
  "noct-interrupts",
  "noct-io",
+ "noct-ioport",
  "noct-iso9660",
  "noct-logger",
  "noct-mem",

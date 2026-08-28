@@ -1,6 +1,5 @@
 pub mod dev;
 pub mod interrupts;
-pub mod io;
 pub mod mem;
 pub mod sys;
 pub mod timer;

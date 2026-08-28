@@ -31,7 +31,7 @@ members = [
     "crates/noct-io",
     "crates/noct-elfloader",
     "crates/noct-fs", "crates/noct-multiboot", "crates/noct-elf", "crates/noct-tty", "crates/noct-video", "crates/noct-descriptor",
-    "crates/noct-input", "crates/noct-input-dispatcher"]
+    "crates/noct-input", "crates/noct-input-dispatcher", "crates/noct-cmos", "crates/noct-ioport"]
 resolver = "2"
 
 [dependencies]
@@ -44,6 +44,7 @@ multiboot2 = "0.25.1"
 
 noct-boot = { path = "crates/noct-boot" }
 noct-cpu = { path = "crates/noct-cpu" }
+noct-cmos = { path = "crates/noct-cmos" }
 noct-diskman = { path = "crates/noct-diskman" }
 noct-fsman = { path = "crates/noct-fsman" }
 noct-fs = { path = "crates/noct-fs" }
@@ -68,6 +69,7 @@ noct-tools = { path = "crates/noct-tools" }
 noct-sched = { path = "crates/noct-sched" }
 noct-elfloader = { path = "crates/noct-elfloader" }
 noct-io = { path = "crates/noct-io" }
+noct-ioport = { path = "crates/noct-ioport" }
 noct-tty = { path = "crates/noct-tty" }
 noct-video = { path = "crates/noct-video" }
 

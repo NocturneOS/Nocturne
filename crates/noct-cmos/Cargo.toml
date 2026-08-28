@@ -1,0 +1,9 @@
+[package]
+name = "noct-cmos"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+noct-ioport = { path = "../noct-ioport" }
+noct-time = { path = "../noct-time" }
+noct-cpu = { path = "../noct-cpu" }

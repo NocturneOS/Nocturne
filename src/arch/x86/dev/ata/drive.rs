@@ -3,6 +3,7 @@ use noct_diskman::{
     error::{DiskManError, DiskManResult},
     structures::Command,
 };
+use noct_ioport::IOPort;
 use noct_logger::qemu_log;
 
 use crate::arch::x86::{
@@ -14,7 +15,6 @@ use crate::arch::x86::{
         info::ATADriveInfo,
         io::ATAIO,
     },
-    io::IOPort,
 };
 
 use super::atapi::StartStopOperation;

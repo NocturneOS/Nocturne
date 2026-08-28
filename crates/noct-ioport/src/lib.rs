@@ -1,18 +1,20 @@
+#![no_std]
+
 pub struct IOPort(u16);
 
 impl IOPort {
     #[inline]
-    pub fn new(port: u16) -> Self {
+    pub const fn new(port: u16) -> Self {
         Self(port)
     }
 
     #[inline(always)]
-    pub fn addr(&self) -> u16 {
+    pub const fn addr(&self) -> u16 {
         self.0
     }
 
     #[inline]
-    pub fn offset(&self, offset: u16) -> Self {
+    pub const fn offset(&self, offset: u16) -> Self {
         Self(self.0 + offset)
     }
 
