@@ -8,6 +8,7 @@ mod event;
 mod fd;
 mod mem;
 mod print;
+mod time;
 mod waitpid;
 
 pub type SyscallHandler = fn(usize, usize, usize, usize, usize) -> Option<usize>;
@@ -34,6 +35,10 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     event::open,        // 14
 
     fd::flush,          // 15
+
+    time::time,         // 16
+    time::sleep_millis, // 17
+    time::sleep_nanos,  // 18
 ];
 
 #[unsafe(no_mangle)]
@@ -78,6 +83,7 @@ pub extern "C" fn syscall_handler(regs: &mut CPURegisters) {
     }
 }
 
+// TODO: Is this definition and following initialization function should be in arch-specific crate (like `noct-cpu`)?
 unsafe extern "C" {
     // Defined in src/arch/x86_64/asm/syscall.s
     fn __syscall_handler64();
@@ -118,6 +124,6 @@ pub fn init() {
         LStar::write(VirtAddr::new(__syscall_handler64 as *const () as _));
     }
 
-    // 32-bit backward compatibility
+    // 32-bit backward compatibility and common syscall entry for x86_32.
     noct_interrupts::handler::register_interrupt_handler(0x80, syscall_handler);
 }
