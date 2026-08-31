@@ -6,7 +6,7 @@ use alloc::{
 use noct_io::error::Error;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use noct_logger::qemu_log;
-use noct_time::repr::Time;
+use noct_time::repr::DateTime;
 
 use crate::{
     DirectoryHandle, FileHandle, FileOpenMode, Filesystem, FilesystemInstance,
@@ -56,8 +56,8 @@ impl FilesystemInstance for DebugFSInstance {
             node_id: 0,
             entity_type: EntityType::File,
             size: 0,
-            created_at: Time::epoch(),
-            modified_at: Time::epoch(),
+            created_at: DateTime::epoch(),
+            modified_at: DateTime::epoch(),
         };
 
         Ok(FileHandle::new(

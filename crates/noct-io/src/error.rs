@@ -36,6 +36,8 @@ pub enum Error {
     UnsupportedOperation,
     /// Attempted access beyond memory buffer, hardware memory exceptions, null pointer usage.
     MemoryError,
+    /// No space on disk.
+    NoSpace,
     /// A kind of error that hasn't documented here yet.
     Unknown,
 }

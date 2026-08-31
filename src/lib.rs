@@ -105,6 +105,7 @@ fn kmain(boot_info: BootInformation) -> ! {
 
     // noct_fsman::store::register_filesystem(Box::new(noct_fsman::nullfs::NullFilesystem));
     noct_fsman::store::register_filesystem(Box::new(noct_iso9660::ISO9660Filesystem));
+    noct_fsman::store::register_filesystem(Box::new(noct_fatfs::FAT32Filesystem));
     noct_fsman::store::register_filesystem(Box::new(noct_tarfs::TarFilesystem));
     // noct_fsman::store::register_filesystem(Box::new(noct_fsman::debugfs::DebugFilesystem));
 
@@ -143,6 +144,24 @@ fn kmain(boot_info: BootInformation) -> ! {
     }
 
     syscalls::init();
+
+    {
+        let (data, time) = noct_tools::measure_time_timer(|| noct_fs::read_file("ata0:/message.txt"));
+
+        qemu_log!("Time: {} ms", time);
+
+        match data {
+            Ok(data) => {
+                let s = str::from_utf8(&data).unwrap();
+
+                qemu_log!("Data: {s:?}");
+            }
+            Err(e) => {
+                qemu_log!("Error: {e:?}");
+            }
+        }
+    }
+
 
     {
         match noct_elfloader::spawn("mem0:/prog_stdin32", &[]) {

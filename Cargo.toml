@@ -48,6 +48,7 @@ noct-cmos = { path = "crates/noct-cmos" }
 noct-diskman = { path = "crates/noct-diskman" }
 noct-fsman = { path = "crates/noct-fsman" }
 noct-fs = { path = "crates/noct-fs" }
+noct-fatfs = { path = "crates/noct-fatfs" }
 noct-descriptor = { path = "crates/noct-descriptor" }
 noct-mem = { path = "crates/noct-mem" }
 noct-input = { path = "crates/noct-input" }

@@ -1,7 +1,7 @@
 #![no_std]
 
 use noct_ioport::IOPort;
-use noct_time::repr::Time;
+use noct_time::repr::DateTime;
 
 const CMOS_ADDRESS_PORT: IOPort = IOPort::new(0x70);
 const CMOS_DATA_PORT: IOPort = IOPort::new(0x71);
@@ -28,7 +28,7 @@ fn wait() {
     }
 }
 
-pub fn read() -> Time {
+pub fn read() -> DateTime {
     wait();
 
     let mut sec = read_reg(0);
@@ -67,5 +67,5 @@ pub fn read() -> Time {
     // TODO: Use ACPI's Century Register to determine the century.
     year += 2000;
 
-    Time::new(year, month, day, hour, minute, sec).unwrap()
+    DateTime::new(year, month, day, hour, minute, sec).unwrap()
 }

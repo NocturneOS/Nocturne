@@ -16,6 +16,6 @@ pub struct EntityInfo {
     pub node_id: NodeId,
     pub entity_type: EntityType,
     pub size: u64,
-    pub created_at: noct_time::repr::Time,
-    pub modified_at: noct_time::repr::Time,
+    pub created_at: noct_time::repr::DateTime,
+    pub modified_at: noct_time::repr::DateTime,
 }

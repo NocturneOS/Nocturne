@@ -45,6 +45,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55dd888a213fc57e957abf2aa305ee3e8a28dbe05687a251f33b637cd46b0070"
 
 [[package]]
+name = "fatfs"
+version = "0.4.0"
+source = "git+https://github.com/rafalh/rust-fatfs#2aefc2a027ce94ed0671752814dac203f0450e11"
+dependencies = [
+ "bitflags 2.13.1",
+ "log",
+]
+
+[[package]]
 name = "iso9660_simple"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -187,6 +196,20 @@ dependencies = [
  "noct-spec",
  "noct-tools",
  "x86",
+]
+
+[[package]]
+name = "noct-fatfs"
+version = "0.1.0"
+dependencies = [
+ "fatfs",
+ "noct-diskman",
+ "noct-fsman",
+ "noct-io",
+ "noct-logger",
+ "noct-time",
+ "noct-tools",
+ "spin 0.10.1",
 ]
 
 [[package]]
@@ -455,6 +478,7 @@ dependencies = [
  "noct-descriptor",
  "noct-diskman",
  "noct-elfloader",
+ "noct-fatfs",
  "noct-fs",
  "noct-fsman",
  "noct-input",

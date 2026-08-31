@@ -12,7 +12,7 @@ use noct_fsman::{
         file::{FileHandle, FileOpenMode},
     },
 };
-use noct_logger::{noct_time::repr::Time, qemu_log};
+use noct_logger::{noct_time::repr::DateTime, qemu_log};
 use spin::Mutex;
 
 pub mod disk_device;
@@ -157,8 +157,8 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
                 entity_type: tarfs_type_to_fsm_type(entry._type),
                 size: entry.size as _,
                 // TODO: Time retrieval
-                created_at: Time::epoch(),
-                modified_at: Time::epoch(),
+                created_at: DateTime::epoch(),
+                modified_at: DateTime::epoch(),
             },
         })
     }
@@ -180,8 +180,8 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
             node_id: file.position as _,
             entity_type: tarfs_type_to_fsm_type(file._type),
             size: file.size as _,
-            created_at: Time::epoch(),
-            modified_at: Time::epoch(),
+            created_at: DateTime::epoch(),
+            modified_at: DateTime::epoch(),
         })
     }
 

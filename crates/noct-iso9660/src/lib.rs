@@ -8,7 +8,7 @@ mod handles;
 use core::cell::Cell;
 
 use alloc::{borrow::ToOwned, boxed::Box, string::String, sync::Arc, vec::Vec};
-use iso9660_simple::{ISODirectoryEntry, Read, ISO9660};
+use iso9660_simple::{ISODirectoryEntry, ISO9660};
 use noct_fsman::{
     entity::EntityInfo,
     handles::{
@@ -17,12 +17,9 @@ use noct_fsman::{
     },
     Filesystem, FilesystemInstance,
 };
-use noct_logger::qemu_log;
 use spin::Mutex;
 
-use crate::{device::Device, handles::FileHandleEntity};
-
-const ISO9660_OEM: [u8; 5] = [67, 68, 48, 48, 49];
+use crate::{device::Device};
 
 #[inline]
 fn iso_type_to_fsman_type(entry: &ISODirectoryEntry) -> noct_fsman::entity::EntityType {
@@ -34,8 +31,8 @@ fn iso_type_to_fsman_type(entry: &ISODirectoryEntry) -> noct_fsman::entity::Enti
 }
 
 #[inline]
-fn iso_datetime_to_fsm(entry: &ISODirectoryEntry) -> noct_time::repr::Time {
-    noct_time::repr::Time::new(
+fn iso_datetime_to_fsm(entry: &ISODirectoryEntry) -> noct_time::repr::DateTime {
+    noct_time::repr::DateTime::new(
         1900 + entry.record.datetime.year as u16,
         entry.record.datetime.month as _,
         entry.record.datetime.day as _,
@@ -44,18 +41,6 @@ fn iso_datetime_to_fsm(entry: &ISODirectoryEntry) -> noct_time::repr::Time {
         entry.record.datetime.second as _,
     )
     .unwrap()
-}
-
-struct DiskDevice {
-    diskname: String,
-}
-
-impl Read for DiskDevice {
-    fn read(&mut self, position: usize, buffer: &mut [u8]) -> Option<()> {
-        noct_diskman::read_bytes(&self.diskname, position as _, buffer)
-            .map(|_| ())
-            .ok()
-    }
 }
 
 pub struct ISO9660Filesystem;

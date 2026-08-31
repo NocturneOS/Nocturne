@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Copy)]
-pub struct Time {
+pub struct DateTime {
     year: u16,
     month: u8,
     day: u8,
@@ -8,7 +8,7 @@ pub struct Time {
     second: u8,
 }
 
-impl Time {
+impl DateTime {
     pub fn new(
         year: u16,
         month: u8,

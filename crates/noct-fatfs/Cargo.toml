@@ -1,0 +1,16 @@
+[package]
+name = "noct-fatfs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+fatfs = { git = "https://github.com/rafalh/rust-fatfs", features = ["lfn", "alloc"], default-features = false }
+
+noct-diskman = { path = "../noct-diskman" }
+noct-fsman = { path = "../noct-fsman" }
+noct-io = { path = "../noct-io" }
+noct-logger = { path = "../noct-logger" }
+noct-time = { path = "../noct-time" }
+noct-tools = { path = "../noct-tools" }
+
+spin = "0.10.0"
