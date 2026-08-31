@@ -3,25 +3,29 @@ use noct_logger::qemu_log;
 
 mod debug;
 mod error;
-mod exit;
 mod event;
+mod exit;
 mod fd;
 mod mem;
 mod print;
+mod proc;
 mod time;
-mod waitpid;
 
 pub type SyscallHandler = fn(usize, usize, usize, usize, usize) -> Option<usize>;
 
+#[rustfmt::skip]
 const SYSCALL_HANDLERS: &[SyscallHandler] = &[
-    // Dummy comment to prevent rustfmt onelining the array
-    debug::debug,       // 0
-    debug::reg_debug,   // 1
+    debug::debug,       // 0 - TO REMOVE?
+    debug::reg_debug,   // 1 - TO REMOVE?
+
     exit::exit,         // 2
     exit::process_exit, // 3
+    
     error::geterror,    // 4
-    waitpid::waitpid,   // 5
-    print::write_tty,   // 6
+    
+    proc::waitpid,      // 5
+    
+    print::write_tty,   // 6 - TO REMOVE?
 
     fd::open,           // 7
     fd::close,          // 8
@@ -39,6 +43,8 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     time::time,         // 16
     time::sleep_millis, // 17
     time::sleep_nanos,  // 18
+
+    proc::yield_now     // 19
 ];
 
 #[unsafe(no_mangle)]
@@ -117,8 +123,9 @@ pub fn init() {
             SegmentSelector::new(4, PrivilegeLevel::Ring3),
             SegmentSelector::new(3, PrivilegeLevel::Ring3),
             SegmentSelector::new(1, PrivilegeLevel::Ring0),
-            SegmentSelector::new(2,PrivilegeLevel::Ring0),
-        ).unwrap();
+            SegmentSelector::new(2, PrivilegeLevel::Ring0),
+        )
+        .unwrap();
 
         // Point CPU where lowlevel syscall handler is
         LStar::write(VirtAddr::new(__syscall_handler64 as *const () as _));

@@ -144,20 +144,20 @@ fn kmain(boot_info: BootInformation) -> ! {
 
     syscalls::init();
 
-    // {
-    //     match noct_elfloader::spawn("mem0:/prog_stdin32", &[]) {
-    //         Ok(handle) => {
-    //             qemu_log!("Started process {}", handle.pid);
+    {
+        match noct_elfloader::spawn("mem0:/prog_stdin32", &[]) {
+            Ok(handle) => {
+                qemu_log!("Started process {}", handle.pid);
 
-    //             let code = handle.wait();
+                let code = handle.wait();
 
-    //             qemu_log!("Process exited with code: {code:?}");
-    //         }
-    //         Err(e) => {
-    //             qemu_log!("Failed to spawn process: {e:?}");
-    //         }
-    //     }
-    // }
+                qemu_log!("Process exited with code: {code:?}");
+            }
+            Err(e) => {
+                qemu_log!("Failed to spawn process: {e:?}");
+            }
+        }
+    }
 
     qemu_log!("Time: {:?}", noct_cmos::read());
 

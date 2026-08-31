@@ -15,3 +15,9 @@ pub fn waitpid(pid: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usi
 
     code.map(|x| x as usize)
 }
+
+pub fn yield_now(_: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
+    noct_sched::yield_now();
+    
+    None
+}
