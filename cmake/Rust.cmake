@@ -1,5 +1,3 @@
-#set(RUST_TARGET "${CMAKE_SOURCE_DIR}/src/arch/${NOCTURNE_ARCH}/${RUST_TARGET_TRIPLE}.json")
-set(RUST_COMPILER_TOOLCHAIN "nightly-2026-09-01")
 set(RUST_FLAGS
 	--
 	-C code-model=kernel
@@ -10,9 +8,6 @@ if(RUST_TARGET_TRIPLE STREQUAL "i686-unknown-none")
 else()
 	set(RUST_TARGET ${RUST_TARGET_TRIPLE})
 endif()
-
-set(RUST_TOOLCHAIN_FULLNAME "${RUST_COMPILER_TOOLCHAIN}-x86_64-unknown-none")
-set(RUST_CARGO_PATH "~/.rustup/toolchains/${RUST_TOOLCHAIN_FULLNAME}/bin/src/cargo")
 
 add_custom_command(
 	OUTPUT "${CMAKE_SOURCE_DIR}/utils/chen/target/release/chen" ".fake"
