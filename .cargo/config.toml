@@ -1,2 +1,5 @@
+[unstable]
+build-std = ["core", "alloc", "compiler_builtins"]
+
 [target.'cfg(target_arch = "x86")']
 rustflags = ["-C", "force-frame-pointers=yes"]

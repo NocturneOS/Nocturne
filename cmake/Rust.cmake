@@ -1,11 +1,8 @@
 #set(RUST_TARGET "${CMAKE_SOURCE_DIR}/src/arch/${NOCTURNE_ARCH}/${RUST_TARGET_TRIPLE}.json")
-set(RUST_COMPILER_TOOLCHAIN "nightly-2026-08-01")
+set(RUST_COMPILER_TOOLCHAIN "nightly-2026-09-01")
 set(RUST_FLAGS
-	-Zbuild-std=core,compiler_builtins,alloc
-	-Znext-lockfile-bump
 	--
 	-C code-model=kernel
-	-Znext-solver=no
 )
 if(RUST_TARGET_TRIPLE STREQUAL "i686-unknown-none")
 	set(RUST_TARGET "${CMAKE_SOURCE_DIR}/src/arch/${NOCTURNE_ARCH}/${RUST_TARGET_TRIPLE}.json")
@@ -19,7 +16,7 @@ set(RUST_CARGO_PATH "~/.rustup/toolchains/${RUST_TOOLCHAIN_FULLNAME}/bin/src/car
 
 add_custom_command(
 	OUTPUT "${CMAKE_SOURCE_DIR}/utils/chen/target/release/chen" ".fake"
-	COMMAND cargo build --release
+	COMMAND cargo +stable build --release
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/utils/chen
 	COMMENT "Building Chen utility..."
 	DEPENDS "${CMAKE_SOURCE_DIR}/utils/chen/src"
@@ -40,7 +37,7 @@ function(add_rust_integration build_type)
 
 	add_custom_command(
 		OUTPUT "${CMAKE_SOURCE_DIR}/target/${RUST_TARGET_TRIPLE}/${build_type}/libnocturne.a" "fake.a"
-		COMMAND cargo +${RUST_COMPILER_TOOLCHAIN} rustc --target ${RUST_TARGET} --profile ${rust_profile} --timings ${RUST_FLAGS}
+		COMMAND cargo rustc --target ${RUST_TARGET} --profile ${rust_profile} --timings ${RUST_FLAGS}
 		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 		COMMENT "Building Rust files..."
 		DEPENDS "${CMAKE_SOURCE_DIR}/src"
