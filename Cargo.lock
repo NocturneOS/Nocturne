@@ -116,9 +116,9 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "multiboot2"
-version = "0.25.1"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6760efa924ec07b86ae4de352624143d08424b7a040a9fcb808c1421e63718dd"
+checksum = "eb3eaa4cbc37beb91ac69a14e00339f9d44e1a2d35b4e953ebc8ef2bbaadafbe"
 dependencies = [
  "bitflags 2.13.1",
  "elf",
@@ -131,9 +131,9 @@ dependencies = [
 
 [[package]]
 name = "multiboot2-common"
-version = "0.4.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d86c2ae21d6c7d8d42085137f7aaeee2849ea5b18b88a9d83146a1d33ce2fab"
+checksum = "b0afbba14dd18000daaab68fd5be3ccce6d58d1df2f6f2afd4c5e16ababf0dfb"
 dependencies = [
  "ptr_meta",
  "thiserror",
@@ -179,7 +179,7 @@ dependencies = [
  "cfg-if",
  "lazy_static",
  "noct-sync",
- "spin 0.10.1",
+ "spin 0.12.3",
  "x86",
  "x86_64",
 ]
@@ -202,7 +202,7 @@ dependencies = [
  "noct-mbr",
  "num-derive",
  "num-traits",
- "spin 0.10.1",
+ "spin 0.12.3",
 ]
 
 [[package]]
@@ -239,8 +239,7 @@ dependencies = [
  "noct-io",
  "noct-logger",
  "noct-time",
- "noct-tools",
- "spin 0.10.1",
+ "spin 0.12.3",
 ]
 
 [[package]]
@@ -261,17 +260,12 @@ dependencies = [
  "noct-io",
  "noct-logger",
  "noct-time",
- "spin 0.10.1",
+ "spin 0.12.3",
 ]
 
 [[package]]
 name = "noct-input"
 version = "0.1.0"
-dependencies = [
- "noct-logger",
- "noct-tools",
- "spin 0.10.1",
-]
 
 [[package]]
 name = "noct-input-dispatcher"
@@ -283,7 +277,7 @@ dependencies = [
  "noct-logger",
  "noct-sched",
  "noct-tools",
- "spin 0.5.2",
+ "spin 0.12.3",
 ]
 
 [[package]]
@@ -321,7 +315,7 @@ dependencies = [
  "noct-io",
  "noct-logger",
  "noct-time",
- "spin 0.10.1",
+ "spin 0.12.3",
 ]
 
 [[package]]
@@ -348,7 +342,7 @@ dependencies = [
  "noct-spec",
  "noct-sysinfo",
  "noct-tools",
- "spin 0.10.1",
+ "spin 0.12.3",
  "x86",
 ]
 
@@ -375,7 +369,7 @@ version = "0.1.0"
 dependencies = [
  "noct-logger",
  "noct-time",
- "spin 0.10.1",
+ "spin 0.12.3",
  "x86",
 ]
 
@@ -418,7 +412,7 @@ dependencies = [
  "noct-sync",
  "noct-time",
  "noct-tools",
- "spin 0.10.1",
+ "spin 0.12.3",
  "x86",
 ]
 
@@ -439,7 +433,7 @@ name = "noct-sysinfo"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
- "spin 0.10.1",
+ "spin 0.12.3",
 ]
 
 [[package]]
@@ -451,7 +445,7 @@ dependencies = [
  "noct-fsman",
  "noct-io",
  "noct-logger",
- "spin 0.10.1",
+ "spin 0.12.3",
  "tarfs",
 ]
 
@@ -482,7 +476,7 @@ dependencies = [
  "noct-logger",
  "noct-sched",
  "noct-video",
- "spin 0.10.1",
+ "spin 0.12.3",
  "unifont",
 ]
 
@@ -492,7 +486,7 @@ version = "0.1.0"
 dependencies = [
  "lazy_static",
  "noct-spec",
- "spin 0.10.1",
+ "spin 0.12.3",
 ]
 
 [[package]]
@@ -535,19 +529,19 @@ dependencies = [
  "noct-tools",
  "noct-tty",
  "noct-video",
- "spin 0.10.1",
+ "spin 0.12.3",
  "x86",
 ]
 
 [[package]]
 name = "num-derive"
-version = "0.4.2"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed3955f1a9c7c0c15e092f9c887db08b1fc683305fdf6eb6684f22555355e202"
+checksum = "e4e98dc3b890f6c23a0f9d3d491a2823d0dea0fa656302a13dd225fa924112a8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.119",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -630,21 +624,15 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "spin"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
-
-[[package]]
-name = "spin"
 version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3763264f6b73151db08c50ff20d7d8a0b8796e021cdea7ceedad07b80155fa0e"
 
 [[package]]
 name = "spin"
-version = "0.10.1"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "023a211cb3138dbc438680b32560ad89f699977624c9f8dbb95a47d5b4c07dd3"
+checksum = "0134f9043ed38b087ac4f7d4af44c79e2c9e5094421fe3164f435ce585953b10"
 dependencies = [
  "lock_api",
 ]

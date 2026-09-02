@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 iso9660_simple = { version = "0.2.6", default-features = false }
 
-spin = "0.10.0"
+spin = "0.12.3"
 
 noct-diskman = { path = "../noct-diskman" }
 noct-fsman = { path = "../noct-fsman" }

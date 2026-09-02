@@ -10,4 +10,4 @@ noct-logger = { path = "../noct-logger" }
 noct-sysinfo = { path = "../noct-sysinfo" }
 noct-boot = { path = "../noct-boot" }
 
-multiboot2 = "0.25.1"
+multiboot2 = "0.26.1"

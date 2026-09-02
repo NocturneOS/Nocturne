@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 tarfs = { version = "0.2.8", default-features = false }
 no_std_io = { version = "0.6.0", features = ["alloc"] }
-spin = "0.10.0"
+spin = "0.12.3"
 
 noct-diskman = { path = "../noct-diskman" }
 noct-fsman = { path = "../noct-fsman" }

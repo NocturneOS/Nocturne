@@ -57,6 +57,25 @@ impl Drive for Partition {
         Some(&self.parent_disk_id)
     }
 
+    fn drive_type(&self) -> crate::structures::DriveType {
+        self.parent_operation(|parent_drive| parent_drive.drive_type())
+    }
+
+    fn capacity(&self) -> Option<u64> {
+        Some(self.offset_end - self.offset_start)
+    }
+
+    fn block_size(&self) -> Option<usize> {
+        // ATAPI drives use 2048 bytes per block, but MBR uses 512 bytes per block.
+
+        // return Some(512);
+        self.parent_operation(|parent_drive| parent_drive.block_size())
+    }
+
+    fn buffer_address_alignment(&self) -> usize {
+        self.parent_operation(|parent_drive| parent_drive.buffer_address_alignment())
+    }
+
     fn read(&mut self, location: u64, buffer: &mut [u8]) -> DiskManResult<u64> {
         if location >= self.offset_end {
             return Err(DiskManError::LocationOutOfBounds);
@@ -82,24 +101,5 @@ impl Drive for Partition {
         self.parent_operation_mut(|parent_drive| {
             parent_drive.control(command, command_parameters, data)
         })
-    }
-
-    fn buffer_address_alignment(&self) -> usize {
-        self.parent_operation(|parent_drive| parent_drive.buffer_address_alignment())
-    }
-
-    fn drive_type(&self) -> crate::structures::DriveType {
-        self.parent_operation(|parent_drive| parent_drive.drive_type())
-    }
-
-    fn capacity(&self) -> Option<u64> {
-        Some(self.offset_end - self.offset_start)
-    }
-
-    fn block_size(&self) -> Option<usize> {
-        // ATAPI drives use 2048 bytes per block, but MBR uses 512 bytes per block.
-
-        // return Some(512);
-        self.parent_operation(|parent_drive| parent_drive.block_size())
     }
 }

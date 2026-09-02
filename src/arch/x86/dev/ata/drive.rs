@@ -110,6 +110,30 @@ impl noct_diskman::drive::Drive for ATAPhysicalDrive {
         self.diskman_id.as_deref().unwrap()
     }
 
+    fn drive_type(&self) -> noct_diskman::structures::DriveType {
+        if self.info().is_removable_media_device() {
+            noct_diskman::structures::DriveType::RemovableMedia
+        } else {
+            noct_diskman::structures::DriveType::HardDrive
+        }
+    }
+
+    fn capacity(&self) -> Option<u64> {
+        if let Some(cap) = self.block_capacity {
+            return Some(cap as _);
+        }
+
+        Some(self.info().max_lba())
+    }
+
+    fn block_size(&self) -> Option<usize> {
+        Some(self.info().sector_size() as _)
+    }
+
+    fn buffer_address_alignment(&self) -> usize {
+        8
+    }
+
     fn read(&mut self, location: u64, buffer: &mut [u8]) -> DiskManResult<u64> {
         self.read(location, buffer)
             .map(|_| buffer.len() as _)
@@ -154,29 +178,5 @@ impl noct_diskman::drive::Drive for ATAPhysicalDrive {
             },
             cmd => todo!("Unimplemented control command for ATA (issued: {cmd:?})"),
         }
-    }
-
-    fn buffer_address_alignment(&self) -> usize {
-        8
-    }
-
-    fn drive_type(&self) -> noct_diskman::structures::DriveType {
-        if self.info().is_removable_media_device() {
-            noct_diskman::structures::DriveType::RemovableMedia
-        } else {
-            noct_diskman::structures::DriveType::HardDrive
-        }
-    }
-
-    fn capacity(&self) -> Option<u64> {
-        if let Some(cap) = self.block_capacity {
-            return Some(cap as _);
-        }
-
-        Some(self.info().max_lba())
-    }
-
-    fn block_size(&self) -> Option<usize> {
-        Some(self.info().sector_size() as _)
     }
 }

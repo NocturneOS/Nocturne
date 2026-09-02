@@ -4,10 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-num-derive = "0.4.2"
+num-derive = "0.5.1"
 num-traits = { version = "0.2.19", default-features = false }
 
-spin = "0.10.0"
+spin = "0.12.3"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 
 noct-logger = { path = "../noct-logger" }

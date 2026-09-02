@@ -7,7 +7,6 @@ use noct_tools::interrupt_locker::InterruptLocker;
 
 use core::alloc::{GlobalAlloc, Layout};
 use core::ptr::{self, NonNull};
-use core::usize;
 use spin::{Mutex, MutexGuard};
 
 use crate::paging::{self, PageFlags};

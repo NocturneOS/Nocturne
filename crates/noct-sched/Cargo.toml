@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-spin = "0.10.0"
+spin = "0.12.3"
 lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
 bitflags = "2.10.0"
 

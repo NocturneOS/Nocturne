@@ -4,8 +4,6 @@
 extern crate alloc;
 
 use alloc::{collections::vec_deque::VecDeque};
-// use noct_tools::{without_interrupts::without_interrupts};
-// use spin::{Once, RwLock};
 
 use crate::event::InputEvent;
 

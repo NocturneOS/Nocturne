@@ -67,15 +67,6 @@ impl FilesystemInstance for DebugFSInstance {
         ))
     }
 
-    fn opendir(&self, path: &str) -> noct_io::Result<DirectoryHandle> {
-        qemu_log!("DebugFS: opendir called with path '{}'", path);
-
-        Ok(DirectoryHandle {
-            disk_id: self.disk_id.clone(),
-            handle_id: self.id_arena.fetch_add(1, Ordering::Relaxed) as _,
-        })
-    }
-
     fn read(&self, handle: &mut FileHandle, buffer: &mut [u8]) -> noct_io::Result<u64> {
         qemu_log!(
             "DebugFS: read called with handle {:?} and buffer of length {}",
@@ -94,9 +85,13 @@ impl FilesystemInstance for DebugFSInstance {
         Ok(0)
     }
 
-    fn info(&self, path: &str) -> noct_io::Result<crate::entity::EntityInfo> {
-        qemu_log!("DebugFS: info called with path '{}'", path);
-        Err(Error::NotFound)
+    fn opendir(&self, path: &str) -> noct_io::Result<DirectoryHandle> {
+        qemu_log!("DebugFS: opendir called with path '{}'", path);
+
+        Ok(DirectoryHandle {
+            disk_id: self.disk_id.clone(),
+            handle_id: self.id_arena.fetch_add(1, Ordering::Relaxed) as _,
+        })
     }
 
     fn readdir(
@@ -104,6 +99,11 @@ impl FilesystemInstance for DebugFSInstance {
         _handle: &mut DirectoryHandle,
     ) -> noct_io::Result<crate::handles::directory::DirectoryEntry> {
         qemu_log!("DebugFS: readdir called");
+        Err(Error::NotFound)
+    }
+
+    fn info(&self, path: &str) -> noct_io::Result<EntityInfo> {
+        qemu_log!("DebugFS: info called with path '{}'", path);
         Err(Error::NotFound)
     }
 

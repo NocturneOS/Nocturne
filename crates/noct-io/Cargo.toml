@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-num-derive = "0.4.2"
+num-derive = "0.5.1"
 num-traits = { version = "0.2.19", default-features = false }

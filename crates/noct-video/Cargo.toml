@@ -7,4 +7,4 @@ edition = "2024"
 noct-spec = { path = "../noct-spec" }
 
 lazy_static = { version = "1.5.0", features = ["spin_no_std"] }
-spin = "0.10.0"
+spin = "0.12.3"

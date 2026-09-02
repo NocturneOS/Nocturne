@@ -11,6 +11,5 @@ noct-fsman = { path = "../noct-fsman" }
 noct-io = { path = "../noct-io" }
 noct-logger = { path = "../noct-logger" }
 noct-time = { path = "../noct-time" }
-noct-tools = { path = "../noct-tools" }
 
-spin = "0.10.0"
+spin = "0.12.3"

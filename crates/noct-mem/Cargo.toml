@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-spin = "0.10.0"
+spin = "0.12.3"
 cfg-if = "1.0.4"
 bitflags = "2.10.0"
 x86 = "0.52.0"

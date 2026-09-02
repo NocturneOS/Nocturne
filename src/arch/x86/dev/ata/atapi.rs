@@ -33,7 +33,7 @@ pub fn send_scsi(drive: &ATAPhysicalDrive, lba: u16, command: &[u16]) -> ATAResu
 }
 
 pub fn send_scsi8(drive: &ATAPhysicalDrive, lba: u16, command: &[u8]) -> ATAResult<()> {
-    assert!(command.len() == 12);
+    assert_eq!(command.len(), 12);
 
     // SAFETY: `assert!` checked that slice has needed amount of bytes.
     let command16 = unsafe {

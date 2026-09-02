@@ -7,7 +7,7 @@ edition = "2024"
 unifont = "1.1.0"
 lazy_static = "1.5.0"
 bitflags = "2.11.1"
-spin = "0.10.0"
+spin = "0.12.3"
 
 noct-sched = { path = "../noct-sched" }
 noct-input-dispatcher = { path = "../noct-input-dispatcher" }

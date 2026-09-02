@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="EMPTY_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-acpi/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-boot/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-cmos/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-cpu/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-descriptor/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-diskman/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-elf/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-elfloader/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-fatfs/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-fs/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-fsman/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-input-dispatcher/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-input/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-interrupts/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-io/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-ioport/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-iso9660/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-logger/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-mbr/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-mbr/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-mem/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-memdisk/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-multiboot/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-pci/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-physmem-alloc/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-ps2/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-sched/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-smbios/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-spec/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-sync/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-sysinfo/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-tarfs/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-time/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-tools/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-tty/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/noct-video/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>
