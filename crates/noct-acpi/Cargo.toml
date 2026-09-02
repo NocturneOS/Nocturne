@@ -1,0 +1,12 @@
+[package]
+name = "noct-acpi"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+noct-mem = { path = "../noct-mem" }
+noct-logger = { path = "../noct-logger" }
+noct-spec = { path = "../noct-spec" }
+
+acpi = { version = "6.1.1", default-features = false }
+x86 = "0.52.0"

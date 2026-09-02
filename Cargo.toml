@@ -1,5 +1,5 @@
 [lib]
-crate-type = [ "staticlib" ]
+crate-type = ["staticlib"]
 
 [package]
 name = "nocturne"
@@ -30,8 +30,18 @@ members = [
     "crates/noct-sched",
     "crates/noct-io",
     "crates/noct-elfloader",
-    "crates/noct-fs", "crates/noct-multiboot", "crates/noct-elf", "crates/noct-tty", "crates/noct-video", "crates/noct-descriptor",
-    "crates/noct-input", "crates/noct-input-dispatcher", "crates/noct-cmos", "crates/noct-ioport"]
+    "crates/noct-fs",
+    "crates/noct-multiboot",
+    "crates/noct-elf",
+    "crates/noct-tty",
+    "crates/noct-video",
+    "crates/noct-descriptor",
+    "crates/noct-input",
+    "crates/noct-input-dispatcher",
+    "crates/noct-cmos",
+    "crates/noct-ioport",
+    "crates/noct-acpi",
+]
 resolver = "2"
 
 [dependencies]
@@ -42,6 +52,7 @@ cfg-if = "1.0.4"
 bitflags = "2.11.1"
 multiboot2 = "0.25.1"
 
+noct-acpi = { path = "crates/noct-acpi" }
 noct-boot = { path = "crates/noct-boot" }
 noct-cpu = { path = "crates/noct-cpu" }
 noct-cmos = { path = "crates/noct-cmos" }
