@@ -966,7 +966,7 @@ unsafe extern "C" fn thread_trampoline() -> ! {
         // If entry returned, call thread_exit to mark thread as dead.
         "call {exit}",
         exit = sym thread_exit
-    );
+    )
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -980,7 +980,7 @@ unsafe extern "C" fn thread_trampoline64() -> ! {
         // If entry returned, call thread_exit to mark thread as dead.
         "call {exit}",
         exit = sym thread_exit
-    );
+    )
 }
 
 #[cfg(target_arch = "x86")]
@@ -1024,7 +1024,7 @@ unsafe extern "C" fn thread_trampoline_usermode64() -> ! {
         "push rbx",   // Entry point = RIP
         // "hlt",
         "iretq",
-    );
+    )
 }
 
 fn idle_task() {

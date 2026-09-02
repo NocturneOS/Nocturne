@@ -236,7 +236,7 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
             } else {
                 None
             },
-            identity: identity,
+            identity,
             block_capacity: None,
             diskman_id: Some(noct_diskman::generate_new_id("ata")),
         });

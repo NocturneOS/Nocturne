@@ -69,7 +69,7 @@ mb2_header_end:
 	stack_top:
 
 # Our page directory and page table
-.section .bootstrap_paging, "aw", @nobits
+.section .bootstrap_paging, "aw"
     .align 4096
     .global boot_page_directory
     boot_page_directory:

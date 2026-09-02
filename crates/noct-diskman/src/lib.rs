@@ -301,7 +301,7 @@ pub fn disk_list() -> Vec<DiskInfo> {
             DiskInfo {
                 name,
                 id,
-                is_partition: is_partition,
+                is_partition,
                 drive_type: handle.drive_type(),
                 capacity: handle.capacity(),
                 block_size: handle.block_size(),

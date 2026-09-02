@@ -34,7 +34,7 @@ impl ArenaAllocator {
             .init(heap_start, heap_size)
     }
 
-    fn inner<'t>(&'t self) -> MutexGuard<'t, InnerArenaAllocator> {
+    fn inner(&self) -> MutexGuard<'_, InnerArenaAllocator> {
         let lock = self.inner.try_lock().expect("Heap locking failed!");
         // let lock = self.inner.lock();
         lock
@@ -95,7 +95,7 @@ impl InnerArenaAllocator {
         qemu_log!("Heap at: P{page:#x?} -> V{heap_start:#x?} with size: {heap_size:.} bytes");
     }
 
-    pub fn blocks<'a>(&'a self) -> &'a [Block] {
+    pub fn blocks(&self) -> &[Block] {
         self.arena
             .as_ref()
             .expect("Getting blocks on uninitialized allocator!")
@@ -154,7 +154,7 @@ impl InnerArenaAllocator {
 
         arena[index] = Block {
             address: addr,
-            size: size,
+            size,
         };
     }
 

@@ -99,8 +99,8 @@ fn convert_error<T>(error: fatfs::Error<T>) -> noct_io::error::Error {
     }
 }
 
-fn direntry_to_entity<'a, IO: fatfs::ReadWriteSeek, TP, OCC: OemCpConverter>(
-    dirent: fatfs::DirEntry<'a, IO, TP, OCC>,
+fn direntry_to_entity<IO: fatfs::ReadWriteSeek, TP, OCC: OemCpConverter>(
+    dirent: fatfs::DirEntry<IO, TP, OCC>,
 ) -> noct_io::Result<noct_fsman::entity::EntityInfo> {
     let entity_type = match dirent.is_dir() {
         true => EntityType::Directory,
