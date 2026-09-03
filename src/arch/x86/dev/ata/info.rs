@@ -6,7 +6,7 @@ pub struct ATADriveInfo {
 
 impl ATADriveInfo {
     pub fn raw(&self) -> &[u8] {
-        &*self.identity
+        &self.identity
     }
 
     pub fn nth_word(&self, word_offset: usize) -> u16 {

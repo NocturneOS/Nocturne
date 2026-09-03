@@ -5,8 +5,6 @@ use noct_mem::paging;
 use crate::arch::x86::{interrupts, sys, timer};
 use crate::{arch, kmain, qemu_log};
 
-use noct_boot::{BootInfo, Module};
-
 #[unsafe(no_mangle)]
 pub extern "C" fn __arch_init(header: *const BootInformationHeader) -> ! {
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
@@ -83,7 +81,7 @@ pub extern "C" fn __arch_init(header: *const BootInformationHeader) -> ! {
     {
         let addr_start = noct_tools::align_value(i.0.try_into().unwrap(), arch::get_page_size());
 
-        if i.0 + i.1 - 1 >= usize::MAX as _ {
+        if i.0 + i.1 > usize::MAX as _ {
             break;
         }
 
@@ -95,7 +93,7 @@ pub extern "C" fn __arch_init(header: *const BootInformationHeader) -> ! {
         }
 
         for addr in (addr_start..addr_end).step_by(arch::get_page_size()) {
-            noct_physmem_alloc::mark_page(addr.try_into().unwrap(), true);
+            noct_physmem_alloc::mark_page(addr, true);
         }
 
         qemu_log!("Marked {:#x?} - {:#x?} as reserved.", addr_start, addr_end);

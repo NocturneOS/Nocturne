@@ -1,11 +1,11 @@
 use noct_interrupts::InterruptController;
 use x86::io::outb;
 
-struct PIC;
+struct Pic;
 
-static PIC_ENTITY: PIC = PIC;
+static PIC_ENTITY: Pic = Pic;
 
-impl InterruptController for PIC {
+impl InterruptController for Pic {
     fn eoi(&self, interrupt_nr: u8) {
         if interrupt_nr >= 0x28 {
             unsafe { outb(0xA0, 0x20) };

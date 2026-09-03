@@ -74,16 +74,12 @@ impl PathParser {
         // Now, code deals with relative paths.
 
         // It's a problem if CWD is not passed, because we can't get full path.
-        if self.builder_data.cwd.is_none() {
-            return None;
-        }
+        self.builder_data.cwd.as_ref()?;
 
         let full_path = self.builder_data.cwd.clone().unwrap() + "/" + path;
 
         // Parse full path now.
-        let Some((disk_id, path)) = full_path.split_once(':') else {
-            return None;
-        };
+        let (disk_id, path) = full_path.split_once(':')?;
 
         let canonicalized = Self::canonicalize(path);
 

@@ -23,7 +23,7 @@ impl<'a> DiskView<'a> {
 
         let bs = self.block_size as u64;
         let start_lba = byte_offset / bs;
-        let end_lba = (byte_offset + buf.len() as u64 + bs - 1) / bs;
+        let end_lba = (byte_offset + buf.len() as u64).div_ceil(bs);
         let num_blocks = end_lba - start_lba;
 
         let buf_align = self.drive.buffer_address_alignment();
@@ -68,20 +68,20 @@ impl<'a> DiskView<'a> {
 
         let bs = self.block_size as u64;
         let start_lba = byte_offset / bs;
-        let end_lba = (byte_offset + buf.len() as u64 + bs - 1) / bs;
+        let end_lba = (byte_offset + buf.len() as u64).div_ceil(bs);
         let num_blocks = end_lba - start_lba;
 
         let buf_align = self.drive.buffer_address_alignment();
         let layout = Layout::from_size_align((num_blocks * bs) as _, buf_align).unwrap();
 
-        let buffer = unsafe { alloc::alloc::alloc(layout) } as *mut u8;
+        let buffer = unsafe { alloc::alloc::alloc(layout) };
 
         if buffer.is_null() {
             alloc::alloc::handle_alloc_error(layout);
         }
 
         // If the write is not block-aligned, we need to read the first and/or last block to preserve the unaffected bytes.
-        if byte_offset % bs != 0 || (byte_offset + buf.len() as u64) % bs != 0 {
+        if !byte_offset.is_multiple_of(bs) || !(byte_offset + buf.len() as u64).is_multiple_of(bs) {
             self.drive.read(start_lba, unsafe {
                 core::slice::from_raw_parts_mut(buffer, (num_blocks * bs) as usize)
             })?;

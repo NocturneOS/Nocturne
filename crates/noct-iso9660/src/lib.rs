@@ -179,9 +179,8 @@ impl FilesystemInstance for ISO9660FilesystemInstance {
 
         let iter = inst.read_directory(dir_handle.directory_entry.lsb_position() as _);
 
-        let entry = iter
-            .skip(dir_handle.iterator_position)
-            .next()
+        let entry = (&iter)
+            .nth(dir_handle.iterator_position)
             .ok_or(noct_io::error::Error::EndOfIterator)?;
 
         dir_handle.iterator_position += 1;

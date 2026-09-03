@@ -192,7 +192,7 @@ pub fn write(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<u
                 .lock()
                 .write_str(unsafe { str::from_utf8_unchecked(slice) });
 
-            if let Err(e) = result {
+            if let Err(_) = result {
                 noct_sched::set_error(noct_io::error::Error::IoError as _)
             }
         }

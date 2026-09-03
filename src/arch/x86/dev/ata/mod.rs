@@ -8,9 +8,9 @@ use x86::io::{inb, inw, outb};
 
 use crate::arch::x86::dev::ata::{
     commands::{ATA_CMD_IDENTIFY, ATA_CMD_IDENTIFY_PACKET},
-    dma_prdt::PRDT,
-    drive::ATAPhysicalDrive,
-    error::{ATAError, ATAResult},
+    dma_prdt::Prdt,
+    drive::AtaPhysicalDrive,
+    error::{AtaError, ATAResult},
     flags::{ATA_SR_BSY, ATA_SR_DF, ATA_SR_DRQ, ATA_SR_ERR},
     regs::{
         ATA_REG_ALTSTATUS, ATA_REG_COMMAND, ATA_REG_CONTROL, ATA_REG_DATA, ATA_REG_ERROR,
@@ -98,11 +98,11 @@ fn ide_poll_drq(io: u16, mut timeout: usize) -> ATAResult<()> {
         if (status & ATA_SR_DRQ) != 0 {
             return Ok(());
         } else if (status & ATA_SR_ERR) != 0 || (status & ATA_SR_DF) != 0 {
-            return Err(unsafe { ATAError::ErrorSet(inb(io + ATA_REG_ERROR)) });
+            return Err(unsafe { AtaError::ErrorSet(inb(io + ATA_REG_ERROR)) });
         }
 
         if timeout == 0 {
-            return Err(ATAError::TimedOut);
+            return Err(AtaError::TimedOut);
         }
 
         timeout -= 1;
@@ -118,11 +118,11 @@ fn ide_poll_bsy(io: u16, mut timeout: usize) -> ATAResult<()> {
         if (status & ATA_SR_BSY) == 0 {
             return Ok(());
         } else if (status & ATA_SR_ERR) != 0 || (status & ATA_SR_DF) != 0 {
-            return Err(unsafe { ATAError::ErrorSet(inb(io + ATA_REG_ERROR)) });
+            return Err(unsafe { AtaError::ErrorSet(inb(io + ATA_REG_ERROR)) });
         }
 
         if timeout == 0 {
-            return Err(ATAError::TimedOut);
+            return Err(AtaError::TimedOut);
         }
 
         timeout -= 1;
@@ -140,7 +140,7 @@ fn ide_poll(io: u16) -> ATAResult<()> {
     Ok(())
 }
 
-fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
+fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<AtaPhysicalDrive> {
     let io = bus.io();
 
     qemu_log!("Identifying {bus:?} {drive:?}");
@@ -191,12 +191,12 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
 
             let identity: info::ATADriveInfo = ide_buf.try_into().unwrap();
 
-            let mut drive = ATAPhysicalDrive {
+            let mut drive = AtaPhysicalDrive {
                 bus,
                 drive,
                 is_packet: true,
                 prdt: if identity.is_dma_supported() {
-                    Some(PRDT::new())
+                    Some(Prdt::new())
                 } else {
                     None
                 },
@@ -227,12 +227,12 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
 
         let identity: info::ATADriveInfo = ide_buf.try_into().unwrap();
 
-        return Ok(ATAPhysicalDrive {
+        return Ok(AtaPhysicalDrive {
             bus,
             drive,
             is_packet: false,
             prdt: if identity.is_dma_supported() {
-                Some(PRDT::new())
+                Some(Prdt::new())
             } else {
                 None
             },
@@ -242,7 +242,7 @@ fn identify(bus: ATABus, drive: ATADrive) -> ATAResult<ATAPhysicalDrive> {
         });
     }
 
-    Err(ATAError::NoDrive)
+    Err(AtaError::NoDrive)
 }
 
 fn check_all() {

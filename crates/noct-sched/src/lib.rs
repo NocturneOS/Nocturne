@@ -956,6 +956,7 @@ pub fn process_exit(exitcode: u32) -> ! {
     unreachable!()
 }
 
+#[cfg(target_arch = "x86")]
 #[unsafe(naked)]
 unsafe extern "C" fn thread_trampoline() -> ! {
     core::arch::naked_asm!(

@@ -10,8 +10,8 @@ use crate::arch::x86::{
     dev::ata::{
         ATABus, ATADrive,
         dma::DMA_IO_PORT,
-        dma_prdt::PRDT,
-        error::{ATAIOError, ATAIOResult},
+        dma_prdt::Prdt,
+        error::{AtaIoError, ATAIOResult},
         info::ATADriveInfo,
         io::ATAIO,
     },
@@ -19,17 +19,17 @@ use crate::arch::x86::{
 
 use super::atapi::StartStopOperation;
 
-pub struct ATAPhysicalDrive {
+pub struct AtaPhysicalDrive {
     pub(super) bus: ATABus,
     pub(super) drive: ATADrive,
     pub(super) is_packet: bool,
     pub(super) identity: ATADriveInfo,
-    pub(super) prdt: Option<PRDT>,
+    pub(super) prdt: Option<Prdt>,
     pub(super) diskman_id: Option<String>,
     pub(super) block_capacity: Option<usize>,
 }
 
-impl ATAPhysicalDrive {
+impl AtaPhysicalDrive {
     #[inline]
     pub fn info(&self) -> &ATADriveInfo {
         &self.identity
@@ -86,14 +86,14 @@ impl ATAPhysicalDrive {
             // because to write on a removable medium requires user making the TOC,
             // other calculations, performing power calibration (OPC), etc. which are not implemented yet.
             if self.identity.is_removable_media_device() {
-                return Err(ATAIOError::UnsupportedOperation);
+                return Err(AtaIoError::UnsupportedOperation);
             }
 
             super::dma::ATADMA { drive: self }.write(lba, input)
         } else {
             // See comment above.
             if self.identity.is_removable_media_device() {
-                return Err(ATAIOError::UnsupportedOperation);
+                return Err(AtaIoError::UnsupportedOperation);
             }
 
             super::pio::ATAPIO { drive: self }.write(lba, input)
@@ -101,7 +101,7 @@ impl ATAPhysicalDrive {
     }
 }
 
-impl noct_diskman::drive::Drive for ATAPhysicalDrive {
+impl noct_diskman::drive::Drive for AtaPhysicalDrive {
     fn get_name(&self) -> &str {
         "ata"
     }
@@ -161,7 +161,7 @@ impl noct_diskman::drive::Drive for ATAPhysicalDrive {
                 super::atapi::start_stop(self, StartStopOperation::Stop)
                     .and_then(|_| super::atapi::start_stop(self, StartStopOperation::Eject))
                     .map_err(|e| match e {
-                        ATAIOError::ControllerError(_) => DiskManError::IOError,
+                        AtaIoError::ControllerError(_) => DiskManError::IOError,
                         _ => DiskManError::UnsupportedOperation,
                     })
             },
@@ -172,7 +172,7 @@ impl noct_diskman::drive::Drive for ATAPhysicalDrive {
 
                 super::atapi::start_stop(self, StartStopOperation::Load)
                     .map_err(|e| match e {
-                        ATAIOError::ControllerError(_) => DiskManError::IOError,
+                        AtaIoError::ControllerError(_) => DiskManError::IOError,
                         _ => DiskManError::UnsupportedOperation,
                     })
             },

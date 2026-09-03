@@ -2,7 +2,6 @@
 
 use core::{
     alloc::Layout,
-    borrow::Borrow,
     ops::{Deref, DerefMut},
 };
 
@@ -31,7 +30,7 @@ impl Deref for MemoryDiskSource {
     fn deref(&self) -> &Self::Target {
         match self {
             Self::Predefined { buffer, .. } => buffer,
-            Self::Allocated(items) => &items,
+            Self::Allocated(items) => items,
         }
     }
 }

@@ -5,10 +5,10 @@ use noct_logger::qemu_log;
 use noct_pci;
 use noct_sync::pseudosync::PseudoSync;
 
-use super::dma_prdt::PRDT;
+use super::dma_prdt::Prdt;
 use crate::arch::{
     self, x86::dev::ata::{
-        ATADrive, atapi::send_scsi, commands::{ATA_CMD_READ_DMA_EXT, ATA_CMD_WRITE_DMA_EXT, ATAPI_CMD_READ}, drive::ATAPhysicalDrive, error::{ATAIOError, ATAIOResult}, ide_poll, io::ATAIO, regs::{
+        ATADrive, atapi::send_scsi, commands::{ATA_CMD_READ_DMA_EXT, ATA_CMD_WRITE_DMA_EXT, ATAPI_CMD_READ}, drive::AtaPhysicalDrive, error::{AtaIoError, ATAIOResult}, ide_poll, io::ATAIO, regs::{
             ATA_REG_COMMAND, ATA_REG_HDDEVSEL, ATA_REG_LBA0, ATA_REG_LBA1, ATA_REG_LBA2,
             ATA_REG_SECCOUNT0,
         },
@@ -47,7 +47,7 @@ pub fn init() -> Result<(), ()> {
 }
 
 pub struct ATADMA<'a> {
-    pub(super) drive: &'a mut ATAPhysicalDrive,
+    pub(super) drive: &'a mut AtaPhysicalDrive,
 }
 
 impl ATAIO for ATADMA<'_> {
@@ -60,7 +60,7 @@ impl ATAIO for ATADMA<'_> {
     }
 }
 
-pub fn fill_prdt(prdt: &mut PRDT, buffer: &[u8]) {
+pub fn fill_prdt(prdt: &mut Prdt, buffer: &[u8]) {
     prdt.clear();
 
     // TODO: Improvement: Make them extents
@@ -89,29 +89,29 @@ pub fn fill_prdt(prdt: &mut PRDT, buffer: &[u8]) {
     // }
 }
 
-pub fn read48(drv: &mut ATAPhysicalDrive, lba: u64, output: &mut [u8]) -> ATAIOResult<()> {
+pub fn read48(drv: &mut AtaPhysicalDrive, lba: u64, output: &mut [u8]) -> ATAIOResult<()> {
     if output.len() % drv.info().sector_size() != 0 {
-        return Err(ATAIOError::InvalidBuffer);
+        return Err(AtaIoError::InvalidBuffer);
     }
 
     let mut sector_count = output.len() / drv.info().sector_size();
 
     if sector_count * drv.info().sector_size() > output.len() {
-        return Err(ATAIOError::InvalidBuffer);
+        return Err(AtaIoError::InvalidBuffer);
     }
 
     if lba.checked_add(sector_count as _).is_none() {
-        return Err(ATAIOError::InvalidLBA);
+        return Err(AtaIoError::InvalidLBA);
     }
 
     if (lba + sector_count as u64) > drv.info().max_lba() {
-        return Err(ATAIOError::InvalidLBA);
+        return Err(AtaIoError::InvalidLBA);
     }
 
     let pio = drv.pio_port();
     let dma = match drv.dma_io_port() {
         Some(port) => port,
-        None => return Err(ATAIOError::DMAControllerNotInitialized),
+        None => return Err(AtaIoError::DMAControllerNotInitialized),
     };
     let prdt = drv.prdt.as_mut().unwrap();
 
@@ -188,29 +188,29 @@ pub fn read48(drv: &mut ATAPhysicalDrive, lba: u64, output: &mut [u8]) -> ATAIOR
     Ok(())
 }
 
-pub fn write48(drv: &mut ATAPhysicalDrive, lba: u64, input: &[u8]) -> ATAIOResult<()> {
+pub fn write48(drv: &mut AtaPhysicalDrive, lba: u64, input: &[u8]) -> ATAIOResult<()> {
     if input.len() % drv.info().sector_size() != 0 {
-        return Err(ATAIOError::InvalidBuffer);
+        return Err(AtaIoError::InvalidBuffer);
     }
 
     let mut sector_count = input.len() / drv.info().sector_size();
 
     if sector_count * drv.info().sector_size() > input.len() {
-        return Err(ATAIOError::InvalidBuffer);
+        return Err(AtaIoError::InvalidBuffer);
     }
 
     if lba.checked_add(sector_count as _).is_none() {
-        return Err(ATAIOError::InvalidLBA);
+        return Err(AtaIoError::InvalidLBA);
     }
 
     if (lba + sector_count as u64) > drv.info().max_lba() {
-        return Err(ATAIOError::InvalidLBA);
+        return Err(AtaIoError::InvalidLBA);
     }
 
     let pio = drv.pio_port();
     let dma = match drv.dma_io_port() {
         Some(port) => port,
-        None => return Err(ATAIOError::DMAControllerNotInitialized),
+        None => return Err(AtaIoError::DMAControllerNotInitialized),
     };
     let prdt = drv.prdt.as_mut().unwrap();
 

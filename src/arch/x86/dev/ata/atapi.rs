@@ -3,13 +3,13 @@ use noct_diskman::drive::Drive;
 
 use crate::arch::x86::dev::ata::{
     commands::{ATA_CMD_PACKET, ATAPI_CMD_READ, ATAPI_CMD_READ_CAPACITY, ATAPI_CMD_START_STOP},
-    drive::ATAPhysicalDrive,
-    error::{ATAIOError, ATAIOResult, ATAResult},
+    drive::AtaPhysicalDrive,
+    error::{AtaIoError, ATAIOResult, ATAResult},
     ide_400ns_delay, ide_poll, ide_select_drive,
     regs::{ATA_REG_COMMAND, ATA_REG_DATA, ATA_REG_ERROR, ATA_REG_LBA1, ATA_REG_LBA2},
 };
 
-pub fn send_scsi(drive: &ATAPhysicalDrive, lba: u16, command: &[u16]) -> ATAResult<()> {
+pub fn send_scsi(drive: &AtaPhysicalDrive, lba: u16, command: &[u16]) -> ATAResult<()> {
     assert!(command.len() <= 16);
 
     ide_select_drive(drive.bus, drive.drive);
@@ -32,7 +32,7 @@ pub fn send_scsi(drive: &ATAPhysicalDrive, lba: u16, command: &[u16]) -> ATAResu
     Ok(())
 }
 
-pub fn send_scsi8(drive: &ATAPhysicalDrive, lba: u16, command: &[u8]) -> ATAResult<()> {
+pub fn send_scsi8(drive: &AtaPhysicalDrive, lba: u16, command: &[u8]) -> ATAResult<()> {
     assert_eq!(command.len(), 12);
 
     // SAFETY: `assert!` checked that slice has needed amount of bytes.
@@ -50,7 +50,7 @@ pub fn send_scsi8(drive: &ATAPhysicalDrive, lba: u16, command: &[u8]) -> ATAResu
     send_scsi(drive, lba, &command16)
 }
 
-pub fn receive_size_of_transfer(drive: &ATAPhysicalDrive) -> ATAResult<u16> {
+pub fn receive_size_of_transfer(drive: &AtaPhysicalDrive) -> ATAResult<u16> {
     ide_poll(drive.bus.io())?;
 
     let port = drive.pio_port();
@@ -61,11 +61,11 @@ pub fn receive_size_of_transfer(drive: &ATAPhysicalDrive) -> ATAResult<u16> {
     Ok((high << 8) | low)
 }
 
-pub fn read_result(drive: &ATAPhysicalDrive, buffer: &mut [u16]) {
+pub fn read_result(drive: &AtaPhysicalDrive, buffer: &mut [u16]) {
     unsafe { drive.pio_port().offset(ATA_REG_DATA).read16_bulk(buffer) };
 }
 
-pub fn read_medium_capacity(drive: &ATAPhysicalDrive) -> ATAResult<(usize, usize)> {
+pub fn read_medium_capacity(drive: &AtaPhysicalDrive) -> ATAResult<(usize, usize)> {
     let command: [u16; 6] = [(ATAPI_CMD_READ_CAPACITY as u16), 0, 0, 0, 0, 0];
 
     send_scsi(drive, 8, &command)?;
@@ -91,7 +91,7 @@ pub fn read_medium_capacity(drive: &ATAPhysicalDrive) -> ATAResult<(usize, usize
     Ok((max_lba as _, block_size as _))
 }
 
-pub fn read_sectors(drive: &ATAPhysicalDrive, lba: u32, buffer: &mut [u8]) -> ATAIOResult<()> {
+pub fn read_sectors(drive: &AtaPhysicalDrive, lba: u32, buffer: &mut [u8]) -> ATAIOResult<()> {
     // SAFETY: For ATAPI devices, the block size is always sepcified, so unwrap will always succeed.
     let blksize = unsafe { drive.block_size().unwrap_unchecked() };
 
@@ -114,16 +114,16 @@ pub fn read_sectors(drive: &ATAPhysicalDrive, lba: u32, buffer: &mut [u8]) -> AT
         0, // Control (usually zero)
     ];
 
-    send_scsi8(drive, blksize as _, &command).map_err(ATAIOError::ControllerError)?;
+    send_scsi8(drive, blksize as _, &command).map_err(AtaIoError::ControllerError)?;
 
-    ide_poll(drive.bus.io()).map_err(ATAIOError::ControllerError)?;
+    ide_poll(drive.bus.io()).map_err(AtaIoError::ControllerError)?;
 
     let data_port = drive.pio_port().offset(ATA_REG_DATA);
 
     for i in 0..count {
-        ide_poll(drive.bus.io()).map_err(ATAIOError::ControllerError)?;
+        ide_poll(drive.bus.io()).map_err(AtaIoError::ControllerError)?;
 
-        let ts = receive_size_of_transfer(drive).map_err(ATAIOError::ControllerError)?;
+        let ts = receive_size_of_transfer(drive).map_err(AtaIoError::ControllerError)?;
 
         let slice = &mut buffer[i * blksize..][..ts as usize];
 
@@ -148,7 +148,7 @@ pub enum StartStopOperation {
     Load = 0b11,
 }
 
-pub fn start_stop(drive: &ATAPhysicalDrive, op: StartStopOperation) -> ATAIOResult<()> {
+pub fn start_stop(drive: &AtaPhysicalDrive, op: StartStopOperation) -> ATAIOResult<()> {
     let mut command: [u16; 6] = [(ATAPI_CMD_START_STOP as u16), 0, 0, 0, 0, 0];
 
     // Byte 4:
@@ -163,7 +163,7 @@ pub fn start_stop(drive: &ATAPhysicalDrive, op: StartStopOperation) -> ATAIOResu
 
     unsafe { command.as_mut_ptr().cast::<u8>().add(4).write(op as u8) };
 
-    send_scsi(drive, 0, &command).map_err(ATAIOError::ControllerError)?;
+    send_scsi(drive, 0, &command).map_err(AtaIoError::ControllerError)?;
 
     Ok(())
 }

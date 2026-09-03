@@ -3,8 +3,8 @@ use x86::io::outb;
 use crate::arch::x86::dev::ata::{
     ATADrive,
     commands::{ATA_CMD_CACHE_FLUSH_EXT, ATA_CMD_READ_PIO_EXT, ATA_CMD_WRITE_PIO_EXT},
-    drive::ATAPhysicalDrive,
-    error::{ATAIOError, ATAIOResult},
+    drive::AtaPhysicalDrive,
+    error::{AtaIoError, ATAIOResult},
     ide_400ns_delay, ide_poll,
     io::ATAIO,
     regs::{
@@ -14,7 +14,7 @@ use crate::arch::x86::dev::ata::{
 };
 
 pub struct ATAPIO<'drv> {
-    pub(super) drive: &'drv mut ATAPhysicalDrive,
+    pub(super) drive: &'drv mut AtaPhysicalDrive,
 }
 
 impl ATAIO for ATAPIO<'_> {
@@ -22,21 +22,21 @@ impl ATAIO for ATAPIO<'_> {
         let drv = &self.drive;
 
         if output.len() % drv.info().sector_size() != 0 {
-            return Err(ATAIOError::InvalidBuffer);
+            return Err(AtaIoError::InvalidBuffer);
         }
 
         let mut sector_count = output.len() / drv.info().sector_size();
 
         if sector_count * drv.info().sector_size() > output.len() {
-            return Err(ATAIOError::InvalidBuffer);
+            return Err(AtaIoError::InvalidBuffer);
         }
 
         if lba.checked_add(sector_count as _).is_none() {
-            return Err(ATAIOError::InvalidLBA);
+            return Err(AtaIoError::InvalidLBA);
         }
 
         if (lba + sector_count as u64) > drv.info().max_lba() {
-            return Err(ATAIOError::InvalidLBA);
+            return Err(AtaIoError::InvalidLBA);
         }
 
         let is_slave = drv.drive == ATADrive::Slave;
@@ -88,7 +88,7 @@ impl ATAIO for ATAPIO<'_> {
             let data = io.offset(ATA_REG_DATA);
 
             for sector in 0..readsize {
-                ide_poll(io.addr()).map_err(ATAIOError::ControllerError)?;
+                ide_poll(io.addr()).map_err(AtaIoError::ControllerError)?;
 
                 for i in (0..512).step_by(2) {
                     let word = unsafe { data.read16() };
@@ -109,21 +109,21 @@ impl ATAIO for ATAPIO<'_> {
         let drv = &self.drive;
 
         if input.len() % 512 != 0 {
-            return Err(ATAIOError::InvalidBuffer);
+            return Err(AtaIoError::InvalidBuffer);
         }
 
         let mut sector_count = input.len() / drv.info().sector_size();
 
         if sector_count * drv.info().sector_size() > input.len() {
-            return Err(ATAIOError::InvalidBuffer);
+            return Err(AtaIoError::InvalidBuffer);
         }
 
         if lba.checked_add(sector_count as _).is_none() {
-            return Err(ATAIOError::InvalidLBA);
+            return Err(AtaIoError::InvalidLBA);
         }
 
         if (lba + sector_count as u64) > drv.info().max_lba() {
-            return Err(ATAIOError::InvalidLBA);
+            return Err(AtaIoError::InvalidLBA);
         }
 
         let is_slave = drv.drive == ATADrive::Slave;
@@ -175,7 +175,7 @@ impl ATAIO for ATAPIO<'_> {
             let data = io.offset(ATA_REG_DATA);
 
             for _ in 0..writesize {
-                ide_poll(io.addr()).map_err(ATAIOError::ControllerError)?;
+                ide_poll(io.addr()).map_err(AtaIoError::ControllerError)?;
 
                 for v in input.chunks(2) {
                     ide_400ns_delay(io.addr());
@@ -189,7 +189,7 @@ impl ATAIO for ATAPIO<'_> {
                     outb(io.addr() + ATA_REG_COMMAND as u16, ATA_CMD_CACHE_FLUSH_EXT);
                 }
 
-                ide_poll(io.addr()).map_err(ATAIOError::ControllerError)?;
+                ide_poll(io.addr()).map_err(AtaIoError::ControllerError)?;
             }
 
             sector_count -= writesize;

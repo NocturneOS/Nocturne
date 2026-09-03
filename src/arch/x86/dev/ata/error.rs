@@ -1,18 +1,18 @@
-pub type ATAResult<T> = Result<T, ATAError>;
-pub type ATAIOResult<T> = Result<T, ATAIOError>;
+pub type ATAResult<T> = Result<T, AtaError>;
+pub type ATAIOResult<T> = Result<T, AtaIoError>;
 
 #[derive(Debug, Clone)]
-pub enum ATAError {
+pub enum AtaError {
     TimedOut,
     NoDrive,
     ErrorSet(u8),
 }
 
 #[derive(Debug, Clone)]
-pub enum ATAIOError {
+pub enum AtaIoError {
     InvalidBuffer,
     InvalidLBA,
-    ControllerError(ATAError),
+    ControllerError(AtaError),
     UnsupportedOperation,
     DMAControllerNotInitialized,
 }

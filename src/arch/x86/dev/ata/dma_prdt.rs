@@ -5,13 +5,13 @@ use alloc::{boxed::Box, slice};
 use crate::arch;
 
 #[repr(C, packed)]
-pub struct PRDTEntry {
+pub struct PrdtEntry {
     buffer_phys: u32,
     transfer_size: u16,
     flags: u16,
 }
 
-impl PRDTEntry {
+impl PrdtEntry {
     pub fn buffer_phys(&self) -> u32 {
         self.buffer_phys
     }
@@ -25,22 +25,22 @@ impl PRDTEntry {
     }
 }
 
-pub struct PRDT {
-    prdt_virt_addr: Box<[PRDTEntry]>,
+pub struct Prdt {
+    prdt_virt_addr: Box<[PrdtEntry]>,
     prdt_phys_addr: usize,
 }
 
-impl PRDT {
+impl Prdt {
     pub fn new() -> Self {
-        debug_assert!(arch::get_page_size().is_multiple_of(size_of::<PRDTEntry>()));
+        debug_assert!(arch::get_page_size().is_multiple_of(size_of::<PrdtEntry>()));
 
-        let entry_count = arch::get_page_size() / size_of::<PRDTEntry>();
+        let entry_count = arch::get_page_size() / size_of::<PrdtEntry>();
 
         let virt = unsafe {
             slice::from_raw_parts_mut(
                 alloc::alloc::alloc_zeroed(
                     Layout::from_size_align(arch::get_page_size(), arch::get_page_size()).unwrap(),
-                ) as *mut PRDTEntry,
+                ) as *mut PrdtEntry,
                 entry_count,
             )
         };
@@ -73,7 +73,7 @@ impl PRDT {
         // 0 is 65535 for ATA controller.
         let controller_length = if length == u16::MAX { 0 } else { length };
 
-        *self.prdt_virt_addr.get_mut(idx).ok_or(())? = PRDTEntry {
+        *self.prdt_virt_addr.get_mut(idx).ok_or(())? = PrdtEntry {
             buffer_phys: physical_addr,
             transfer_size: controller_length,
             flags: if is_last { 0x8000 } else { 0 },
@@ -82,7 +82,7 @@ impl PRDT {
         Ok(())
     }
 
-    pub fn get(&self, idx: usize) -> Option<&PRDTEntry> {
+    pub fn get(&self, idx: usize) -> Option<&PrdtEntry> {
         self.prdt_virt_addr.get(idx)
     }
 

@@ -47,15 +47,13 @@ pub fn input_fd() -> usize {
 }
 
 pub fn get_key_from(evq: &mut EventQueue) -> Option<(u8, bool)> {
-    loop {
-        return match evq.get_raw()? {
-            InputEvent::Key { code, pressed } => {
-                noct_sched::resume_group(noct_sched::thread::ThreadWaitReason::InputEvent);
+    match evq.get_raw()? {
+        InputEvent::Key { code, pressed } => {
+            noct_sched::resume_group(noct_sched::thread::ThreadWaitReason::InputEvent);
 
-                Some((code, pressed))
-            }
-            _ => None,
+            Some((code, pressed))
         }
+        _ => None,
     }
 }
 
