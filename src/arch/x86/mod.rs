@@ -207,5 +207,7 @@ pub fn post_init(boot: &BootInformation) {
 
     // Now, initialize ACPI
 
-    noct_acpi::init();
+    if let Err(e) = noct_acpi::init() {
+        panic!("ACPI initialization failed! ({e:?})");
+    };
 }

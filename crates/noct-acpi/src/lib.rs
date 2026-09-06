@@ -2,15 +2,17 @@
 
 use core::{alloc::Layout, ptr::NonNull};
 
+use acpi::sdt::Signature;
 use acpi::sdt::hpet::HpetTable;
 use acpi::sdt::madt::{Madt, MadtEntry};
+use acpi::{AcpiTable, PhysicalMapping};
 use noct_logger::qemu_log;
 use noct_mem::paging::PageFlags;
 
 extern crate alloc;
 
 #[derive(Clone)]
-struct ACPIHandler;
+pub struct ACPIHandler;
 
 impl acpi::Handler for ACPIHandler {
     unsafe fn map_physical_region<T>(
@@ -176,38 +178,66 @@ impl acpi::Handler for ACPIHandler {
     }
 }
 
-pub fn init() {
-    let result = unsafe { acpi::rsdp::Rsdp::search_for_on_bios(ACPIHandler) };
+pub fn table<T: AcpiTable>() -> Result<PhysicalMapping<ACPIHandler, T>, acpi::AcpiError> {
+    let rsdp = unsafe { acpi::rsdp::Rsdp::search_for_on_bios(ACPIHandler)? };
 
-    if let Ok(rsdp) = result {
-        let tables = unsafe {
-            acpi::AcpiTables::from_rsdt(ACPIHandler, rsdp.revision(), rsdp.rsdt_address() as _)
-        };
+    let tables = unsafe {
+        acpi::AcpiTables::from_rsdt(ACPIHandler, rsdp.revision(), rsdp.rsdt_address() as _)?
+    };
 
-        if let Ok(tables) = tables {
-            let madt = tables.find_table::<Madt>();
-            let hpet = tables.find_table::<HpetTable>();
+    tables
+        .find_table::<T>()
+        .ok_or(acpi::AcpiError::TableNotFound(Signature::MADT))
+}
 
-            if let Some(ref madt) = madt {
-                qemu_log!("MADT: {madt:?}");
+pub fn init() -> Result<(), acpi::AcpiError> {
+    // let rsdp = unsafe { acpi::rsdp::Rsdp::search_for_on_bios(ACPIHandler)? };
 
-                let entrs = madt.get();
+    // let tables = unsafe {
+    //     acpi::AcpiTables::from_rsdt(ACPIHandler, rsdp.revision(), rsdp.rsdt_address() as _)?
+    // };
 
-                let processor_count = entrs
-                    .entries()
-                    .filter(|x| matches!(x, MadtEntry::LocalApic(_)))
-                    .count();
+    // // Find tables
 
-                for i in entrs.entries() {
-                    qemu_log!(" `- MADT: {i:?}");
-                }
+    // let madt = tables.find_table::<Madt>();
 
-                qemu_log!("Found {processor_count} processors.");
-            }
+    // if let Some(ref madt) = madt {
+    //     qemu_log!("MADT: {madt:?}");
 
-            qemu_log!("HPET: {hpet:?}");
-        }
-    } else {
-        panic!("ACPI RSDP not found");
+    //     let entrs = madt.get();
+
+    //     let processor_count = entrs
+    //         .entries()
+    //         .filter(|x| matches!(x, MadtEntry::LocalApic(_)))
+    //         .count();
+
+    //     for i in entrs.entries() {
+    //         qemu_log!(" `- MADT: {i:?}");
+    //     }
+
+    //     qemu_log!("Found {processor_count} processors.");
+    // }
+
+    let madt = table::<Madt>()?;
+
+    qemu_log!("MADT: {madt:?}");
+
+    for i in madt.get().entries() {
+        qemu_log!(" `- MADT: {i:?}");
     }
+
+    let processor_count = madt
+        .get()
+        .entries()
+        .filter(|x| matches!(x, MadtEntry::LocalApic(_)))
+        .count();
+
+    qemu_log!("Found {processor_count} processors.");
+
+
+    let hpet = table::<HpetTable>()?;
+
+    qemu_log!("HPET: {hpet:?}");
+
+    Ok(())
 }
