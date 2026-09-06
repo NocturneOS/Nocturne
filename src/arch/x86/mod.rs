@@ -203,4 +203,9 @@ pub fn post_init(boot: &BootInformation) {
     ));
 
     qemu_log!("Video initialized");
+
+
+    // Now, initialize ACPI
+
+    noct_acpi::init();
 }

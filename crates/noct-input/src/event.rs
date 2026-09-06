@@ -26,7 +26,7 @@ impl InputEvent {
     }
 
     pub fn serialize(&self) -> Vec<u8> {
-        let mut vector: Vec<u8> = Vec::with_capacity(core::mem::size_of::<Self>());
+        let mut vector: Vec<u8> = Vec::with_capacity(size_of::<Self>());
 
         let event_kind = self.event_kind_raw().to_le_bytes();
 

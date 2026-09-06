@@ -3,6 +3,7 @@
 use core::{alloc::Layout, ptr::NonNull};
 
 use acpi::sdt::hpet::HpetTable;
+use acpi::sdt::madt::{Madt, MadtEntry};
 use noct_logger::qemu_log;
 use noct_mem::paging::PageFlags;
 
@@ -184,11 +185,28 @@ pub fn init() {
         };
 
         if let Ok(tables) = tables {
+            let madt = tables.find_table::<Madt>();
             let hpet = tables.find_table::<HpetTable>();
+
+            if let Some(ref madt) = madt {
+                qemu_log!("MADT: {madt:?}");
+
+                let entrs = madt.get();
+
+                let processor_count = entrs
+                    .entries()
+                    .filter(|x| matches!(x, MadtEntry::LocalApic(_)))
+                    .count();
+
+                for i in entrs.entries() {
+                    qemu_log!(" `- MADT: {i:?}");
+                }
+
+                qemu_log!("Found {processor_count} processors.");
+            }
 
             qemu_log!("HPET: {hpet:?}");
         }
-
     } else {
         panic!("ACPI RSDP not found");
     }

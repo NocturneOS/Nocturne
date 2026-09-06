@@ -65,11 +65,23 @@ elseif(NOCTURNE_ARCH STREQUAL "x86")
 	set(QEMU "qemu-system-i386")
 endif()
 
+set(QEMU_BASE_FLAGS
+	-no-reboot
+	-no-shutdown
+	-m ${QEMU_MEMORY_SIZE}
+	-smp 4
+	-netdev user,id=net0,net=192.168.111.0,dhcpstart=192.168.111.128,hostfwd=tcp::9999-:9999
+	-device rtl8139,netdev=net0,id=mydev0
+	-object filter-dump,id=dump0,netdev=net0,file=netdump.pcap
+)
+
 if(NOCTURNE_ARCH STREQUAL "x86_64")
-	set(QEMU_FLAGS -no-reboot -no-shutdown ${QEMU_ADDITIONAL_FLAGS} -m ${QEMU_MEMORY_SIZE} -cdrom ${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE} -d int,cpu_reset,guest_errors,invalid_mem -serial mon:stdio -rtc base=localtime -boot d -usb -audiodev pa,id=audiopa -device ac97,audiodev=audiopa -netdev user,id=net0,net=192.168.111.0,dhcpstart=192.168.111.128,hostfwd=tcp::9999-:9999 -device rtl8139,netdev=net0,id=mydev0 -object filter-dump,id=dump0,netdev=net0,file=netdump.pcap -trace "*ac97*")
+	set(QEMU_FLAGS ${QEMU_ADDITIONAL_FLAGS} -cdrom ${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE} -d int,cpu_reset,guest_errors,invalid_mem -serial mon:stdio -rtc base=localtime -boot d -usb -audiodev pa,id=audiopa -device ac97,audiodev=audiopa -trace "*ac97*")
 else()
-	set(QEMU_FLAGS -no-reboot -no-shutdown ${QEMU_ADDITIONAL_FLAGS} -m ${QEMU_MEMORY_SIZE} -cdrom ${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE} -d int,cpu_reset,guest_errors,invalid_mem -serial mon:stdio -rtc base=localtime -boot d -usb -audiodev pa,id=audiopa -device ac97,audiodev=audiopa -netdev user,id=net0,net=192.168.111.0,dhcpstart=192.168.111.128,hostfwd=tcp::9999-:9999 -device rtl8139,netdev=net0,id=mydev0 -object filter-dump,id=dump0,netdev=net0,file=netdump.pcap -trace "*ac97*")
+	set(QEMU_FLAGS ${QEMU_ADDITIONAL_FLAGS} -cdrom ${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE} -d int,cpu_reset,guest_errors,invalid_mem -serial mon:stdio -rtc base=localtime -boot d -usb -audiodev pa,id=audiopa -device ac97,audiodev=audiopa  -trace "*ac97*")
 endif()
+
+set(QEMU_FLAGS ${QEMU_BASE_FLAGS} ${QEMU_FLAGS})
 
 set(MKRESCUE grub-mkrescue)
 set(MKRESCUE_FLAGS -o "${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE}" ${ISO_DIR} --locales="" -V NocturneOS --themes="" --fonts="ascii")
