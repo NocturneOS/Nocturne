@@ -4,5 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+spin = "0.12.3"
+
 noct-fsman = { path = "../noct-fsman" }
 noct-input = { path = "../noct-input" }
+noct-video = { path = "../noct-video" }

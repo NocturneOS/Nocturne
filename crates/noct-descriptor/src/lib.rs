@@ -4,6 +4,8 @@ use alloc::vec::Vec;
 
 extern crate alloc;
 
+pub mod video;
+
 #[derive(Debug)]
 pub enum ResourceDescriptor {
     Null,
@@ -18,7 +20,9 @@ pub enum ResourceDescriptor {
     FileStream(noct_fsman::handles::file::FileHandle),
     DirectoryHandle(noct_fsman::handles::directory::DirectoryHandle),
 
-    EventQueue(noct_input::EventQueue)
+    EventQueue(noct_input::EventQueue),
+
+    VideoLock(video::VideoHandle)
 }
 
 impl ResourceDescriptor {

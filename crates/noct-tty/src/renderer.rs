@@ -1,7 +1,3 @@
-// use noct_video::screen_update;
-
-use noct_logger::qemu_log;
-
 use crate::console::{AttributeValue, Console};
 
 pub struct RenderedConsole {
@@ -29,10 +25,6 @@ impl RenderedConsole {
         self.console.print_char(c);
 
         if c == '\n' {
-            unsafe {
-                // noct_screen::clean_screen();
-            }
-
             self.render(None);
         }
     }
@@ -41,16 +33,17 @@ impl RenderedConsole {
         self.console.print_str(input);
 
         if input.contains('\n') {
-            unsafe {
-                // noct_screen::clean_screen();
-            }
-
             self.render(None);
         }
     }
 
     pub fn render(&mut self, start_position: Option<(usize, usize)>) {
-        let mut video_handle_lock = noct_video::CURRENT_VIDEO_MODE.lock();
+        // Try lock the video spinlock.
+        // If can't, just don't render, as it may be locked by user program (it's okay).
+        let Some(mut video_handle_lock) = noct_video::CURRENT_VIDEO_MODE.try_lock() else {
+            return;
+        };
+
         let mut video_canvas = noct_video::canvas::Canvas::new(video_handle_lock.as_mut().unwrap());
 
         let dimensions = self.console.dimensions();

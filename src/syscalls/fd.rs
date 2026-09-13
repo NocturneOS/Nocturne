@@ -126,12 +126,6 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<us
                 }
             }
         }
-        ResourceDescriptor::TerminalOutput => {
-            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
-        }
-        ResourceDescriptor::DirectoryHandle(_) => {
-            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
-        }
         ResourceDescriptor::EventQueue(queue) => {
             if len < 32 {
                 noct_sched::set_error(noct_io::error::Error::MemoryError as _);
@@ -156,6 +150,9 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<us
                 Err(e) => noct_sched::set_error(e as _),
                 Ok(read_bytes) => return Some(read_bytes as _),
             }
+        }
+        _ => {
+            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
         }
     }
 
@@ -184,9 +181,6 @@ pub fn write(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<u
 
     match &mut fd_val.res {
         ResourceDescriptor::Null => return Some(0),
-        ResourceDescriptor::TerminalInput => {
-            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
-        }
         ResourceDescriptor::TerminalOutput => {
             let result = noct_tty::WRITER
                 .lock()
@@ -204,10 +198,12 @@ pub fn write(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<u
                 Ok(written_bytes) => return Some(written_bytes as _),
             }
         }
-        ResourceDescriptor::DirectoryHandle(_) => {
-            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
+        ResourceDescriptor::VideoLock(v) => {
+            v.write(slice);
+
+            return Some(slice.len());
         }
-        ResourceDescriptor::EventQueue(_) => {
+        _ => {
             noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
         }
     }
@@ -224,12 +220,6 @@ pub fn seek(fd: usize, offset: usize, whence: usize, _: usize, _: usize) -> Opti
 
     match &mut fd_val.res {
         ResourceDescriptor::Null => return Some(0),
-        ResourceDescriptor::TerminalInput
-        | ResourceDescriptor::TerminalOutput
-        | ResourceDescriptor::DirectoryHandle(_)
-        | ResourceDescriptor::EventQueue(_) => {
-            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
-        }
         ResourceDescriptor::FileStream(file_handle) => {
             let so = match whence {
                 0 => SeekOffset::Beginning(offset as _),
@@ -249,6 +239,21 @@ pub fn seek(fd: usize, offset: usize, whence: usize, _: usize, _: usize) -> Opti
                 Ok(position) => return Some(position as _),
             }
         }
+        ResourceDescriptor::VideoLock(v) => {
+            match whence {
+                0 => v.seek(offset as _),
+                1 => v.seek(v.offset() + offset),
+                2 => v.seek(v.buffer_len() - offset),
+                _ => {
+                    noct_sched::set_error(noct_io::error::Error::InvalidSeek as _);
+
+                    return None;
+                }
+            }
+        }
+        _ => {
+            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
+        }
     }
 
     None
@@ -263,12 +268,6 @@ pub fn tell(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> 
 
     match &mut fd_val.res {
         ResourceDescriptor::Null => return Some(0),
-        ResourceDescriptor::TerminalInput
-        | ResourceDescriptor::TerminalOutput
-        | ResourceDescriptor::DirectoryHandle(_)
-        | ResourceDescriptor::EventQueue(_) => {
-            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
-        }
         ResourceDescriptor::FileStream(file_handle) => {
             let value = file_handle.seek(SeekOffset::Current(0));
 
@@ -276,6 +275,12 @@ pub fn tell(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> 
                 Err(e) => noct_sched::set_error(e as _),
                 Ok(position) => return Some(position as _),
             }
+        }
+        ResourceDescriptor::VideoLock(v) => {
+            return Some(v.offset());
+        }
+        _ => {
+            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
         }
     }
 
@@ -295,11 +300,6 @@ pub fn flush(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize>
             noct_tty::WRITER.try_lock()?.flush();
             return Some(0);
         }
-        ResourceDescriptor::TerminalInput
-        | ResourceDescriptor::DirectoryHandle(_)
-        | ResourceDescriptor::EventQueue(_) => {
-            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
-        }
         ResourceDescriptor::FileStream(file_handle) => {
             let value = file_handle.flush();
 
@@ -307,6 +307,9 @@ pub fn flush(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize>
                 Err(e) => noct_sched::set_error(e as _),
                 Ok(_) => return Some(0),
             }
+        }
+        _ => {
+            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
         }
     }
 

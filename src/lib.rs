@@ -10,6 +10,7 @@ use noct_memdisk::MemoryDisk;
 use noct_tty::tty_println;
 
 mod arch;
+mod mem;
 mod syscalls;
 mod time;
 mod unwind;
@@ -164,7 +165,7 @@ fn kmain(boot_info: BootInformation) -> ! {
 
 
     {
-        match noct_elfloader::spawn("mem0:/prog_stdin32", &[]) {
+        match noct_elfloader::spawn("mem0:/prog_video", &[]) {
             Ok(handle) => {
                 qemu_log!("Started process {}", handle.pid);
 

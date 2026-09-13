@@ -1,4 +1,4 @@
-use core::alloc::Layout;
+use core::{alloc::Layout, ops::Range};
 
 use noct_logger::qemu_log;
 use noct_tools::interrupt_locker::InterruptLocker;
@@ -29,6 +29,10 @@ pub fn init() {
         KERNEL_HEAP_START,
         0x0800_0000, //  0xD000_0000 .. 0xD800_0000
     );
+}
+
+pub fn heap_bounds() -> Range<usize> {
+    GLOBAL_ALLOCATOR.inner().heap_bounds()
 }
 
 pub unsafe fn allocate_no_map(layout: Layout) -> *mut u8 {

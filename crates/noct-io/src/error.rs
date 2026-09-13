@@ -4,6 +4,8 @@ pub use num_traits::{FromPrimitive, ToPrimitive};
 #[repr(u32)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, FromPrimitive, ToPrimitive)]
 pub enum Error {
+    /// Used to clear process' errno
+    None,
     /// Entity already exists
     AlreadyExists,
     /// Attempted access on non-existent drive.

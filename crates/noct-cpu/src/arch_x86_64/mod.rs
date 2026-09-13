@@ -46,6 +46,10 @@ impl Debug for CPURegisters {
         writeln!(f, "R14: {:016x}; R15: {:016x}", self.r14, self.r15)?;
         writeln!(f, "RIP: {:016x}", self.rip)?;
         writeln!(f, "CS:  {:04x}; DS: {:04x}", self.cs, self.ds)?;
+        writeln!(f, "CR0: {:08x}", unsafe { x86::controlregs::cr0().bits() })?;
+        writeln!(f, "CR2: {:08x}", unsafe { x86::controlregs::cr2() })?;
+        writeln!(f, "CR3: {:08x}", unsafe { x86::controlregs::cr3() })?;
+        writeln!(f, "CR4: {:08x}", unsafe { x86::controlregs::cr4().bits() })?;
         writeln!(f, "RFLAGS: {:08x}", self.rflags)?;
         write!(
             f,

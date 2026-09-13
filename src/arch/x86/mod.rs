@@ -195,6 +195,7 @@ pub fn post_init(boot: &BootInformation) {
 
     *lock = Some(VideoMode::new_graphics(
         ptr,
+        phys_addr as _,
         Size::from((
             fb.width() as _,
             fb.height() as _,

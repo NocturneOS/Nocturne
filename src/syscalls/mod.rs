@@ -10,41 +10,44 @@ mod mem;
 mod print;
 mod proc;
 mod time;
+mod video;
 
 pub type SyscallHandler = fn(usize, usize, usize, usize, usize) -> Option<usize>;
 
 #[rustfmt::skip]
 const SYSCALL_HANDLERS: &[SyscallHandler] = &[
-    debug::debug,       // 0 - TO REMOVE?
-    debug::reg_debug,   // 1 - TO REMOVE?
+    debug::debug,           // 0 - TO REMOVE?
+    debug::reg_debug,       // 1 - TO REMOVE?
 
-    exit::exit,         // 2
-    exit::process_exit, // 3
+    exit::exit,             // 2
+    exit::process_exit,     // 3
     
-    error::geterror,    // 4
+    error::geterror,        // 4
     
-    proc::waitpid,      // 5
+    proc::waitpid,          // 5
     
-    print::write_tty,   // 6 - TO REMOVE?
+    print::write_tty,       // 6 - TO REMOVE?
 
-    fd::open,           // 7
-    fd::close,          // 8
-    fd::read,           // 9
-    fd::write,          // 10
-    fd::seek,           // 11
-    fd::tell,           // 12
+    fd::open,               // 7
+    fd::close,              // 8
+    fd::read,               // 9
+    fd::write,              // 10
+    fd::seek,               // 11
+    fd::tell,               // 12
 
-    mem::sbrk,          // 13
+    mem::sbrk,              // 13
 
-    event::open,        // 14
+    event::open,            // 14
 
-    fd::flush,          // 15
+    fd::flush,              // 15
 
-    time::time,         // 16
-    time::sleep_millis, // 17
-    time::sleep_nanos,  // 18
+    time::time,             // 16
+    time::sleep_millis,     // 17
+    time::sleep_nanos,      // 18
 
-    proc::yield_now     // 19
+    proc::yield_now,        // 19
+
+    video::video_acquire,   // 20
 ];
 
 #[unsafe(no_mangle)]

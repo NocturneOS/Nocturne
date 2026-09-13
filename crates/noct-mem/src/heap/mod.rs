@@ -1,11 +1,12 @@
 mod alloc_support;
 
 // Re-export the init function for convenience
-pub use alloc_support::{allocate_no_map, init};
+pub use alloc_support::{allocate_no_map, init, heap_bounds};
 use noct_logger::qemu_log;
 use noct_tools::interrupt_locker::InterruptLocker;
 
 use core::alloc::{GlobalAlloc, Layout};
+use core::ops::Range;
 use core::ptr::{self, NonNull};
 use spin::{Mutex, MutexGuard};
 
@@ -44,6 +45,7 @@ impl ArenaAllocator {
 pub struct InnerArenaAllocator {
     arena: Option<&'static mut [Block]>,
     alloc_count: usize,
+    heap_start: usize,
     heap_size: usize,
 }
 
@@ -60,6 +62,7 @@ impl InnerArenaAllocator {
         Self {
             arena: None,
             alloc_count: 0,
+            heap_start: 0,
             heap_size: 0,
         }
     }
@@ -90,6 +93,7 @@ impl InnerArenaAllocator {
 
         self.arena = Some(arena);
 
+        self.heap_start = heap_start;
         self.heap_size = heap_size;
 
         qemu_log!("Heap at: P{page:#x?} -> V{heap_start:#x?} with size: {heap_size:.} bytes");
@@ -340,6 +344,13 @@ impl InnerArenaAllocator {
         self.delicate_unmap_and_free(ptr.addr().into(), layout.size(), is_last_block);
 
         self.alloc_count -= 1;
+    }
+
+    pub fn heap_bounds(&self) -> Range<usize> {
+        let start_addr = self.heap_start;
+        let end_addr = start_addr + self.heap_size;
+
+        (start_addr..end_addr)
     }
 }
 
