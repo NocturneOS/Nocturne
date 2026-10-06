@@ -190,6 +190,7 @@ version = "0.1.0"
 dependencies = [
  "noct-fsman",
  "noct-input",
+ "noct-mem",
  "noct-video",
  "spin 0.12.3",
 ]

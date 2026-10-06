@@ -1,0 +1,5 @@
+If:
+  PathMatch: .*\.c
+CompileFlags:
+  Add: [-std=c99]
+  Compiler: i386-nocturne-gcc

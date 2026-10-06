@@ -1,7 +1,11 @@
+use noct_mem::paging::MappingContext;
+
 type VideoLock = spin::mutex::MutexGuard<'static, Option<noct_video::VideoMode>>;
 
 pub struct VideoHandle {
     lock: VideoLock,
+
+    map_ctx: MappingContext,
 
     offset: usize,
 }
@@ -13,8 +17,8 @@ impl core::fmt::Debug for VideoHandle {
 }
 
 impl VideoHandle {
-    pub fn from_lock(lock: VideoLock) -> Self {
-        Self { lock, offset: 0 }
+    pub fn from_lock(lock: VideoLock, map_ctx: MappingContext) -> Self {
+        Self { lock, map_ctx, offset: 0 }
     }
 
     pub fn buffer_len(&self) -> usize {

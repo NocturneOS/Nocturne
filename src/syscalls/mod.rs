@@ -2,6 +2,7 @@ use noct_cpu::CPURegisters;
 use noct_logger::qemu_log;
 
 mod debug;
+mod env;
 mod error;
 mod event;
 mod exit;
@@ -48,6 +49,8 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     proc::yield_now,        // 19
 
     video::video_acquire,   // 20
+
+    env::getcwd,            // 21
 ];
 
 #[unsafe(no_mangle)]

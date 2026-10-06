@@ -9,6 +9,8 @@ use noct_logger::qemu_log;
 use bitflags::bitflags;
 use noct_sched::thread::ThreadWaitReason;
 
+use crate::mem::usermem::verify_ptr;
+
 bitflags! {
     #[derive(Debug, Clone, Copy)]
     pub struct OpenFlags: u32 {
@@ -20,11 +22,17 @@ bitflags! {
 pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Option<usize> {
     // TODO: Sanitize that.
     // TODO: Set error on utf8 encoding failure
-    let path = unsafe { CStr::from_ptr(path as *const core::ffi::c_char) }
+    let Some(path) = verify_ptr(path) else {
+        noct_sched::set_error(noct_io::error::Error::MemoryError as _);
+
+        return None;
+    };
+
+    let path = unsafe { CStr::from_ptr(path) }
         .to_str()
         .map(|path| path.to_owned());
 
-    let path = match path {
+    let mut path = match path {
         Ok(path) => path,
         Err(e) => {
             qemu_log!("open: Error while decoding UTF-8 path: {e:?}");
@@ -34,6 +42,13 @@ pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Option<us
             return None;
         }
     };
+
+    let process = &noct_sched::this_thread().process;
+
+    // If path is relative, add the CWD to make it absolute.
+    if !path.contains(":/") {
+        path.insert_str(0, &process.cwd());
+    }
 
     let flags = OpenFlags::from_bits_truncate(mode as _);
 
@@ -61,7 +76,6 @@ pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Option<us
         ResourceDescriptor::FileStream(fh)
     };
 
-    let process = &noct_sched::this_thread().process;
 
     let mut reslock = process.resources.lock();
 

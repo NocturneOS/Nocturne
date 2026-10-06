@@ -1,5 +1,8 @@
 #![no_std]
 
+#![feature(get_disjoint_mut_helpers)]
+
+
 use core::panic::PanicInfo;
 
 use alloc::boxed::Box;
@@ -165,7 +168,7 @@ fn kmain(boot_info: BootInformation) -> ! {
 
 
     {
-        match noct_elfloader::spawn("mem0:/prog_video", &[]) {
+        match noct_elfloader::spawn("mem0:/progs/prog_video_mem", &[]) {
             Ok(handle) => {
                 qemu_log!("Started process {}", handle.pid);
 

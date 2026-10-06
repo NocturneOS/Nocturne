@@ -12,6 +12,8 @@ struct videomode_info {
   uint8_t red_offset;
   uint8_t green_offset;
   uint8_t blue_offset;
+
+  uint64_t fb_addr;
 };
 
 int main() {
@@ -19,15 +21,8 @@ int main() {
 
   size_t fd = _syscall1(20, (size_t)&video);
 
-#define CHUNK_SIZE 8192
-
-  uint32_t white[CHUNK_SIZE];
-
-  memset(&white, 0xff, CHUNK_SIZE * sizeof(uint32_t));
-
-  for (int i = 0; i < 1280 * 720; i += CHUNK_SIZE) {
-    write(fd, 1, (video.bpp >> 3) * CHUNK_SIZE, &white);
-  }
+  memset((uint8_t *)((size_t)video.fb_addr), 0xff,
+         video.width * video.height * (video.bpp >> 3));
 
   return 0;
 }

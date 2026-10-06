@@ -1,19 +1,31 @@
+use core::slice::GetDisjointMutIndex;
+
 /// Verifies that passed pointer really came from the user space.
-pub fn verify_ptr_mut<T>(addr: usize) -> Option<*mut T> {
+pub fn verify_ptr_range_mut<T>(addr: usize, size: usize) -> Option<*mut T> {
     if addr == 0 {
         return None;
     }
 
+    let end = addr + size;
+
     // Kernel area starts in the kernel base and ends in kernel heap's end.
     let kernel_area = noct_spec::KERNEL_BASE..noct_mem::heap::heap_bounds().end;
 
-    if kernel_area.contains(&addr) {
+    if kernel_area.is_overlapping(&(addr..end)) {
         return None;
     }
 
     Some(addr as *mut T)
 }
 
+pub fn verify_ptr_range<T>(addr: usize, size: usize) -> Option<*const T> {
+    verify_ptr_range_mut(addr, size).map(|x| x as *const T)
+}
+
+pub fn verify_ptr_mut<T>(addr: usize) -> Option<*mut T> {
+    verify_ptr_range_mut(addr, 1)
+}
+
 pub fn verify_ptr<T>(addr: usize) -> Option<*const T> {
-    verify_ptr_mut(addr).map(|x| x as *const T)
+    verify_ptr_range(addr, 1).map(|x| x as *const T)
 }

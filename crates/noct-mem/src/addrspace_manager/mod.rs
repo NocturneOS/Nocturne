@@ -468,7 +468,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
 
 impl<PG: PagingHierarchy> Drop for AddressSpace<PG> {
     fn drop(&mut self) {
-        let mut physial_addresses = [0usize; 768];
+        let mut physical_addresses = [0usize; 768];
 
         self.self_map_page(self.page_root_phys, |page_root| {
             // This region (0..user_root_entry_count) is dedicated to user-space memory.
@@ -476,18 +476,20 @@ impl<PG: PagingHierarchy> Drop for AddressSpace<PG> {
                 if page_root[i].is_present() {
                     let real_address = page_root[i].phys();
 
-                    physial_addresses[i] = real_address;
+                    physical_addresses[i] = real_address;
                 }
             }
         });
 
-        for real_address in physial_addresses.iter().filter(|&&x| x != 0) {
+        for real_address in physical_addresses.iter().filter(|&&x| x != 0) {
             // Free all the entries in the page table before freeing it.
             self.self_map_page(*real_address, |page_table| {
                 for i in page_table {
-                    // qemu_log!("Checking address: {i:x?}");
-
-                    if i.raw() >= 0x1000 && i.is_present() {
+                    // XXX: `i.phys() <= noct_spec::KERNEL_BASE` is a kludge!
+                    // The problem: kernel can allow accessing devices directly (e.g. linear framebuffer) by mapping it to the userspace.
+                    // For example linear FB's physical address is 0xfd00_0000 and its (physical) freeing will cause a panic
+                    // because it's not a part of real physical memory.
+                    if i.phys() <= noct_spec::KERNEL_BASE && i.is_present() {
                         noct_physmem_alloc::free_one(i.phys());
                     }
                 }

@@ -1,5 +1,6 @@
 use noct_descriptor::{ResourceDescriptor, video::VideoHandle};
 use noct_logger::qemu_log;
+use noct_mem::paging::PageFlags;
 
 #[repr(C, packed)]
 pub struct VideoModeInfo {
@@ -8,15 +9,17 @@ pub struct VideoModeInfo {
 
     bpp: u8, // in bits
 
-    red_offset: u8, // in bits
+    red_offset: u8,   // in bits
     green_offset: u8, // in bits
-    blue_offset: u8, // in bits
+    blue_offset: u8,  // in bits
+
+    framebuffer_address: u64, // physical address of framebuffer (may be 0)
 }
 
 /// Acquires lock on video buffer.
 ///
 /// On success a descriptor is being created and video info is being written into the [`VideoModeInfo`] pointer.
-/// 
+///
 /// Returns a file descriptor if everything's okay,
 /// Returns -1 if lock can't be acquired (video buffer is locked by another process/program).
 /// Returns -2 if system error happened (see errno for error code).
@@ -45,6 +48,22 @@ pub fn video_acquire(
 
     qemu_log!("P{phys:x} -> V{virt:x} with size of {size} bytes.");
 
+    let vm_addr = unsafe {
+        noct_sched::this_process()
+            .address_space
+            .get_mut()
+            .alloc_virt_region(size)
+    };
+
+    let map_ctx = noct_mem::paging::MappingContext::map(
+        phys,
+        vm_addr,
+        size,
+        PageFlags::Writeable | PageFlags::CacheDisable | PageFlags::Userspace,
+    );
+
+    qemu_log!("Allocated video buffer at V{vm_addr:x} with size of {size} bytes.");
+
     let vmi = VideoModeInfo {
         width: binding.resolution().width as _,
         height: binding.resolution().height as _,
@@ -53,6 +72,8 @@ pub fn video_acquire(
         red_offset: 0,
         green_offset: 0,
         blue_offset: 0,
+
+        framebuffer_address: vm_addr as u64,
     };
 
     unsafe { modeinfo.write(vmi) };
@@ -63,7 +84,12 @@ pub fn video_acquire(
 
         let mut reslock = process.resources.lock();
 
-        reslock.make(ResourceDescriptor::VideoLock(VideoHandle::from_lock(real_mode_info))).id()
+        reslock
+            .make(ResourceDescriptor::VideoLock(VideoHandle::from_lock(
+                real_mode_info,
+                map_ctx
+            )))
+            .id()
     };
 
     Some(fd)

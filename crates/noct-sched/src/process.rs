@@ -1,10 +1,11 @@
 use core::{
-    ffi::c_char,
+    ffi::{CStr, c_char},
     sync::atomic::{AtomicPtr, AtomicU32, AtomicUsize, Ordering},
 };
 
-use alloc::{ffi::CString, sync::Arc};
+use alloc::{borrow::Cow, ffi::CString, sync::Arc};
 use lazy_static::lazy_static;
+use noct_descriptor::Descriptor;
 use noct_elf::ProgramImage;
 use noct_sync::pseudosync::PseudoSync;
 use spin::Mutex;
@@ -45,7 +46,7 @@ impl ProcessHandle {
     pub fn new(pid: usize) -> Self {
         Self {
             pid,
-            exit_code: Default::default()
+            exit_code: Default::default(),
         }
     }
 
@@ -108,7 +109,11 @@ impl Process {
     }
 
     pub fn into_handle(this: Arc<Self>) -> Arc<ProcessHandle> {
-        Arc::clone(this.handle.as_ref().expect("Cannot call `Process::into_handle` on kernel process image!"))
+        Arc::clone(
+            this.handle
+                .as_ref()
+                .expect("Cannot call `Process::into_handle` on kernel process image!"),
+        )
     }
 
     pub fn recalculate_heap(&self) {
@@ -119,24 +124,38 @@ impl Process {
                 qemu_log!("{i:x?}");
             }
 
-            let heap_base = program_image.loaded_segments.iter()
+            let heap_base = program_image
+                .loaded_segments
+                .iter()
                 .map(|seg| seg.virtual_addr + seg.page_count * noct_mem::get_page_size())
                 .max()
                 .expect("Failed to determine heap bounds! (No program sections?)");
 
             let heap_max = heap_base + (128 << 20); // 128 MiB heap limit for now, can be adjusted later.
 
-            qemu_log!("Process #{}: Heap recalculated: base = {heap_base:#x}, max = {heap_max:#x}", self.id);
+            qemu_log!(
+                "Process #{}: Heap recalculated: base = {heap_base:#x}, max = {heap_max:#x}",
+                self.id
+            );
 
             *self.heap.lock() = Some(noct_mem::external_heap::Heap::new(heap_base, heap_max))
         }
+    }
+
+    pub fn cwd(&self) -> Cow<'_, str> {
+        unsafe { CStr::from_ptr(self.cwd.load(Ordering::Acquire)).to_string_lossy() }
     }
 }
 
 impl Drop for Process {
     fn drop(&mut self) {
         unsafe {
-            qemu_log!("PROCESS #{} DEALLOCATED!", self.id);
+            // let mut reslock = self.resources.lock();
+            // let video_id = reslock.iter().find(|x| matches!(x.res, noct_descriptor::ResourceDescriptor::VideoLock(_))).map(|x| x.id());
+
+            // if let Some(vid) = video_id {
+            //     reslock.close(vid);
+            // }
 
             drop(CString::from_raw(
                 self.name.load(core::sync::atomic::Ordering::Relaxed),
@@ -144,6 +163,8 @@ impl Drop for Process {
             drop(CString::from_raw(
                 self.cwd.load(core::sync::atomic::Ordering::Relaxed),
             ));
+
+            qemu_log!("PROCESS #{} DEALLOCATED!", self.id);
         }
     }
 }
