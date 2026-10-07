@@ -13,7 +13,8 @@ mod proc;
 mod time;
 mod video;
 
-pub type SyscallHandler = fn(usize, usize, usize, usize, usize) -> Option<usize>;
+pub type SyscallResult = Option<usize>;
+pub type SyscallHandler = fn(usize, usize, usize, usize, usize) -> SyscallResult;
 
 #[rustfmt::skip]
 const SYSCALL_HANDLERS: &[SyscallHandler] = &[
@@ -56,6 +57,21 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
 
     proc::run               // 23
 ];
+
+pub fn convert_err<T>(f: impl FnOnce() -> noct_io::Result<T>) -> Option<T> {
+    let result = f();
+
+    match result {
+        Err(e) => {
+            noct_sched::set_error(e as _);
+
+            None
+        }
+        Ok(x) => {
+            Some(x)
+        }
+    }
+}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn syscall_handler(regs: &mut CPURegisters) {

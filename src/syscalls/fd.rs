@@ -3,13 +3,13 @@ use core::{ffi::CStr, fmt::Write as FmtWrite};
 use alloc::borrow::ToOwned;
 use noct_descriptor::ResourceDescriptor;
 use noct_fsman::handles::file::FileOpenMode;
-use noct_io::{Read, Seek, SeekOffset, Write};
+use noct_io::{Read, Seek, SeekOffset, Write, error::Error};
 use noct_logger::qemu_log;
 
 use bitflags::bitflags;
 use noct_sched::thread::ThreadWaitReason;
 
-use crate::mem::usermem::verify_ptr;
+use crate::{mem::usermem::verify_ptr, syscalls::convert_err};
 
 bitflags! {
     #[derive(Debug, Clone, Copy)]
@@ -22,11 +22,7 @@ bitflags! {
 pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Option<usize> {
     // TODO: Sanitize that.
     // TODO: Set error on utf8 encoding failure
-    let Some(path) = verify_ptr(path) else {
-        noct_sched::set_error(noct_io::error::Error::MemoryError as _);
-
-        return None;
-    };
+    let path = convert_err(|| verify_ptr(path).ok_or(Error::MemoryError))?;
 
     let path = unsafe { CStr::from_ptr(path) }
         .to_str()

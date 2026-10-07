@@ -4,6 +4,8 @@ use noct_io::error::Error;
 
 use bitflags::bitflags;
 
+use crate::syscalls::convert_err;
+
 bitflags! {
     pub struct ProgramRunFlags: u32 {
         const NoStdin  = 1 << 0;
@@ -18,29 +20,33 @@ bitflags! {
     }
 }
 
-pub fn run(path_ptr: usize, arguments_ptr: usize, flags: usize, _: usize, _: usize) -> Option<usize> {
-    let path = crate::mem::usermem::verify_ptr::<c_char>(path_ptr)?;
-    let args = crate::mem::usermem::verify_ptr::<*const c_char>(path_ptr)?;
+pub fn run(
+    path_ptr: usize,
+    arguments_ptr: usize,
+    flags: usize,
+    _: usize,
+    _: usize,
+) -> Option<usize> {
+    let path = convert_err(|| {
+        crate::mem::usermem::verify_ptr::<c_char>(path_ptr).ok_or(Error::MemoryError)
+    })?;
+    let args = convert_err(|| {
+        crate::mem::usermem::verify_ptr::<*const c_char>(arguments_ptr).ok_or(Error::MemoryError)
+    })?;
 
     todo!("Implement running processes!")
 }
 
 pub fn waitpid(pid: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
-    let Some(ph) = noct_sched::get_process_handle(pid) else {
-        let this_thread = noct_sched::this_thread();
-
-        this_thread.last_error.store(Error::InvalidHandle as u32 as usize, Ordering::Release);
-        
-        return None;
-    };
+    let ph = convert_err(|| noct_sched::get_process_handle(pid).ok_or(Error::MemoryError))?;
 
     let code = noct_sched::waitpid(&ph);
 
-    code.map(|x| x as usize)
+    Some(code as usize)
 }
 
 pub fn yield_now(_: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
     noct_sched::yield_now();
-    
+
     None
 }

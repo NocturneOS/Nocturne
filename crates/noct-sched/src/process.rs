@@ -54,7 +54,7 @@ impl ProcessHandle {
     }
 
     pub fn wait(&self) -> Option<u32> {
-        crate::waitpid(self)
+        Some(crate::waitpid(self))
     }
 }
 
