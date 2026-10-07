@@ -1,6 +1,9 @@
 use core::{
     ffi::{CStr, c_char},
-    sync::atomic::{AtomicPtr, AtomicU32, AtomicUsize, Ordering},
+    sync::atomic::{
+        AtomicPtr, AtomicU32, AtomicUsize,
+        Ordering::{self, Acquire},
+    },
 };
 
 use alloc::{borrow::Cow, ffi::CString, sync::Arc};
@@ -145,18 +148,19 @@ impl Process {
     pub fn cwd(&self) -> Cow<'_, str> {
         unsafe { CStr::from_ptr(self.cwd.load(Ordering::Acquire)).to_string_lossy() }
     }
+
+    pub fn chdir(&self, new_path: &str) {
+        let cwd_ptr = CString::new(new_path).unwrap();
+
+        drop(unsafe { CString::from_raw(self.cwd.load(core::sync::atomic::Ordering::Relaxed)) });
+
+        self.cwd.store(cwd_ptr.into_raw(), Ordering::Release);
+    }
 }
 
 impl Drop for Process {
     fn drop(&mut self) {
         unsafe {
-            // let mut reslock = self.resources.lock();
-            // let video_id = reslock.iter().find(|x| matches!(x.res, noct_descriptor::ResourceDescriptor::VideoLock(_))).map(|x| x.id());
-
-            // if let Some(vid) = video_id {
-            //     reslock.close(vid);
-            // }
-
             drop(CString::from_raw(
                 self.name.load(core::sync::atomic::Ordering::Relaxed),
             ));

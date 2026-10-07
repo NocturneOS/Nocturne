@@ -27,7 +27,7 @@ pub extern "C" fn __arch_init(multiboot_header: *const BootInformationHeader) ->
 
     qemu_log!("Bootloader: {:?}", bootinfo.boot_loader_name_tag().unwrap().name());
 
-    qemu_log!("Command line: {:?}", bootinfo.command_line_tag());
+    qemu_log!("Command line: {:?}", bootinfo.command_line_tag().and_then(|x| x.cmdline().ok()));
     qemu_log!("Modules count: {:?}", bootinfo.module_tags().count());
 
     for i in bootinfo.module_tags() {

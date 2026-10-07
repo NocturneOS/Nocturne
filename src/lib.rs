@@ -166,9 +166,11 @@ fn kmain(boot_info: BootInformation) -> ! {
         }
     }
 
+    // TODO: Use kernel cmdline parameters to get root dir (or throw a panic if not present like in Linux)
+    noct_sched::this_process().chdir("mem0:/");
 
     {
-        match noct_elfloader::spawn("mem0:/progs/prog_video_mem", &[]) {
+        match noct_elfloader::spawn("mem0:/progs/usleep", &[]) {
             Ok(handle) => {
                 qemu_log!("Started process {}", handle.pid);
 
