@@ -138,11 +138,13 @@ fn kmain(boot_info: BootInformation) -> ! {
             let bind = noct_video::CURRENT_VIDEO_MODE.lock();
             let display_size = bind.as_ref().unwrap().resolution();
 
-            (display_size.height / 8, display_size.width / 16)
+            (display_size.height / 16, display_size.width / 8)
         };
 
         // noct_tty::init(25, 80);
         noct_tty::init(rows, cols);
+        
+        qemu_log!("TTY initialized with {} rows and {} columns", rows, cols);
 
         tty_println!("\x1b[33mNocturneOS {}", env!("CARGO_PKG_VERSION"));
     }
@@ -170,7 +172,7 @@ fn kmain(boot_info: BootInformation) -> ! {
     noct_sched::this_process().chdir("mem0:/");
 
     {
-        match noct_elfloader::spawn("mem0:/progs/usleep", &[]) {
+        match noct_elfloader::spawn("mem0:/progs/ttyspam", &[]) {
             Ok(handle) => {
                 qemu_log!("Started process {}", handle.pid);
 

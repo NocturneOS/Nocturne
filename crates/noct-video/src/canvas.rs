@@ -20,12 +20,18 @@ impl<'vid> Canvas<'vid> {
         }
     }
 
-    pub fn put_pixel(&mut self, x: usize, y: usize, color: u32) {
+    pub fn put_pixel(&mut self, x: usize, y: usize, color: u32) -> bool {
+        if x >= self.video.resolution().width || y >= self.video.resolution().height {
+            return false;
+        }
+        
         let bpp = self.video.bpp().unwrap();
         let repr = &color.to_le_bytes();
 
         let offset = ((y * self.video.resolution().width) + x) * self.video.bpp().unwrap();
 
         self.video.buffer_mut()[offset..][..repr.len()].copy_from_slice(repr);
+
+        true
     }
 }
