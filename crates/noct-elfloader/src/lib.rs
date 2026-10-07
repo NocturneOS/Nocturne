@@ -42,6 +42,7 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
     };
 
     // 32-bit system allows executing only 32-bit binaries.
+    // TODO: Add backward-compatibility support.
     #[cfg(target_arch = "x86")]
     {
         use elf::file::Class;
