@@ -7,3 +7,5 @@
 /iso/ramdisk
 *.img
 /ramdisk/*.o
+
+*.run
