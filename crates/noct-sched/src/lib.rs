@@ -839,7 +839,7 @@ pub fn get_process_handle(pid: usize) -> Option<Arc<ProcessHandle>> {
 }
 
 /// Waits for process with specific PID (from hdl) to complete and returns its exit code
-pub fn waitpid(hdl: &ProcessHandle) -> Option<u32> {
+pub fn waitpid(hdl: &ProcessHandle) -> u32 {
     // TODO: Make a ThreadState::WaitingFor(pid: usize) and ThreadWaitReason::WaitingFor enum variant and set that state for this thread.
     //       to avoid infinite CPU spinning.
     fn does_exist(pid: usize) -> bool {
@@ -868,7 +868,7 @@ pub fn waitpid(hdl: &ProcessHandle) -> Option<u32> {
 
     let code = hdl.exit_code.load(Ordering::Acquire);
 
-    Some(code)
+    code
 }
 
 pub fn set_error(value: usize) {
