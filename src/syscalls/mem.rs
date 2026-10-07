@@ -7,7 +7,7 @@ pub fn sbrk(increment: usize, _: usize, _: usize, _: usize, _: usize) -> Option<
     
     let address_space_lock = unsafe { process.address_space.get_mut() };
     let mut lock = process.heap.lock();
-
+    
     let heap = lock
         .as_mut()
         .expect("Heap was uninitialized!");
