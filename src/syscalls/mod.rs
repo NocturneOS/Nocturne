@@ -51,6 +51,10 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     video::video_acquire,   // 20
 
     env::getcwd,            // 21
+
+    env::chdir,             // 22
+
+    proc::run               // 23
 ];
 
 #[unsafe(no_mangle)]

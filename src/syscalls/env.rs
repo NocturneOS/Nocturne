@@ -19,3 +19,7 @@ pub fn getcwd(buf: usize, size: usize, _: usize, _: usize, _: usize) -> Option<u
 
     Some(buf)
 }
+
+pub fn chdir(relpath: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
+    todo!()
+}

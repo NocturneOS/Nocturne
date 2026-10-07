@@ -1,7 +1,5 @@
 use core::time::Duration;
 
-use noct_logger::qemu_log;
-
 pub fn time(_: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
     let human_time = noct_cmos::read();
 
