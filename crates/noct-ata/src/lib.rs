@@ -1,3 +1,7 @@
+#![no_std]
+
+extern crate alloc;
+
 use core::alloc::Layout;
 
 use alloc::{boxed::Box, vec};
@@ -6,7 +10,7 @@ use noct_interrupts::handler::register_interrupt_handler;
 use noct_logger::qemu_log;
 use x86::io::{inb, inw, outb};
 
-use crate::arch::x86::dev::ata::{
+use crate::{
     commands::{ATA_CMD_IDENTIFY, ATA_CMD_IDENTIFY_PACKET},
     dma_prdt::Prdt,
     drive::AtaPhysicalDrive,

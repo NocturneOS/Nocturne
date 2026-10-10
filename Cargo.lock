@@ -160,7 +160,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-ata"
+version = "0.1.0"
+dependencies = [
+ "noct-cpu",
+ "noct-diskman",
+ "noct-interrupts",
+ "noct-ioport",
+ "noct-logger",
+ "noct-mem",
+ "noct-pci",
+ "noct-sync",
+ "x86",
+]
+
+[[package]]
 name = "noct-boot"
+version = "0.1.0"
+
+[[package]]
+name = "noct-cmdline-parser"
 version = "0.1.0"
 
 [[package]]
@@ -436,6 +455,7 @@ name = "noct-sysinfo"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
+ "noct-cmdline-parser",
  "spin 0.12.3",
 ]
 
@@ -501,6 +521,7 @@ dependencies = [
  "lazy_static",
  "multiboot2",
  "noct-acpi",
+ "noct-ata",
  "noct-boot",
  "noct-cmos",
  "noct-cpu",

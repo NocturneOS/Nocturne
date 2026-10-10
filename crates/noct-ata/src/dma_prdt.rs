@@ -2,8 +2,6 @@ use core::alloc::Layout;
 
 use alloc::{boxed::Box, slice};
 
-use crate::arch;
-
 #[repr(C, packed)]
 pub struct PrdtEntry {
     buffer_phys: u32,
@@ -32,14 +30,14 @@ pub struct Prdt {
 
 impl Prdt {
     pub fn new() -> Self {
-        debug_assert!(arch::get_page_size().is_multiple_of(size_of::<PrdtEntry>()));
+        debug_assert!(noct_mem::get_page_size().is_multiple_of(size_of::<PrdtEntry>()));
 
-        let entry_count = arch::get_page_size() / size_of::<PrdtEntry>();
+        let entry_count = noct_mem::get_page_size() / size_of::<PrdtEntry>();
 
         let virt = unsafe {
             slice::from_raw_parts_mut(
                 alloc::alloc::alloc_zeroed(
-                    Layout::from_size_align(arch::get_page_size(), arch::get_page_size()).unwrap(),
+                    Layout::from_size_align(noct_mem::get_page_size(), noct_mem::get_page_size()).unwrap(),
                 ) as *mut PrdtEntry,
                 entry_count,
             )

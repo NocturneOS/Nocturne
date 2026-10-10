@@ -2,16 +2,13 @@ use core::cell::Cell;
 
 use noct_diskman::drive::Drive;
 use noct_logger::qemu_log;
-use noct_pci;
 use noct_sync::pseudosync::PseudoSync;
 
 use super::dma_prdt::Prdt;
-use crate::arch::{
-    self, x86::dev::ata::{
+use crate::{
         ATADrive, atapi::send_scsi, commands::{ATA_CMD_READ_DMA_EXT, ATA_CMD_WRITE_DMA_EXT, ATAPI_CMD_READ}, drive::AtaPhysicalDrive, error::{AtaIoError, ATAIOResult}, ide_poll, io::ATAIO, regs::{
             ATA_REG_COMMAND, ATA_REG_HDDEVSEL, ATA_REG_LBA0, ATA_REG_LBA1, ATA_REG_LBA2,
             ATA_REG_SECCOUNT0,
-        },
     },
 };
 
@@ -64,7 +61,7 @@ pub fn fill_prdt(prdt: &mut Prdt, buffer: &[u8]) {
     prdt.clear();
 
     // TODO: Improvement: Make them extents
-    let chunk_size = arch::get_page_size();
+    let chunk_size = noct_mem::get_page_size();
     let chunks_count = buffer.chunks(chunk_size).count();
 
     for (i, chunk) in buffer.chunks(chunk_size).enumerate() {

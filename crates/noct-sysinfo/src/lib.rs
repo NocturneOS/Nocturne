@@ -1,6 +1,7 @@
 #![no_std]
 
 use lazy_static::lazy_static;
+use noct_cmdline_parser::Cmdline;
 use spin::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 #[derive(Debug, Default)]
@@ -20,6 +21,8 @@ pub struct SystemInfo {
 
     // The free zone that is usually needed for heap.
     pub available_memory_start: Option<usize>,
+
+    pub kernel_cmdline: Option<Cmdline>
 }
 
 lazy_static! {

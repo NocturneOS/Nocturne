@@ -6,15 +6,13 @@ use noct_diskman::{
 use noct_ioport::IOPort;
 use noct_logger::qemu_log;
 
-use crate::arch::x86::{
-    dev::ata::{
-        ATABus, ATADrive,
-        dma::DMA_IO_PORT,
-        dma_prdt::Prdt,
-        error::{AtaIoError, ATAIOResult},
-        info::ATADriveInfo,
-        io::ATAIO,
-    },
+use crate::{
+    ATABus, ATADrive,
+    dma::DMA_IO_PORT,
+    dma_prdt::Prdt,
+    error::{ATAIOResult, AtaIoError},
+    info::ATADriveInfo,
+    io::ATAIO,
 };
 
 use super::atapi::StartStopOperation;
@@ -164,18 +162,17 @@ impl noct_diskman::drive::Drive for AtaPhysicalDrive {
                         AtaIoError::ControllerError(_) => DiskManError::IOError,
                         _ => DiskManError::UnsupportedOperation,
                     })
-            },
+            }
             Command::Load => {
                 if !self.identity.is_removable_media_device() {
                     return Err(DiskManError::UnsupportedOperation);
                 }
 
-                super::atapi::start_stop(self, StartStopOperation::Load)
-                    .map_err(|e| match e {
-                        AtaIoError::ControllerError(_) => DiskManError::IOError,
-                        _ => DiskManError::UnsupportedOperation,
-                    })
-            },
+                super::atapi::start_stop(self, StartStopOperation::Load).map_err(|e| match e {
+                    AtaIoError::ControllerError(_) => DiskManError::IOError,
+                    _ => DiskManError::UnsupportedOperation,
+                })
+            }
             cmd => todo!("Unimplemented control command for ATA (issued: {cmd:?})"),
         }
     }

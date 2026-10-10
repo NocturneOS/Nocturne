@@ -92,7 +92,7 @@ fn kmain(boot_info: BootInformation) -> ! {
 
     noct_ps2::init();
 
-    crate::arch::x86::dev::ata::init();
+    noct_ata::init();
 
     for (idx, disk) in noct_diskman::disk_list().iter().enumerate() {
         qemu_log!(

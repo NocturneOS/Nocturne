@@ -1,6 +1,6 @@
 use x86::io::outb;
 
-use crate::arch::x86::dev::ata::{
+use crate::{
     ATADrive,
     commands::{ATA_CMD_CACHE_FLUSH_EXT, ATA_CMD_READ_PIO_EXT, ATA_CMD_WRITE_PIO_EXT},
     drive::AtaPhysicalDrive,

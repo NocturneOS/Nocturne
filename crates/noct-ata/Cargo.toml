@@ -1,0 +1,16 @@
+[package]
+name = "noct-ata"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+noct-diskman = { path = "../noct-diskman" }
+noct-cpu = { path = "../noct-cpu" }
+noct-interrupts = { path = "../noct-interrupts" }
+noct-logger = { path = "../noct-logger" }
+noct-mem = { path = "../noct-mem" }
+noct-ioport = { path = "../noct-ioport" }
+noct-pci = { path = "../noct-pci" }
+noct-sync = { path = "../noct-sync" }
+
+x86 = "0.52.0"

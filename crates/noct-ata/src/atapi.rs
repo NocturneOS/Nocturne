@@ -1,7 +1,7 @@
 use alloc::vec;
 use noct_diskman::drive::Drive;
 
-use crate::arch::x86::dev::ata::{
+use crate::{
     commands::{ATA_CMD_PACKET, ATAPI_CMD_READ, ATAPI_CMD_READ_CAPACITY, ATAPI_CMD_START_STOP},
     drive::AtaPhysicalDrive,
     error::{AtaIoError, ATAIOResult, ATAResult},

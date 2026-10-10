@@ -1,4 +1,4 @@
-use crate::arch::x86::dev::ata::error::ATAIOResult;
+use crate::error::ATAIOResult;
 
 pub trait ATAIO {
     fn read(&mut self, lba: u64, output: &mut [u8]) -> ATAIOResult<()>;
