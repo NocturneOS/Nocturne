@@ -10,6 +10,7 @@ pub enum PageAllocation {
 }
 
 impl PageAllocation {
+    /// Returns page count covered by this allocation
     pub fn page_count(&self) -> usize {
         match self {
             Self::Bulk { page_count, .. } => *page_count,
@@ -18,6 +19,9 @@ impl PageAllocation {
         }
     }
 
+    /// Returns an iterator of all pages covered by this allocation
+    /// 
+    /// Addresses are pagesize-aligned.
     pub fn pages(&self) -> PAPages<'_> {
         PAPages {
             pa: self,
