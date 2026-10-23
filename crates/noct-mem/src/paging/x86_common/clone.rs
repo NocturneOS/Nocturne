@@ -2,8 +2,9 @@ use core::alloc::Layout;
 
 use crate::paging::{PageFlags, PagingHierarchy};
 
-/// Clones kernel's paging root, it will just copy PDEs (shallow copy)
-/// I can't get the kernel process that has exactly kernel-only page directories/tables, so just copy from current CR3.
+/// Clones kernel's paging root, it will just copy the kernel entries (shallow copy).
+/// The user half of the new root is left empty, so every address space gets its
+/// own user page tables.
 /// Returns a physical addr of paging root (a value to load into CR3)
 pub fn clone_kernel_page_root<PG: PagingHierarchy>() -> usize {
     // This is a temporary block. We will map pages, work and unmap to it to reduce heap usage.
@@ -27,8 +28,12 @@ pub fn clone_kernel_page_root<PG: PagingHierarchy>() -> usize {
     };
 
     let root = PG::root();
+    let end = core::cmp::min(root.len(), PG::ENTRIES);
 
-    for i in 0..PG::ENTRIES {
+    // Only copy the kernel-owned half. Copying user entries from the current
+    // CR3 would make the parent and the child share page tables if this is ever
+    // called while a user address space is loaded (e.g. a future fork/spawn).
+    for i in PG::user_root_entry_count()..end {
         if i == PG::RECURSIVE_INDEX {
             continue; // already written it
         }
