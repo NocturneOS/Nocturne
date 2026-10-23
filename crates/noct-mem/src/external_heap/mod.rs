@@ -53,11 +53,17 @@ impl<PG: PagingHierarchy> Heap<PG> {
         let new_top = new_end.next_multiple_of(page_size);
 
         if new_top > old_top {
-            addrspace.alloc_map_multiple_pages(
+            let pa = addrspace.alloc_map_multiple_pages(
                 old_top, new_top - old_top,
                 PageFlags::Present | PageFlags::Writeable | PageFlags::Userspace,
             ).map_err(|_| HeapError::AddressSpaceFail)?;
+
+            // SAFETY: This page allocation manages only pages, but kernel will lose them if it gets out of the scope.
+            //         But the area will be still mapped.
+            //         The next `else if` branch will handle freeing physical pages soon.
+            core::mem::forget(pa);
         } else if new_top < old_top {
+            // TODO: Free physical pages.
             addrspace.unmap_pages(new_top, old_top - new_top);
         }
 

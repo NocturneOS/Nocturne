@@ -1,3 +1,7 @@
+.set ASP_BASE, 0x2C
+.set ASP_BASE_FXSAVE, (ASP_BASE)
+.set ASP_BASE_TSS_KSTACK, (ASP_BASE + 4)
+
 .extern BSP_TSS
 .global __context_switch
 __context_switch:
@@ -26,19 +30,19 @@ __context_switch:
     mov %esp, 0x10(%eax)
 
     # Save SIMD context (0x20 = Thread::arch_specific_region)
-    mov 0x20(%eax), %ecx
+    mov ASP_BASE_FXSAVE(%eax), %ecx
     fxsave (%ecx)
 
     # Load stack
     mov 0x10(%ebx), %esp
 
     # Restore SIMD context
-    mov 0x20(%ebx), %edx
+    mov ASP_BASE_FXSAVE(%ebx), %edx
     fxrstor (%edx)
 
     # Load kernel stack top to TSS::ESP0
     # 0x24 = Thread::ArchitectureSpecificRegion::tss_kernel_stack
-    mov 0x24(%ebx), %ecx
+    mov ASP_BASE_TSS_KSTACK(%ebx), %ecx
     mov $BSP_TSS, %edx
     # 0x04 = TSSEntry::esp0
     mov %ecx, 4(%edx)

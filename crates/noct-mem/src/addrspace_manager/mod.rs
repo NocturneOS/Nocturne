@@ -353,6 +353,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
     }
 
     /// Bulk allocates and maps physical pages to `(virt_addr..virt_addr + size_in_bytes)` range.
+    #[must_use]
     pub fn alloc_map_multiple_pages(
         &mut self,
         virt_addr: usize,
