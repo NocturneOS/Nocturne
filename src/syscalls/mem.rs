@@ -39,9 +39,6 @@ pub fn sbrk(increment: usize, _: usize, _: usize, _: usize, _: usize) -> Option<
 }
 
 pub fn mrequest(bytes_count: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
-    // Align bytes count to page size.
-    let bytes_count = noct_tools::align_value(bytes_count, noct_mem::get_page_size());
-
     let process = &noct_sched::this_thread().process;
 
     // AddressSpace inside Process has a pseudo-lock, so I have to disable interrupts for a while.
@@ -51,6 +48,14 @@ pub fn mrequest(bytes_count: usize, _: usize, _: usize, _: usize, _: usize) -> O
             .get_mut()
             .alloc_virt_region(bytes_count)
     });
+
+    let Some(address) = address else {
+        qemu_log!("mrequest: failed to allocate {bytes_count} bytes");
+
+        noct_sched::set_error(noct_io::error::Error::MemoryError as _);
+
+        return None;
+    };
 
     Some(address)
 }
@@ -74,9 +79,17 @@ pub fn mfree(
     let process = &noct_sched::this_thread().process;
 
     // AddressSpace inside Process has a pseudo-lock, so I have to disable interrupts for a while.
-    let address = noct_tools::without_interrupts::without_interrupts(|| unsafe {
-        process.address_space.get_mut().free_virt_region(addr);
+    let freed = noct_tools::without_interrupts::without_interrupts(|| unsafe {
+        process.address_space.get_mut().free_virt_region(addr)
     });
+
+    if !freed {
+        qemu_log!("mfree: tried to free an unknown region at {addr:#x?}");
+
+        noct_sched::set_error(Error::MemoryError as _);
+
+        return None;
+    }
 
     None
 }
