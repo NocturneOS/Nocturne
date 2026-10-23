@@ -5,7 +5,7 @@ use crate::{
 };
 use alloc::vec::Vec;
 use noct_logger::qemu_log;
-use noct_spec::{KERNEL_BASE, USER_SPACE_TOP, WORD_SIZE};
+use noct_spec::{USER_SPACE_TOP, WORD_SIZE};
 
 use crate::paging::{Page, PageFlags, map_single_page, unmap_single_page};
 
@@ -27,6 +27,13 @@ pub struct AddressSpace<PG: PagingHierarchy> {
 
     // Allocator VMA.
     pub(super) used_virt_areas: Vec<AddressSpaceVirtualBlock>,
+
+    /// Whether this address space owns `page_root_phys` and all page tables
+    /// reachable from the user-space half of the root.
+    ///
+    /// `false` for the kernel address space (`predefined`) and for uninitialized
+    /// instances, because their root is shared with the boot code/kernel.
+    owns_root: bool,
 }
 
 impl<PG: PagingHierarchy> AddressSpace<PG> {
@@ -37,6 +44,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         Self {
             page_root_phys: root,
             used_virt_areas: areas,
+            owns_root: true,
 
             phantom: PhantomData,
         }
@@ -46,6 +54,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         Self {
             page_root_phys: 0,
             used_virt_areas: Vec::new(),
+            owns_root: false,
 
             phantom: PhantomData,
         }
@@ -55,6 +64,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         Self {
             page_root_phys: phys,
             used_virt_areas: Vec::new(),
+            owns_root: false,
 
             phantom: PhantomData,
         }
@@ -64,12 +74,36 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         self.page_root_phys == 0
     }
 
+    /// Returns `true` if this address space's root is currently loaded in CR3.
+    fn is_loaded(&self) -> bool {
+        let current = unsafe { x86::controlregs::cr3() } as usize;
+
+        (current & !(crate::paging::PAGE_SIZE - 1))
+            == (self.page_root_phys & !(crate::paging::PAGE_SIZE - 1))
+    }
+
+    /// Invalidates the TLB entry for `virt_addr` if we are modifying the
+    /// address space that is currently loaded.
+    ///
+    /// Modifications to another process' page tables don't need an explicit
+    /// flush: the CPU will not have cached translations for that CR3 while it
+    /// is not loaded.
+    fn flush_tlb_for(&self, virt_addr: usize) {
+        if self.is_loaded() {
+            unsafe { x86::tlb::flush(virt_addr) };
+        }
+    }
+
     pub fn root_physical_addr(&self) -> usize {
         self.page_root_phys
     }
 
     pub fn self_map_page<T>(&self, phys_addr: usize, f: impl FnOnce(&mut [Page]) -> T) -> T {
-        let layout = Layout::from_size_align(crate::paging::PAGE_SIZE, 0x1000).unwrap();
+        let layout = Layout::from_size_align(
+            crate::paging::PAGE_SIZE,
+            crate::paging::PAGE_SIZE,
+        )
+        .unwrap();
         let mapping_region = unsafe { heap::allocate_no_map(layout) };
 
         map_single_page(
@@ -96,7 +130,11 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
 
     pub fn self_map_data<T>(&self, phys_allocation: &PageAllocation, f: impl FnOnce(&mut [u8]) -> T) -> T {
         let byte_count = crate::paging::PAGE_SIZE * phys_allocation.page_count();
-        let layout = Layout::from_size_align(byte_count, 0x1000).unwrap();
+        let layout = Layout::from_size_align(
+            byte_count,
+            crate::paging::PAGE_SIZE,
+        )
+        .unwrap();
         let mapping_region = unsafe { heap::allocate_no_map(layout) };
 
         for (i, page_phys) in phys_allocation.pages().enumerate() {
@@ -133,9 +171,10 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
 
         // Map paging root and get physical address of virtual one.
         let phys = self.phys_of_virt(virt_addr).unwrap();
+        let phys_page = phys & !(crate::paging::PAGE_SIZE - 1);
 
         map_single_page(
-            phys,
+            phys_page,
             mapping_region.addr(),
             PageFlags::Present | PageFlags::Writeable,
         );
@@ -163,9 +202,18 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         virt_addr: usize,
         flags: PageFlags,
     ) -> Result<(), ()> {
-        if virt_addr >= KERNEL_BASE {
+        assert!(
+            phys_addr.is_multiple_of(crate::paging::PAGE_SIZE),
+            "Physical address is not page-aligned: {phys_addr:#x?}"
+        );
+        assert!(
+            virt_addr.is_multiple_of(crate::paging::PAGE_SIZE),
+            "Virtual address is not page-aligned: {virt_addr:#x?}"
+        );
+
+        if virt_addr >= USER_SPACE_TOP {
             panic!(
-                "Attemped to map pages on a kernel region! ({:#x?})",
+                "Attempted to map a page outside of user space! ({:#x?})",
                 virt_addr
             );
         }
@@ -213,10 +261,24 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
                 Page::new(phys_addr, PageFlags::Present | flags | PageFlags::Userspace);
         });
 
+        self.flush_tlb_for(virt_addr);
+
         Ok(())
     }
 
     pub fn unmap_single_page(&mut self, virt_addr: usize) {
+        assert!(
+            virt_addr.is_multiple_of(crate::paging::PAGE_SIZE),
+            "Virtual address is not page-aligned: {virt_addr:#x?}"
+        );
+
+        if virt_addr >= USER_SPACE_TOP {
+            panic!(
+                "Attempted to unmap a page outside of user space! ({:#x?})",
+                virt_addr
+            );
+        }
+
         let mut pr = Some(self.page_root_phys);
 
         for level in 0..PG::LEVELS - 1 {
@@ -240,6 +302,8 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         self.self_map_page(pr.unwrap(), |page_table| {
             page_table[leaf_idx] = Page::null();
         });
+
+        self.flush_tlb_for(virt_addr);
     }
 
     pub fn unmap_pages(&mut self, virt_addr: usize, size: usize) {
@@ -264,12 +328,25 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
 
         let page_count = size.div_ceil(crate::paging::PAGE_SIZE);
 
+        let mut mapped = 0;
+
         for i in 0..page_count {
-            self.map_single_page(
+            if let Err(e) = self.map_single_page(
                 phys_addr + (i * crate::paging::PAGE_SIZE),
                 virt_addr + (i * crate::paging::PAGE_SIZE),
                 flags,
-            )?;
+            ) {
+                // Roll back the mappings we already installed. Physical pages
+                // themselves are owned by the caller (e.g. `PageAllocation`),
+                // so only unmap them here.
+                for j in 0..mapped {
+                    self.unmap_single_page(virt_addr + (j * crate::paging::PAGE_SIZE));
+                }
+
+                return Err(e);
+            }
+
+            mapped += 1;
         }
 
         Ok(())
@@ -306,48 +383,62 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
         Ok(())
     }
 
+    /// Number of bytes covered by a huge page at `level` (only valid for
+    /// `level < PG::LEVELS - 1`).
+    fn huge_page_size(level: usize) -> usize {
+        let index_bits = PG::ENTRIES.trailing_zeros() as usize;
+
+        crate::paging::PAGE_SIZE << (index_bits * (PG::LEVELS - 1 - level))
+    }
+
+    /// Translates `virt_addr` through this address space.
+    ///
+    /// Returns a physical address including the offset inside the page. For a
+    /// regular 4 KiB mapping the low 12 bits are preserved; for huge page
+    /// mappings the offset inside the huge page is preserved as well.
     pub fn phys_of_virt(&self, virt_addr: usize) -> Option<usize> {
+        if virt_addr >= USER_SPACE_TOP {
+            return None;
+        }
+
         let mut current_table_phys = self.page_root_phys;
 
         for level in 0..PG::LEVELS {
             let idx = PG::index_at_level(virt_addr, level);
 
-            // qemu_log!("PG: {virt_addr:08x} level {level} is {idx}");
+            let entry = self.self_map_page(current_table_phys, |table| table[idx]);
 
-            current_table_phys = self.self_map_page(current_table_phys, |table| {
-                let entry = table[idx];
+            if !entry.is_present() {
+                return None;
+            }
 
-                if entry.is_present() {
-                    Some(entry.phys())
-                } else {
-                    None
-                }
-            })?;
+            if level + 1 == PG::LEVELS {
+                // Normal 4 KiB mapping: `entry.phys()` is page-aligned, so
+                // adding the offset is safe.
+                return Some(entry.phys() + (virt_addr & (crate::paging::PAGE_SIZE - 1)));
+            }
+
+            if entry.is_extended() {
+                // Huge page mapping (2 MiB/1 GiB on x86_64, 4 MiB on x86).
+                let huge_size = Self::huge_page_size(level);
+
+                return Some(entry.phys() + (virt_addr & (huge_size - 1)));
+            }
+
+            current_table_phys = entry.phys();
         }
 
-        Some(current_table_phys)
-
-        // qemu_log!("Current table: {:08x}", current_table_phys);
-
-        // let leaf_idx = PG::index_at_level(virt_addr, PG::LEVELS - 1);
-
-        // qemu_log!("LEAF PG: {virt_addr:08x} level {} is {leaf_idx}", PG::LEVELS - 1);
-
-        // self.self_map_page(current_table_phys, |table| {
-        //     let entry = table[leaf_idx];
-
-        //     if entry.is_present() {
-        //         Some(entry.phys())
-        //     } else {
-        //         None
-        //     }
-        // })
+        None
     }
 
     pub fn alloc_map_single_page(&mut self, virt_addr: usize, flags: PageFlags) -> Result<usize, ()> {
         let page = noct_physmem_alloc::allocate_one().ok_or(())?;
 
-        self.map_single_page(page, virt_addr, flags)?;
+        if let Err(e) = self.map_single_page(page, virt_addr, flags) {
+            noct_physmem_alloc::free_one(page);
+
+            return Err(e);
+        }
 
         Ok(page)
     }
@@ -367,50 +458,86 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
             let physical = noct_physmem_alloc::allocate_bulk(page_count);
 
             if let Some(phys) = physical {
-                self.map_pages(phys, virt_addr, size_in_bytes, flags)?;
+                if let Err(e) = self.map_pages(phys, virt_addr, size_in_bytes, flags) {
+                    // `map_pages` already unmapped the pages it managed to map.
+                    noct_physmem_alloc::free_bulk(phys, page_count);
+
+                    return Err(e);
+                }
 
                 return Ok(PageAllocation::Bulk { addr: phys, page_count });
             }
         }
 
         // If it didn't work, let's try allocating one by one.
-        let mut pages = Vec::new();
+        let mut pages: Vec<usize> = Vec::with_capacity(page_count);
 
-        {
-            for i in 0..page_count {
-                // TODO: Handle allocation error. We can't use `?`, because if this happens in the middle ...
-                // ... of the loop, it will remain some pages mapped, but we have to revert this operation completely.
+        for i in 0..page_count {
+            let Some(page) = noct_physmem_alloc::allocate_one() else {
+                // Allocation failed in the middle: revert everything.
+                for (j, allocated) in pages.iter().enumerate() {
+                    self.unmap_single_page(virt_addr + (j * crate::paging::PAGE_SIZE));
+                    noct_physmem_alloc::free_one(*allocated);
+                }
 
-                let page = noct_physmem_alloc::allocate_one().unwrap();
+                return Err(());
+            };
 
-                self.map_single_page(page, virt_addr + (i * crate::paging::PAGE_SIZE), flags)
-                    .unwrap();
+            if let Err(e) = self.map_single_page(
+                page,
+                virt_addr + (i * crate::paging::PAGE_SIZE),
+                flags,
+            ) {
+                noct_physmem_alloc::free_one(page);
 
-                pages.push(page);
+                for (j, allocated) in pages.iter().enumerate() {
+                    self.unmap_single_page(virt_addr + (j * crate::paging::PAGE_SIZE));
+                    noct_physmem_alloc::free_one(*allocated);
+                }
+
+                return Err(e);
             }
+
+            pages.push(page);
         }
 
         Ok(PageAllocation::Multiple(pages))
     }
 
-    // TODO: Maybe Result<usize, ASVAllocationError>?
     /// Allocates the virtual region of specified `size`.
-    pub fn alloc_virt_region(&mut self, size: usize) -> usize {
+    ///
+    /// The size is rounded up to a page. Returns `None` if the size is zero,
+    /// overflows, or if the user virtual address space is exhausted.
+    pub fn alloc_virt_region(&mut self, size: usize) -> Option<usize> {
+        if size == 0 {
+            return None;
+        }
+
+        let size = size
+            .div_ceil(crate::paging::PAGE_SIZE)
+            .checked_mul(crate::paging::PAGE_SIZE)?;
+
+        if size >= USER_SPACE_TOP {
+            return None;
+        }
+
         if self.used_virt_areas.is_empty() {
-            let addr = USER_SPACE_TOP - size;
+            let addr = USER_SPACE_TOP.checked_sub(size)?;
             self.used_virt_areas.push(AddressSpaceVirtualBlock {
                 address: addr,
                 size,
             });
-            return addr;
+            return Some(addr);
         }
 
         // Check the gap between USER_SPACE_TOP and the topmost block.
         {
             let first = &self.used_virt_areas[0];
-            let gap = USER_SPACE_TOP - (first.address + first.size);
+            let first_end = first.address.checked_add(first.size)?;
+            let gap = USER_SPACE_TOP.checked_sub(first_end)?;
+
             if gap >= size {
-                let addr = KERNEL_BASE - size;
+                let addr = USER_SPACE_TOP.checked_sub(size)?;
                 self.used_virt_areas.insert(
                     0,
                     AddressSpaceVirtualBlock {
@@ -418,18 +545,19 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
                         size,
                     },
                 );
-                return addr;
+                return Some(addr);
             }
         }
 
         // Scan gaps between consecutive blocks (list is high-low).
-        for i in 0..self.used_virt_areas.len() - 1 {
+        for i in 0..self.used_virt_areas.len().saturating_sub(1) {
             let upper_addr = self.used_virt_areas[i].address;
-            let lower_end = self.used_virt_areas[i + 1].address + self.used_virt_areas[i + 1].size;
-            let gap = upper_addr - lower_end;
+            let lower = &self.used_virt_areas[i + 1];
+            let lower_end = lower.address.checked_add(lower.size)?;
+            let gap = upper_addr.checked_sub(lower_end)?;
 
             if gap >= size {
-                let addr = upper_addr - size;
+                let addr = upper_addr.checked_sub(size)?;
                 self.used_virt_areas.insert(
                     i + 1,
                     AddressSpaceVirtualBlock {
@@ -437,68 +565,115 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
                         size,
                     },
                 );
-                return addr;
+                return Some(addr);
             }
         }
 
         // No gap found - extend below the lowest block.
-        let addr = self.used_virt_areas.last().unwrap().address - size;
+        let addr = self
+            .used_virt_areas
+            .last()?
+            .address
+            .checked_sub(size)?;
+
         self.used_virt_areas.push(AddressSpaceVirtualBlock {
             address: addr,
             size,
         });
-        addr
+
+        Some(addr)
     }
 
-    pub fn free_virt_region(&mut self, address: usize) {
-        let mut index: Option<usize> = None;
+    /// Releases a region previously returned by [`Self::alloc_virt_region`].
+    ///
+    /// Returns `false` if no region starts at `address`. This is a programming
+    /// error, but it is reported instead of panicking because the address can
+    /// come from userspace.
+    pub fn free_virt_region(&mut self, address: usize) -> bool {
+        let Some(idx) = self
+            .used_virt_areas
+            .iter()
+            .position(|block| block.address == address)
+        else {
+            return false;
+        };
 
-        for (idx, block) in self.used_virt_areas.iter().enumerate() {
-            if block.address == address {
-                index = Some(idx);
-                break;
+        self.used_virt_areas.remove(idx);
+
+        true
+    }
+    /// Recursively frees the page tables reachable from the user-space half of
+    /// `table_phys`, starting at `level` (0 = paging root).
+    ///
+    /// Leaf frames are intentionally NOT freed here: their ownership belongs to
+    /// a `PageAllocation` (ELF segments, thread stacks) or to another subsystem
+    /// (e.g. `sbrk` currently leaks them with `mem::forget`). Freeing them here
+    /// would double-free pages that are still tracked elsewhere, and would also
+    /// try to return MMIO frames (e.g. a framebuffer) to the physical allocator.
+    fn release_page_tables(&self, table_phys: usize, level: usize) {
+        if level >= PG::LEVELS {
+            return;
+        }
+
+        self.self_map_page(table_phys, |table| {
+            // At the root level only the user-space entries are owned by this
+            // address space. The kernel half is shared with every address space.
+            let entry_count = if level == 0 {
+                PG::user_root_entry_count()
+            } else {
+                PG::ENTRIES
+            };
+
+            for entry in table.iter().take(entry_count) {
+                if !entry.is_present() {
+                    continue;
+                }
+
+                if level + 1 == PG::LEVELS {
+                    // Leaf mapping; see the comment on this function.
+                    continue;
+                }
+
+                if entry.is_extended() {
+                    // Huge page (leaf), not a page table.
+                    continue;
+                }
+
+                let child_table = entry.phys();
+
+                if child_table == 0 {
+                    continue;
+                }
+
+                self.release_page_tables(child_table, level + 1);
+
+                noct_physmem_alloc::free_one(child_table);
             }
-        }
-
-        if let Some(idx) = index {
-            self.used_virt_areas.remove(idx);
-        } else {
-            panic!("Tried to free nonexistent block in ASVA: {address:#x?}");
-        }
+        });
     }
 }
 
-// TODO: Rewrite that Drop implementation!
 impl<PG: PagingHierarchy> Drop for AddressSpace<PG> {
     fn drop(&mut self) {
-        let mut physical_addresses = [0usize; 768];
-
-        self.self_map_page(self.page_root_phys, |page_root| {
-            // This region (0..user_root_entry_count) is dedicated to user-space memory.
-            for i in 0..PG::user_root_entry_count() {
-                if page_root[i].is_present() {
-                    let real_address = page_root[i].phys();
-
-                    physical_addresses[i] = real_address;
-                }
-            }
-        });
-
-        for real_address in physical_addresses.iter().filter(|&&x| x != 0) {
-            // Free all the entries in the page table before freeing it.
-            self.self_map_page(*real_address, |page_table| {
-                for i in page_table {
-                    // XXX: `i.phys() <= noct_spec::KERNEL_BASE` is a kludge!
-                    // The problem: kernel can allow accessing devices directly (e.g. linear framebuffer) by mapping it to the userspace.
-                    // For example linear FB's physical address is 0xfd00_0000 and its (physical) freeing will cause a panic
-                    // because it's not a part of real physical memory.
-                    if i.phys() <= noct_spec::KERNEL_BASE && i.is_present() {
-                        noct_physmem_alloc::free_one(i.phys());
-                    }
-                }
-            });
-
-            noct_physmem_alloc::free_one(*real_address);
+        // `predefined` (the kernel address space) must never have its root or
+        // its shared kernel page tables released.
+        if !self.owns_root || self.page_root_phys == 0 {
+            return;
         }
+
+        // We must not pull page tables out from under the CPU. Dead tasks are
+        // normally reaped from the kernel thread, so this is only a safety net.
+        if self.is_loaded() {
+            qemu_log!(
+                "AddressSpace {:?} is being dropped while loaded, leaking its page tables!",
+                self.page_root_phys
+            );
+
+            return;
+        }
+
+        self.release_page_tables(self.page_root_phys, 0);
+
+        noct_physmem_alloc::free_one(self.page_root_phys);
     }
 }
