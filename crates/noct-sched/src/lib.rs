@@ -313,7 +313,8 @@ impl Scheduler {
             };
             unsafe { address_space.get_mut().free_virt_region(addr) };
 
-            // todo!("Free user thread's stack!");
+            // Physical stack frames are owned by `ThreadStack::pa`; they are
+            // released when the thread is dropped below.
         }
 
         // Remove the thread from the thread list.
