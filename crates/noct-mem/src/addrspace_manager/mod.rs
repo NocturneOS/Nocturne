@@ -5,7 +5,7 @@ use crate::{
 };
 use alloc::vec::Vec;
 use noct_logger::qemu_log;
-use noct_spec::{KERNEL_BASE, WORD_SIZE};
+use noct_spec::{KERNEL_BASE, USER_SPACE_TOP, WORD_SIZE};
 
 use crate::paging::{Page, PageFlags, map_single_page, unmap_single_page};
 
@@ -397,7 +397,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
     /// Allocates the virtual region of specified `size`.
     pub fn alloc_virt_region(&mut self, size: usize) -> usize {
         if self.used_virt_areas.is_empty() {
-            let addr = KERNEL_BASE - size;
+            let addr = USER_SPACE_TOP - size;
             self.used_virt_areas.push(AddressSpaceVirtualBlock {
                 address: addr,
                 size,
@@ -405,10 +405,10 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
             return addr;
         }
 
-        // Check the gap between KERNEL_BASE and the topmost block.
+        // Check the gap between USER_SPACE_TOP and the topmost block.
         {
             let first = &self.used_virt_areas[0];
-            let gap = KERNEL_BASE - (first.address + first.size);
+            let gap = USER_SPACE_TOP - (first.address + first.size);
             if gap >= size {
                 let addr = KERNEL_BASE - size;
                 self.used_virt_areas.insert(

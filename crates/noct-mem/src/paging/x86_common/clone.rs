@@ -3,6 +3,7 @@ use core::alloc::Layout;
 use crate::paging::{PageFlags, PagingHierarchy};
 
 /// Clones kernel's paging root, it will just copy PDEs (shallow copy)
+/// I can't get the kernel process that has exactly kernel-only page directories/tables, so just copy from current CR3.
 /// Returns a physical addr of paging root (a value to load into CR3)
 pub fn clone_kernel_page_root<PG: PagingHierarchy>() -> usize {
     // This is a temporary block. We will map pages, work and unmap to it to reduce heap usage.
