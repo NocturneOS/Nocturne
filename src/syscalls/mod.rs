@@ -55,7 +55,10 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
 
     env::chdir,             // 22
 
-    proc::run               // 23
+    proc::run,              // 23
+
+    mem::mrequest,          // 24
+    mem::mfree              // 25
 ];
 
 pub fn convert_err<T>(f: impl FnOnce() -> noct_io::Result<T>) -> Option<T> {

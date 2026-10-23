@@ -393,6 +393,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
     }
 
     // TODO: Maybe Result<usize, ASVAllocationError>?
+    /// Allocates the virtual region of specified `size`.
     pub fn alloc_virt_region(&mut self, size: usize) -> usize {
         if self.used_virt_areas.is_empty() {
             let addr = KERNEL_BASE - size;
@@ -466,6 +467,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
     }
 }
 
+// TODO: Rewrite that Drop implementation!
 impl<PG: PagingHierarchy> Drop for AddressSpace<PG> {
     fn drop(&mut self) {
         let mut physical_addresses = [0usize; 768];
