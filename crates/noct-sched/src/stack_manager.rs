@@ -61,7 +61,9 @@ impl ThreadStack {
         size: usize,
     ) -> Self {
         let page_size = noct_mem::paging::PAGE_SIZE;
-        let base_with_guard = address_space.alloc_virt_region(size + page_size);
+        let base_with_guard = address_space
+            .alloc_virt_region(size + page_size)
+            .expect("failed to allocate user stack virtual region");
         let mapped_base = base_with_guard + page_size; // guard page left unmapped
 
         // qemu_log!("Map from: {mapped_base:#x} to {:#x}", mapped_base + size);
@@ -113,13 +115,16 @@ impl ThreadStack {
 
         //
 
-        let index = (self.stack_pointer & 0xfff) / WORD_SIZE;
+        let index = (self.stack_pointer & (noct_mem::paging::PAGE_SIZE - 1)) / WORD_SIZE;
 
         // qemu_log!("Stack pointer: {:#x?}; Index: {};", self.stack_pointer, index);
 
-        address_space.self_map_page_from_virt(self.stack_pointer & !0x3ff, |data| {
-            data[index] = value;
-        });
+        address_space.self_map_page_from_virt(
+            self.stack_pointer & !(noct_mem::paging::PAGE_SIZE - 1),
+            |data| {
+                data[index] = value;
+            },
+        );
     }
 
     pub unsafe fn push(
