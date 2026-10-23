@@ -48,11 +48,15 @@ pub fn video_acquire(
 
     qemu_log!("P{phys:x} -> V{virt:x} with size of {size} bytes.");
 
-    let vm_addr = unsafe {
+    let Some(vm_addr) = (unsafe {
         noct_sched::this_process()
             .address_space
             .get_mut()
             .alloc_virt_region(size)
+    }) else {
+        noct_sched::set_error(noct_io::error::Error::MemoryError as _);
+
+        return Some((-2_isize) as usize);
     };
 
     let map_ctx = noct_mem::paging::MappingContext::map(
