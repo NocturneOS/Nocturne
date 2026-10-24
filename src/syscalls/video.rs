@@ -51,7 +51,7 @@ pub fn video_acquire(
     let Some(vm_addr) = (unsafe {
         noct_sched::this_process()
             .address_space
-            .get_mut()
+            .pseudo_lock()
             .alloc_virt_region(size)
     }) else {
         noct_sched::set_error(noct_io::error::Error::MemoryError as _);

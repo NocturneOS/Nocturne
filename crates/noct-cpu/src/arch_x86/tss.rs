@@ -47,7 +47,7 @@ static BSP_TSS_KERNEL_STACK: [usize; TSS_KERNEL_STACK_SIZE / core::mem::size_of:
 #[cfg(target_arch = "x86")]
 pub fn init() {
     unsafe {
-        let tss = BSP_TSS.get_mut();
+        let tss = BSP_TSS.pseudo_lock();
 
         tss.ss0 = 0x10;
         tss.esp0 = (BSP_TSS_KERNEL_STACK.as_ptr().addr()

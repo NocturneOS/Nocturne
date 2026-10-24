@@ -174,8 +174,10 @@ impl Scheduler {
     ) -> Option<SharedThread> {
         let is_user_proc = process.id != 0;
 
+        let mut addrspace = unsafe { process.address_space.pseudo_lock() };
+
         let mut stack = if is_user_proc {
-            ThreadStack::new_user(unsafe { process.address_space.get_mut() }, stack_size)
+            ThreadStack::new_user(&mut addrspace, stack_size)
         } else {
             ThreadStack::new(stack_size)
         };
@@ -194,7 +196,7 @@ impl Scheduler {
 
         // Push args onto the stack.
         for i in args {
-            unsafe { stack.push(process.address_space.get_mut(), *i) };
+            unsafe { stack.push(&mut addrspace, *i) };
         }
 
         let stack_top = stack.stack_pointer;
@@ -205,67 +207,70 @@ impl Scheduler {
         unsafe {
             if is_user_proc {
                 stack.push(
-                    process.address_space.get_mut(),
+                    &mut addrspace,
                     thread_trampoline_usermode as *const () as usize,
                 );
             } else {
                 // stack.push(
-                //     process.address_space.get_mut(),
+                //     &mut addrspace,
                 //     thread_exit as *const () as usize,
                 // );
 
                 stack.push(
-                    process.address_space.get_mut(),
+                    &mut addrspace,
                     thread_trampoline as *const () as usize,
                 );
             }
 
-            stack.push(process.address_space.get_mut(), 0x202); // IF=1, IOPL=0
+            stack.push(&mut addrspace, 0x202); // IF=1, IOPL=0
 
-            stack.push(process.address_space.get_mut(), stack_top as usize); // EAX
-            stack.push(process.address_space.get_mut(), entry as *const () as usize); // EBX
-            stack.push(process.address_space.get_mut(), 0); // ECX
-            stack.push(process.address_space.get_mut(), 0); // EDX
-            stack.push(process.address_space.get_mut(), 0); // ESI
-            stack.push(process.address_space.get_mut(), 0); // EDI
-            stack.push(process.address_space.get_mut(), 0); // EBP
+            stack.push(&mut addrspace, stack_top as usize); // EAX
+            stack.push(&mut addrspace, entry as *const () as usize); // EBX
+            stack.push(&mut addrspace, 0); // ECX
+            stack.push(&mut addrspace, 0); // EDX
+            stack.push(&mut addrspace, 0); // ESI
+            stack.push(&mut addrspace, 0); // EDI
+            stack.push(&mut addrspace, 0); // EBP
         }
 
         #[cfg(target_arch = "x86_64")]
         unsafe {
-            stack.push(process.address_space.get_mut(), 0);
+            stack.push(&mut addrspace, 0);
 
             if is_user_proc {
                 // todo!("Usermode trampoline for x86_64")
                 stack.push(
-                    process.address_space.get_mut(),
+                    &mut addrspace,
                     thread_trampoline_usermode64 as *const () as usize,
                 );
             } else {
                 stack.push(
-                    process.address_space.get_mut(),
+                    &mut addrspace,
                     thread_trampoline64 as *const () as usize,
                 );
             }
 
-            stack.push(process.address_space.get_mut(), 0x202); // IF=1, IOPL=0
+            stack.push(&mut addrspace, 0x202); // IF=1, IOPL=0
 
-            stack.push(process.address_space.get_mut(), stack_top as usize); // RAX
-            stack.push(process.address_space.get_mut(), entry as *const () as usize); // RBX = entry
-            stack.push(process.address_space.get_mut(), 0); // RCX
-            stack.push(process.address_space.get_mut(), 0); // RDX
-            stack.push(process.address_space.get_mut(), 0); // RSI
-            stack.push(process.address_space.get_mut(), 0); // RDI
-            stack.push(process.address_space.get_mut(), 0); // RBP
-            stack.push(process.address_space.get_mut(), 0); // R8
-            stack.push(process.address_space.get_mut(), 0); // R9
-            stack.push(process.address_space.get_mut(), 0); // R10
-            stack.push(process.address_space.get_mut(), 0); // R11
-            stack.push(process.address_space.get_mut(), 0); // R12
-            stack.push(process.address_space.get_mut(), 0); // R13
-            stack.push(process.address_space.get_mut(), 0); // R14
-            stack.push(process.address_space.get_mut(), 0); // R15
+            stack.push(&mut addrspace, stack_top as usize); // RAX
+            stack.push(&mut addrspace, entry as *const () as usize); // RBX = entry
+            stack.push(&mut addrspace, 0); // RCX
+            stack.push(&mut addrspace, 0); // RDX
+            stack.push(&mut addrspace, 0); // RSI
+            stack.push(&mut addrspace, 0); // RDI
+            stack.push(&mut addrspace, 0); // RBP
+            stack.push(&mut addrspace, 0); // R8
+            stack.push(&mut addrspace, 0); // R9
+            stack.push(&mut addrspace, 0); // R10
+            stack.push(&mut addrspace, 0); // R11
+            stack.push(&mut addrspace, 0); // R12
+            stack.push(&mut addrspace, 0); // R13
+            stack.push(&mut addrspace, 0); // R14
+            stack.push(&mut addrspace, 0); // R15
         }
+
+        // Drop the lock
+        drop(addrspace);
 
         // qemu_log!("STACK: {:08x?}; ESP: {:08x?}", stack.addr(), writeable_sp.addr());
 
@@ -300,18 +305,16 @@ impl Scheduler {
     fn remove_task(&mut self, thread: SharedThread) {
         // If thread is placed in userspace AddrSpace.
         if unsafe { thread.stack.pointer().addr() } < KERNEL_BASE {
-            let address_space = &thread.process.address_space;
+            let mut address_space = unsafe { thread.process.address_space.pseudo_lock() };
             let stack_addr = thread.stack.stack_addr;
 
             // Count guard page in.
             let addr = stack_addr - noct_mem::paging::PAGE_SIZE;
 
-            unsafe {
-                address_space
-                    .get_mut()
-                    .unmap_pages(stack_addr, thread.stack.stack_size)
-            };
-            unsafe { address_space.get_mut().free_virt_region(addr) };
+            address_space
+                .unmap_pages(stack_addr, thread.stack.stack_size);
+
+            address_space.free_virt_region(addr);
 
             // Physical stack frames are owned by `ThreadStack::pa`; they are
             // released when the thread is dropped below.

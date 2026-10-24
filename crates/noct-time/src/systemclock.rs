@@ -8,13 +8,13 @@ lazy_static! {
 
 #[inline]
 pub fn set_timer_frequency(freq: usize) {
-    *unsafe { TICKING_FREQUENCY.get_mut() } = freq;
+    *unsafe { TICKING_FREQUENCY.pseudo_lock() } = freq;
 }
 
 #[inline]
 pub fn tick() {
     unsafe {
-        *TIME_TICKS.get_mut() += 1;
+        *TIME_TICKS.pseudo_lock() += 1;
     }
 }
 

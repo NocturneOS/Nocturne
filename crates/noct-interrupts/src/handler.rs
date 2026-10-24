@@ -22,11 +22,11 @@ pub unsafe extern "C" fn irq_handler(regs: &mut CPURegisters) {
 }
 
 pub fn register_interrupt_handler(int_nr: u8, callback: InterruptCallback) {
-    (unsafe { INTERRUPT_VECTORS.get_mut() })[int_nr as usize] = Some(callback);
+    (unsafe { INTERRUPT_VECTORS.pseudo_lock() })[int_nr as usize] = Some(callback);
 }
 
 pub fn unregister_interrupt_handler(int_nr: u8) {
-    (unsafe { INTERRUPT_VECTORS.get_mut() })[int_nr as usize] = None;
+    (unsafe { INTERRUPT_VECTORS.pseudo_lock() })[int_nr as usize] = None;
 }
 
 pub fn interrupt_handler(regs: &mut CPURegisters) {

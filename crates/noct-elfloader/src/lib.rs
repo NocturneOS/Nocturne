@@ -96,9 +96,9 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
         };
 
         unsafe {
-            let physical_allocation = proc
-                .address_space
-                .get_mut()
+            let mut addrspace = proc.address_space.pseudo_lock();
+
+            let physical_allocation = addrspace
                 .alloc_map_multiple_pages(
                     (i.p_vaddr as usize) & !0xfff,
                     page_count * noct_mem::get_page_size(),
@@ -106,8 +106,7 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
                 )
                 .unwrap();
 
-            proc.address_space
-                .get_mut()
+            addrspace
                 .map_pages_pa(
                     &physical_allocation,
                     (i.p_vaddr as usize) & !0xfff,
@@ -116,8 +115,7 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
                 .unwrap();
 
             {
-                proc.address_space
-                    .get_mut()
+                addrspace
                     .self_map_data(&physical_allocation, |area| {
                         qemu_log!(
                             "[{physical_allocation:x?}] Zeroing: {:?} (then {} bytes will be copied)",
@@ -137,10 +135,12 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
                     });
             }
 
+            drop(addrspace);
+
             proc.program_image
                 .as_ref()
                 .unwrap()
-                .get_mut()
+                .pseudo_lock()
                 .loaded_segments
                 .push(LoadInfo {
                     physical_allocation: physical_allocation as _,

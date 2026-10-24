@@ -16,7 +16,7 @@ impl<T> PseudoSync<T> {
     }
 
     #[allow(clippy::mut_from_ref)]
-    pub unsafe fn get_mut(&self) -> &mut T {
+    pub unsafe fn pseudo_lock(&self) -> &mut T {
         unsafe { &mut *self.data.get() }
     }
 }

@@ -8,12 +8,12 @@ pub fn sbrk(increment: usize, _: usize, _: usize, _: usize, _: usize) -> Option<
 
     let increment = increment as isize;
 
-    let address_space_lock = unsafe { process.address_space.get_mut() };
+    let mut address_space_lock = unsafe { process.address_space.pseudo_lock() };
     let mut lock = process.heap.lock();
 
     let heap = lock.as_mut().expect("Heap was uninitialized!");
 
-    let next_value = heap.sbrk(address_space_lock, increment);
+    let next_value = heap.sbrk(&mut address_space_lock, increment);
 
     match next_value {
         Ok(next_address) => {
@@ -45,7 +45,7 @@ pub fn mrequest(bytes_count: usize, _: usize, _: usize, _: usize, _: usize) -> O
     let address = noct_tools::without_interrupts::without_interrupts(|| unsafe {
         process
             .address_space
-            .get_mut()
+            .pseudo_lock()
             .alloc_virt_region(bytes_count)
     });
 
@@ -80,7 +80,7 @@ pub fn mfree(
 
     // AddressSpace inside Process has a pseudo-lock, so I have to disable interrupts for a while.
     let freed = noct_tools::without_interrupts::without_interrupts(|| unsafe {
-        process.address_space.get_mut().free_virt_region(addr)
+        process.address_space.pseudo_lock().free_virt_region(addr)
     });
 
     if !freed {

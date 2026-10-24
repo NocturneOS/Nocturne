@@ -21,7 +21,7 @@ pub trait InterruptController {
 }
 
 pub fn set_interrupt_controller(ic: &'static dyn InterruptController) {
-    unsafe { CURRENT_INTERRUPT_CONTROLLER.get_mut().ic = Some(ic) };
+    unsafe { CURRENT_INTERRUPT_CONTROLLER.pseudo_lock().ic = Some(ic) };
 }
 
 pub fn eoi(interrupt_nr: u8) {

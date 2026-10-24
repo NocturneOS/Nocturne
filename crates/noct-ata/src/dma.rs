@@ -36,7 +36,7 @@ pub fn init() -> Result<(), ()> {
 
     unsafe {
         DMA_IO_PORT
-            .get_mut()
+            .pseudo_lock()
             .set(Some(bar4.address.try_into().unwrap()))
     };
 
