@@ -12,7 +12,7 @@ use noct_fsman::{
         file::{FileHandle, FileOpenMode},
     },
 };
-use noct_logger::{noct_time::repr::DateTime, qemu_log};
+use noct_logger::noct_time::repr::DateTime;
 use spin::Mutex;
 
 pub mod disk_device;

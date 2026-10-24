@@ -2,13 +2,12 @@ use core::{
     ffi::{CStr, c_char},
     sync::atomic::{
         AtomicPtr, AtomicU32, AtomicUsize,
-        Ordering::{self, Acquire},
+        Ordering,
     },
 };
 
 use alloc::{borrow::Cow, ffi::CString, sync::Arc};
 use lazy_static::lazy_static;
-use noct_descriptor::Descriptor;
 use noct_elf::ProgramImage;
 use noct_sync::pseudosync::PseudoSync;
 use spin::Mutex;

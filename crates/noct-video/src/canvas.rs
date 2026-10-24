@@ -25,7 +25,7 @@ impl<'vid> Canvas<'vid> {
             return false;
         }
         
-        let bpp = self.video.bpp().unwrap();
+        // let bpp = self.video.bpp().unwrap();
         let repr = &color.to_le_bytes();
 
         let offset = ((y * self.video.resolution().width) + x) * self.video.bpp().unwrap();
