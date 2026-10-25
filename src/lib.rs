@@ -172,7 +172,7 @@ fn kmain(boot_info: BootInformation) -> ! {
     noct_sched::this_process().chdir("mem0:/");
 
     {
-        match noct_elfloader::spawn("mem0:/progs/cwd.run", &[]) {
+        match noct_elfloader::spawn("mem0:/progs/doom.run", &[]) {
             Ok(handle) => {
                 qemu_log!("Started process {}", handle.pid);
 

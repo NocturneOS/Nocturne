@@ -505,6 +505,7 @@ impl<PG: PagingHierarchy> AddressSpace<PG> {
     }
 
     /// Allocates the virtual region of specified `size`.
+    /// This function DOESN'T perform mapping part, so accessing this area will fail!
     ///
     /// The size is rounded up to a page. Returns `None` if the size is zero,
     /// overflows, or if the user virtual address space is exhausted.

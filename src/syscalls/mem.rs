@@ -1,5 +1,6 @@
 use noct_io::error::Error;
 use noct_logger::qemu_log;
+use noct_mem::paging::PageFlags;
 
 use crate::mem::usermem::verify_ptr;
 
@@ -42,7 +43,7 @@ pub fn mrequest(bytes_count: usize, _: usize, _: usize, _: usize, _: usize) -> O
     let process = &noct_sched::this_thread().process;
 
     // AddressSpace inside Process has a pseudo-lock, so I have to disable interrupts for a while.
-    let address = noct_tools::without_interrupts::without_interrupts(|| unsafe {
+    let address: Option<usize> = noct_tools::without_interrupts::without_interrupts(|| unsafe {
         process
             .address_space
             .pseudo_lock()
@@ -56,6 +57,35 @@ pub fn mrequest(bytes_count: usize, _: usize, _: usize, _: usize, _: usize) -> O
 
         return None;
     };
+
+    let alloc = noct_tools::without_interrupts::without_interrupts(|| unsafe {
+        process
+            .address_space
+            .pseudo_lock()
+            .alloc_map_multiple_pages(
+                address,
+                bytes_count,
+                PageFlags::Writeable | PageFlags::Userspace,
+            )
+    });
+
+    if let Err(e) = alloc {
+        // Deallocate region.
+        noct_tools::without_interrupts::without_interrupts(|| unsafe {
+            process
+                .address_space
+                .pseudo_lock()
+                .free_virt_region(address)
+        });
+
+        qemu_log!("mrequest: failed to allocate {bytes_count} bytes (error: {e:?})");
+
+        noct_sched::set_error(noct_io::error::Error::MemoryError as _);
+
+        return None;
+    }
+
+    core::mem::forget(alloc);
 
     Some(address)
 }
