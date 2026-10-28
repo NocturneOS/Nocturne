@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DateTime {
     year: u16,
     month: u8,
@@ -6,6 +6,7 @@ pub struct DateTime {
     hour: u8,
     minute: u8,
     second: u8,
+    millis: u16,
 }
 
 impl DateTime {
@@ -16,6 +17,7 @@ impl DateTime {
         hour: u8,
         minute: u8,
         second: u8,
+        millis: u16,
     ) -> Result<Self, TimeError> {
         if month < 1 || month > 12 {
             return Err(TimeError::InvalidMonth);
@@ -29,6 +31,9 @@ impl DateTime {
         if second >= 60 {
             return Err(TimeError::InvalidSecond);
         }
+        if millis >= 1000 {
+            return Err(TimeError::InvalidMillis);
+        }
 
         let time = Self {
             year,
@@ -37,6 +42,7 @@ impl DateTime {
             hour,
             minute,
             second,
+            millis,
         };
 
         if day < 1 || day > (Self::days_in_month(&time)? as u8) {
@@ -44,6 +50,34 @@ impl DateTime {
         }
 
         Ok(time)
+    }
+
+    pub fn year(&self) -> u16 {
+        self.year
+    }
+
+    pub fn month(&self) -> u8 {
+        self.month
+    }
+
+    pub fn day(&self) -> u8 {
+        self.day
+    }
+
+    pub fn hour(&self) -> u8 {
+        self.hour
+    }
+
+    pub fn minute(&self) -> u8 {
+        self.minute
+    }
+
+    pub fn second(&self) -> u8 {
+        self.second
+    }
+
+    pub fn millis(&self) -> u16 {
+        self.millis
     }
 
     pub fn epoch() -> Self {
@@ -54,6 +88,7 @@ impl DateTime {
             hour: 0,
             minute: 0,
             second: 0,
+            millis: 0,
         }
     }
 
@@ -134,4 +169,5 @@ pub enum TimeError {
     InvalidHour,
     InvalidMinute,
     InvalidSecond,
+    InvalidMillis,
 }

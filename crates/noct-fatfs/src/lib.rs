@@ -130,6 +130,7 @@ fn direntry_to_entity<IO: fatfs::ReadWriteSeek, TP, OCC: OemCpConverter>(
             created_at.time.hour as _,
             created_at.time.min as _,
             created_at.time.sec as _,
+            0
         )
         .unwrap(),
         modified_at: noct_time::repr::DateTime::new(
@@ -139,6 +140,7 @@ fn direntry_to_entity<IO: fatfs::ReadWriteSeek, TP, OCC: OemCpConverter>(
             modified_at.time.hour as _,
             modified_at.time.min as _,
             modified_at.time.sec as _,
+            0
         )
         .unwrap(),
     })

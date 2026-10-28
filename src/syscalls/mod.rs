@@ -58,7 +58,9 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     proc::run,              // 23
 
     mem::mrequest,          // 24
-    mem::mfree              // 25
+    mem::mfree,             // 25
+
+    time::gettimeofday,     // 26
 ];
 
 pub fn convert_err<T>(f: impl FnOnce() -> noct_io::Result<T>) -> Option<T> {

@@ -38,7 +38,7 @@ members = [
     "crates/noct-descriptor",
     "crates/noct-input",
     "crates/noct-input-dispatcher",
-    "crates/noct-cmos",
+    "crates/noct-rtc",
     "crates/noct-ioport",
     "crates/noct-acpi", "crates/noct-cmdline-parser", "crates/noct-ata",
 ]
@@ -56,7 +56,7 @@ noct-acpi = { path = "crates/noct-acpi" }
 noct-ata = { path = "crates/noct-ata" }
 noct-boot = { path = "crates/noct-boot" }
 noct-cpu = { path = "crates/noct-cpu" }
-noct-cmos = { path = "crates/noct-cmos" }
+noct-rtc = { path = "crates/noct-rtc" }
 noct-diskman = { path = "crates/noct-diskman" }
 noct-fsman = { path = "crates/noct-fsman" }
 noct-fs = { path = "crates/noct-fs" }

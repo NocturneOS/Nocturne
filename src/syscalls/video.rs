@@ -66,7 +66,7 @@ pub fn video_acquire(
         PageFlags::Writeable | PageFlags::CacheDisable | PageFlags::Userspace,
     );
 
-    qemu_log!("Allocated video buffer at V{vm_addr:x} with size of {size} bytes.");
+    qemu_log!("Allocated video buffer at V{vm_addr:x} with size of {size} bytes. ({v1:x} - {v2:x})", v1 = vm_addr, v2 = (vm_addr + size));
 
     let vmi = VideoModeInfo {
         width: binding.resolution().width as _,

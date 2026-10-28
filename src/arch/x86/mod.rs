@@ -175,6 +175,10 @@ pub extern "C" fn __arch_init(multiboot_header: *const BootInformationHeader) ->
 pub fn post_init(boot: &BootInformation) {
     qemu_log!("Post init...");
 
+    // Init RTC
+    noct_rtc::init();
+
+    // Init video
     let fb = boot.framebuffer_tag().unwrap().unwrap();
 
     let phys_addr = fb.address();

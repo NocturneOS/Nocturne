@@ -224,7 +224,7 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
     noct_sched::create_thread(
         Arc::clone(&proc),
         unsafe { core::mem::transmute(elf.ehdr.e_entry as usize) },
-        512 << 10, // Stack size = 512 KB
+        1024 << 10, // Stack size = 1 MB
         ThreadPriority::Medium,
         ThreadFlags::User,
         &values,

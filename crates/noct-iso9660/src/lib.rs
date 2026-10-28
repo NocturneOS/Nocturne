@@ -39,6 +39,7 @@ fn iso_datetime_to_fsm(entry: &ISODirectoryEntry) -> noct_time::repr::DateTime {
         entry.record.datetime.hour as _,
         entry.record.datetime.minute as _,
         entry.record.datetime.second as _,
+        0
     )
     .unwrap()
 }

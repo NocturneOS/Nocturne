@@ -27,3 +27,20 @@ pub fn init(frequency: u32) {
 
     register_interrupt_handler(0x20, callback);
 }
+
+pub fn get_count() -> u16 {
+    noct_tools::without_interrupts::without_interrupts(|| {
+        let mut count: u16;
+
+        let control = 0b00 << 6;  // Channel 0
+
+        unsafe { 
+            x86::io::outb(0x43, control);
+
+            count = x86::io::inb(0x40) as u16;
+            count |= (x86::io::inb(0x40) as u16) << 8;
+        }
+
+        count
+    })
+}

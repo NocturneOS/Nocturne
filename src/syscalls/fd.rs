@@ -46,6 +46,8 @@ pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Option<us
         path.insert_str(0, &process.cwd());
     }
 
+    qemu_log!("Opening path: {path:?}");
+
     let flags = OpenFlags::from_bits_truncate(mode as _);
 
     let handle = if flags.contains(OpenFlags::Directory) {
@@ -105,7 +107,7 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<us
 
     let fd_val = lock.find_mut(fd)?;
 
-    qemu_log!("read: fd {fd} -> {:?}", fd_val.res);
+    // qemu_log!("read: fd {fd} -> {:?}", fd_val.res);
 
     let mut input_needs_waiting = false;
 
@@ -187,7 +189,7 @@ pub fn write(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<u
 
     let fd_val = lock.find_mut(fd)?;
 
-    qemu_log!("write: fd {fd} -> {:?}", fd_val.res);
+    // qemu_log!("write: fd {fd} -> {:?}", fd_val.res);
 
     match &mut fd_val.res {
         ResourceDescriptor::Null => return Some(0),

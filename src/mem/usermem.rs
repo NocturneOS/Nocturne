@@ -23,9 +23,9 @@ pub fn verify_ptr_range<T>(addr: usize, size: usize) -> Option<*const T> {
 }
 
 pub fn verify_ptr_mut<T>(addr: usize) -> Option<*mut T> {
-    verify_ptr_range_mut(addr, 1)
+    verify_ptr_range_mut(addr, core::mem::size_of::<T>())
 }
 
 pub fn verify_ptr<T>(addr: usize) -> Option<*const T> {
-    verify_ptr_range(addr, 1).map(|x| x as *const T)
+    verify_ptr_range(addr, core::mem::size_of::<T>()).map(|x| x as *const T)
 }

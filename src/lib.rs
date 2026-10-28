@@ -3,7 +3,7 @@
 #![feature(get_disjoint_mut_helpers)]
 
 
-use core::panic::PanicInfo;
+use core::{panic::PanicInfo, time::Duration};
 
 use alloc::boxed::Box;
 use multiboot2::BootInformation;
@@ -185,8 +185,6 @@ fn kmain(boot_info: BootInformation) -> ! {
             }
         }
     }
-
-    qemu_log!("Time: {:?}", noct_cmos::read());
 
     {
         let (data, time) = noct_tools::measure_time_timer(|| noct_fs::read_file("ata0:/hello.txt"));
