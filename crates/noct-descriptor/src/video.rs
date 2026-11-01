@@ -21,6 +21,14 @@ impl VideoHandle {
         Self { lock, map_ctx, offset: 0 }
     }
 
+    pub fn get_lock(&self) -> &VideoLock {
+        &self.lock
+    }
+
+    pub fn map_ctx(&self) -> &MappingContext {
+        &self.map_ctx
+    }
+
     pub fn buffer_len(&self) -> usize {
         self.lock.as_ref().unwrap().buffer_size()
     }

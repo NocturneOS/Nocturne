@@ -5,41 +5,51 @@ pub use num_traits::{FromPrimitive, ToPrimitive};
 #[derive(Debug, Copy, Clone, PartialEq, Eq, FromPrimitive, ToPrimitive)]
 pub enum Error {
     /// Used to clear process' errno
-    None,
+    None = 0,
     /// Entity already exists
-    AlreadyExists,
+    AlreadyExists = 1,
     /// Attempted access on non-existent drive.
-    NoDrive,
+    NoDrive = 2,
     /// Filesystem is not recognized on specific drive.
-    FilesystemNotRecognized,
+    FilesystemNotRecognized = 3,
     /// Iterator ended
-    EndOfIterator,
+    EndOfIterator = 4,
+    /// Invalid argument
+    InvalidArgument = 5,
     /// Tried access an entity that has different properties.
     /// For example treating file as a directory.
     InvalidEntity,
     /// Trying to do some operations with non-existent handle.
     /// For example using handle of closed file to read data.
-    InvalidHandle,
+    InvalidHandle = 7,
     /// Invalid combinations of open mode flags.
     InvalidMode,
     /// Tried to seek beyond disk bounds or integer overflow happened.
-    InvalidSeek,
+    InvalidSeek = 9,
     /// Invalid path.
     InvalidPath,
     /// Serious error - hardware or filesystem fault
-    IoError,
+    IoError = 11,
     /// Entity not found
-    NotFound,
+    NotFound = 12,
     /// Permission denied
-    PermissionDenied,
+    PermissionDenied = 13,
+    /// This function is not supported
+    NotSupported = 14,
+    /// This function is not implemented
+    Unimplemented = 15,
     /// Raised on writing operations where filesystem is read-only.
-    ReadOnly,
-    /// Treat this mostly as unimplemented feature.
-    UnsupportedOperation,
-    /// Attempted access beyond memory buffer, hardware memory exceptions, null pointer usage.
-    MemoryError,
+    ReadOnly = 16,
+    /// No available memory
+    NoMemory = 17,
     /// No space on disk.
-    NoSpace,
+    NoSpace = 18,
+    /// Attempted access beyond memory buffer, hardware memory exceptions, null pointer usage.
+    MemoryError = 19,
+    /// Operation not permitted
+    NotPermitted = 20,
+    /// Resource is busy.
+    Busy = 21,
     /// A kind of error that hasn't documented here yet.
-    Unknown,
+    Unknown = 0xFFFF,
 }

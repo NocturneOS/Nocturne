@@ -85,6 +85,7 @@ noct-io = { path = "crates/noct-io" }
 noct-ioport = { path = "crates/noct-ioport" }
 noct-tty = { path = "crates/noct-tty" }
 noct-video = { path = "crates/noct-video" }
+num-traits = { version = "0.2.19", default-features = false }
 
 # Profiles
 

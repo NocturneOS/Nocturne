@@ -118,7 +118,7 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
     }
 
     fn write(&self, _handle: &mut FileHandle, _buffer: &[u8]) -> noct_io::Result<u64> {
-        Err(noct_io::error::Error::UnsupportedOperation)
+        Err(noct_io::error::Error::NotSupported)
     }
 
     fn opendir(&self, path: &str) -> noct_io::Result<DirectoryHandle> {

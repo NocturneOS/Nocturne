@@ -557,6 +557,7 @@ dependencies = [
  "noct-tools",
  "noct-tty",
  "noct-video",
+ "num-traits",
  "spin 0.12.3",
  "x86",
 ]

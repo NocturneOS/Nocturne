@@ -43,7 +43,7 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
 
     fd::flush,              // 15
 
-    time::time,             // 16
+    time::time,             // 16 - TO REMOVE?
     time::sleep_millis,     // 17
     time::sleep_nanos,      // 18
 

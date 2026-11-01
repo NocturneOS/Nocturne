@@ -2,6 +2,7 @@
 
 pub mod canvas;
 pub mod video_mode;
+pub mod color_layout;
 
 use lazy_static::lazy_static;
 use spin::Mutex;

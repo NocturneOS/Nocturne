@@ -1,5 +1,7 @@
 use noct_spec::units::Size;
 
+use crate::color_layout::{self, ColorLayout};
+
 #[derive(Debug)]
 pub enum VideoModeType {
     Text,     // Not yet used
@@ -16,15 +18,18 @@ pub struct VideoMode {
 
     resolution: Size<usize>,
     mode: VideoModeType,
+
+    color_layout: ColorLayout
 }
 
 impl VideoMode {
-    pub fn new_graphics(fb: *mut u8, phys_addr: usize, size: Size<usize>, bpp: usize) -> Self {
+    pub fn new_graphics(fb: *mut u8, phys_addr: usize, size: Size<usize>, bpp: usize, color_layout: ColorLayout) -> Self {
         VideoMode {
             buffer_ptr: fb.addr(),
             buffer_physical_addr: phys_addr,
             resolution: size,
             mode: VideoModeType::Graphics { bpp },
+            color_layout
         }
     }
 
@@ -46,6 +51,10 @@ impl VideoMode {
 
     pub fn buffer_phys(&self) -> usize {
         self.buffer_physical_addr
+    }
+
+    pub fn color_layout(&self) -> &ColorLayout {
+        &self.color_layout
     }
 
     pub fn resolution(&self) -> &Size<usize> {

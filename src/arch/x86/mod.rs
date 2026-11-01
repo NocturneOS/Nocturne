@@ -9,7 +9,7 @@ use crate::{arch, kmain, qemu_log};
 
 use noct_mem::paging::PageFlags;
 use noct_spec::units::Size;
-use noct_video::video_mode::VideoMode;
+use noct_video::{color_layout::ColorLayout, video_mode::VideoMode};
 
 use multiboot2::{BootInformation, BootInformationHeader};
 
@@ -204,6 +204,7 @@ pub fn post_init(boot: &BootInformation) {
             fb.height() as _,
         )),
         (fb.bpp() >> 3) as _,
+        ColorLayout::new(16, 8, 0)
     ));
 
     qemu_log!("Video initialized");

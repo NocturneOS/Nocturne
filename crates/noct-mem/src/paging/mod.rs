@@ -54,6 +54,14 @@ impl MappingContext {
             byte_count
         }
     }
+
+    pub fn vm_addr(&self) -> usize {
+        self.virtual_addr
+    }
+
+    pub fn len(&self) -> usize {
+        self.byte_count
+    }
 }
 
 impl Drop for MappingContext {
