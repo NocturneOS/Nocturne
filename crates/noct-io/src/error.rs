@@ -50,6 +50,8 @@ pub enum Error {
     NotPermitted = 20,
     /// Resource is busy.
     Busy = 21,
+    /// Wrong executable format or unsupported architecture.
+    ExecFormat = 22,
     /// A kind of error that hasn't documented here yet.
     Unknown = 0xFFFF,
 }

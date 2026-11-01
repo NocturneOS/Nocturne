@@ -61,6 +61,9 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     mem::mfree,             // 25
 
     time::gettimeofday,     // 26
+
+    video::video_manage,    // 27
+    video::video_release,   // 28
 ];
 
 pub fn convert_err<T>(f: impl FnOnce() -> noct_io::Result<T>) -> Option<T> {

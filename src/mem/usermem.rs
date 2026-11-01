@@ -18,8 +18,8 @@ pub fn verify_ptr_range_mut<T>(addr: usize, size: usize) -> Option<*mut T> {
     Some(addr as *mut T)
 }
 
-pub fn verify_ptr_range<T>(addr: usize, size: usize) -> Option<*const T> {
-    verify_ptr_range_mut(addr, size).map(|x| x as *const T)
+pub fn verify_ptr_range<T>(addr: usize, len: usize) -> Option<*const T> {
+    verify_ptr_range_mut(addr, len * core::mem::size_of::<T>()).map(|x| x as *const T)
 }
 
 pub fn verify_ptr_mut<T>(addr: usize) -> Option<*mut T> {
