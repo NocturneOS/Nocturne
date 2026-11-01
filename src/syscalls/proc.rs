@@ -20,11 +20,15 @@ bitflags! {
         const PipedStdin  = 1 << 3;
         const PipedStdout = 1 << 4;
         const PipedStderr = 1 << 5;
-
-        const Blocking = 1 << 6;
     }
 }
 
+/// Spawns a new process.
+/// 
+/// WARNING: Check errno before checking return value!
+/// 
+/// Returns 0 if ELF loading error happened.
+/// Returns a new process' PID otherwise. (errno is set to 0)
 pub fn run(
     path_ptr: usize,
     arguments_ptr: usize,
@@ -54,6 +58,8 @@ pub fn run(
         .map(|&x| unsafe { CStr::from_ptr(x) }.to_str().unwrap())
         .collect::<Vec<_>>();
 
+    let flags = ProgramRunFlags::from_bits_truncate(flags as _);
+
     let hdl = match noct_elfloader::spawn(path, &arguments_str) {
         Ok(hdl) => hdl,
         Err(LoadError::System(e)) => {
@@ -73,11 +79,13 @@ pub fn run(
         }
     };
 
+    noct_sched::set_error(Error::None as _);
+
     Some(hdl.pid)
 }
 
 pub fn waitpid(pid: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
-    let ph = convert_err(|| noct_sched::get_process_handle(pid).ok_or(Error::MemoryError))?;
+    let ph = convert_err(|| noct_sched::get_process_handle(pid).ok_or(Error::InvalidHandle))?;
 
     let code = noct_sched::waitpid(&ph);
 
