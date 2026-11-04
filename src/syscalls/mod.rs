@@ -6,6 +6,7 @@ mod env;
 mod error;
 mod event;
 mod exit;
+mod dir;
 mod fd;
 mod mem;
 mod print;
@@ -64,6 +65,8 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
 
     video::video_manage,    // 27
     video::video_release,   // 28
+
+    dir::opendir,           // 29
 ];
 
 pub fn convert_err<T>(f: impl FnOnce() -> noct_io::Result<T>) -> Option<T> {

@@ -1,7 +1,6 @@
 use core::time::Duration;
 
 use noct_io::error::Error;
-use noct_logger::qemu_log;
 
 use crate::syscalls::convert_err;
 
