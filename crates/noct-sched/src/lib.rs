@@ -875,6 +875,7 @@ pub fn waitpid(hdl: &ProcessHandle) -> u32 {
     code
 }
 
+#[deprecated]
 pub fn set_error(value: usize) {
     this_thread().last_error.store(value, Ordering::Release)
 }

@@ -9,20 +9,19 @@ use noct_logger::qemu_log;
 use bitflags::bitflags;
 use noct_sched::thread::ThreadWaitReason;
 
-use crate::{mem::usermem::verify_ptr, syscalls::convert_err};
+use crate::mem::usermem::verify_ptr;
 
 bitflags! {
     #[derive(Debug, Clone, Copy)]
     pub struct OpenFlags: u32 {
         // First flags are copied from noct_fsman::FileOpenFlags
-        const Directory = 1 << 5;
     }
 }
 
-pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Option<usize> {
+pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
     // TODO: Sanitize that.
     // TODO: Set error on utf8 encoding failure
-    let path = convert_err(|| verify_ptr(path).ok_or(Error::MemoryError))?;
+    let path = verify_ptr(path).ok_or(Error::MemoryError)?;
 
     let path = unsafe { CStr::from_ptr(path) }
         .to_str()
@@ -33,9 +32,7 @@ pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Option<us
         Err(e) => {
             qemu_log!("open: Error while decoding UTF-8 path: {e:?}");
 
-            noct_sched::set_error(noct_io::error::Error::InvalidPath as _);
-
-            return None;
+            return Err(Error::InvalidPath);
         }
     };
 
@@ -50,49 +47,35 @@ pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Option<us
 
     let flags = OpenFlags::from_bits_truncate(mode as _);
 
-    let handle = if flags.contains(OpenFlags::Directory) {
-        let dir = match noct_fs::open_directory(&path) {
-            Ok(dh) => dh,
-            Err(e) => {
-                noct_sched::set_error(e as _);
-
-                return Some((-1_isize) as usize);
-            }
-        };
-
-        ResourceDescriptor::DirectoryHandle(dir)
-    } else {
+    let handle = {
         let fh = match noct_fs::open_file(&path, FileOpenMode::from_bits_truncate(mode as _)) {
             Ok(fh) => fh,
             Err(e) => {
-                noct_sched::set_error(e as _);
-
-                return Some((-1_isize) as usize);
+                return Err(Error::NotFound);
             }
         };
 
         ResourceDescriptor::FileStream(fh)
     };
 
-
     let mut reslock = process.resources.lock();
 
     let descr = reslock.make(handle);
 
-    Some(descr.id())
+    Ok(descr.id())
 }
 
-pub fn close(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
+pub fn close(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
     let process = &noct_sched::this_thread().process;
 
     let mut reslock = process.resources.lock();
 
     reslock.close(fd);
 
-    None
+    Ok(0)
 }
 
-pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<usize> {
+pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Result<usize, Error> {
     // FIXME: VERIFY THE POINTER IS WITHIN USERSPACE AREA!
 
     let ptr = data as *mut u8;
@@ -105,14 +88,14 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<us
 
     let mut lock = process.resources.lock();
 
-    let fd_val = lock.find_mut(fd)?;
+    let fd_val = lock.find_mut(fd).ok_or(Error::InvalidHandle)?;
 
     // qemu_log!("read: fd {fd} -> {:?}", fd_val.res);
 
     let mut input_needs_waiting = false;
 
     match &mut fd_val.res {
-        ResourceDescriptor::Null => return Some(0),
+        ResourceDescriptor::Null => return Ok(0),
         ResourceDescriptor::TerminalInput => {
             let ifd = noct_tty::input::input_fd();
 
@@ -122,7 +105,8 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<us
             let mut kres = kproc.resources.lock();
 
             let evq = kres
-                .find_mut(ifd)?
+                .find_mut(ifd)
+                .ok_or(Error::InvalidHandle)?
                 .res
                 .as_event_queue_mut()
                 .expect("Input FD is not an EventQueue!");
@@ -134,15 +118,13 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<us
                 Some(ch) => {
                     slice[0] = ch;
 
-                    return Some(1);
+                    return Ok(1);
                 }
             }
         }
         ResourceDescriptor::EventQueue(queue) => {
             if len < 32 {
-                noct_sched::set_error(noct_io::error::Error::MemoryError as _);
-
-                return None;
+                return Err(noct_io::error::Error::MemoryError as _);
             }
 
             if queue.is_empty() {
@@ -156,16 +138,11 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<us
             }
         }
         ResourceDescriptor::FileStream(file_handle) => {
-            let value = file_handle.read(slice);
+            let read_bytes = file_handle.read(slice)?;
 
-            match value {
-                Err(e) => noct_sched::set_error(e as _),
-                Ok(read_bytes) => return Some(read_bytes as _),
-            }
+            return Ok(read_bytes as usize);
         }
-        _ => {
-            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
-        }
+        _ => return Err(Error::InvalidHandle),
     }
 
     drop(lock);
@@ -174,10 +151,10 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<us
         noct_sched::pause(ThreadWaitReason::InputEvent);
     }
 
-    Some(0)
+    Ok(0)
 }
 
-pub fn write(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<usize> {
+pub fn write(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Result<usize, Error> {
     // FIXME: VERIFY THE POINTER IS WITHIN USERSPACE AREA!
 
     let ptr = data as *const u8;
@@ -187,69 +164,57 @@ pub fn write(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Option<u
 
     let mut lock = process.resources.lock();
 
-    let fd_val = lock.find_mut(fd)?;
+    // XXX: Or Error::NotFound?
+    let fd_val = lock.find_mut(fd).ok_or(Error::InvalidHandle)?;
 
     // qemu_log!("write: fd {fd} -> {:?}", fd_val.res);
 
     match &mut fd_val.res {
-        ResourceDescriptor::Null => return Some(0),
+        ResourceDescriptor::Null => return Ok(0),
         ResourceDescriptor::TerminalOutput => {
-            let result = noct_tty::WRITER
+            noct_tty::WRITER
                 .lock()
-                .write_str(unsafe { str::from_utf8_unchecked(slice) });
+                .write_str(unsafe { str::from_utf8_unchecked(slice) })
+                .map_err(|_| Error::Unknown)?;
 
-            if let Err(_) = result {
-                noct_sched::set_error(noct_io::error::Error::IoError as _)
-            }
+            Ok(len)
         }
         ResourceDescriptor::FileStream(file_handle) => {
-            let value = file_handle.write(slice);
+            let written_bytes = file_handle.write(slice)?;
 
-            match value {
-                Err(e) => noct_sched::set_error(e as _),
-                Ok(written_bytes) => return Some(written_bytes as _),
-            }
+            Ok(written_bytes as usize)
         }
         ResourceDescriptor::VideoLock(v) => {
             v.write(slice);
 
-            return Some(slice.len());
+            Ok(slice.len())
         }
-        _ => {
-            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
-        }
+        _ => Err(noct_io::error::Error::InvalidHandle),
     }
-
-    None
 }
 
-pub fn seek(fd: usize, offset: usize, whence: usize, _: usize, _: usize) -> Option<usize> {
+pub fn seek(fd: usize, offset: usize, whence: usize, _: usize, _: usize) -> Result<usize, Error> {
     let process = &noct_sched::this_thread().process;
 
     let mut lock = process.resources.lock();
 
-    let fd_val = lock.find_mut(fd)?;
+    let fd_val = lock.find_mut(fd).ok_or(Error::InvalidHandle)?;
 
     match &mut fd_val.res {
-        ResourceDescriptor::Null => return Some(0),
+        ResourceDescriptor::Null => Ok(0),
         ResourceDescriptor::FileStream(file_handle) => {
             let so = match whence {
                 0 => SeekOffset::Beginning(offset as _),
                 1 => SeekOffset::Current(offset as _),
                 2 => SeekOffset::End(offset as _),
                 _ => {
-                    noct_sched::set_error(noct_io::error::Error::InvalidSeek as _);
-
-                    return None;
+                    return Err(noct_io::error::Error::InvalidSeek as _);
                 }
             };
 
-            let value = file_handle.seek(so);
+            let position = file_handle.seek(so)?;
 
-            match value {
-                Err(e) => noct_sched::set_error(e as _),
-                Ok(position) => return Some(position as _),
-            }
+            Ok(position as _)
         }
         ResourceDescriptor::VideoLock(v) => {
             match whence {
@@ -257,73 +222,57 @@ pub fn seek(fd: usize, offset: usize, whence: usize, _: usize, _: usize) -> Opti
                 1 => v.seek(v.offset() + offset),
                 2 => v.seek(v.buffer_len() - offset),
                 _ => {
-                    noct_sched::set_error(noct_io::error::Error::InvalidSeek as _);
-
-                    return None;
+                    return Err(Error::InvalidSeek);
                 }
             }
-        }
-        _ => {
-            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
-        }
-    }
 
-    None
+            Ok(v.offset())
+        }
+        _ => Err(Error::InvalidHandle),
+    }
 }
 
-pub fn tell(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
+pub fn tell(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
     let process = &noct_sched::this_thread().process;
 
     let mut lock = process.resources.lock();
 
-    let fd_val = lock.find_mut(fd)?;
+    let fd_val = lock.find_mut(fd).ok_or(Error::InvalidHandle)?;
 
     match &mut fd_val.res {
-        ResourceDescriptor::Null => return Some(0),
+        ResourceDescriptor::Null => Ok(0),
         ResourceDescriptor::FileStream(file_handle) => {
             let value = file_handle.seek(SeekOffset::Current(0));
 
             match value {
-                Err(e) => noct_sched::set_error(e as _),
-                Ok(position) => return Some(position as _),
+                Err(e) => Err(e),
+                Ok(position) => Ok(position as _),
             }
         }
-        ResourceDescriptor::VideoLock(v) => {
-            return Some(v.offset());
-        }
-        _ => {
-            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
-        }
+        ResourceDescriptor::VideoLock(v) => Ok(v.offset()),
+        _ => Err(Error::InvalidHandle),
     }
-
-    None
 }
 
-pub fn flush(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
+pub fn flush(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
     let process = &noct_sched::this_thread().process;
 
     let mut lock = process.resources.lock();
 
-    let fd_val = lock.find_mut(fd)?;
+    let fd_val = lock.find_mut(fd).ok_or(Error::InvalidHandle)?;
 
     match &mut fd_val.res {
-        ResourceDescriptor::Null => return Some(0),
+        ResourceDescriptor::Null => Ok(0),
         ResourceDescriptor::TerminalOutput => {
-            noct_tty::WRITER.try_lock()?.flush();
-            return Some(0);
+            noct_tty::WRITER.try_lock().ok_or(Error::Busy)?.flush();
+
+            Ok(0)
         }
         ResourceDescriptor::FileStream(file_handle) => {
-            let value = file_handle.flush();
+            file_handle.flush()?;
 
-            match value {
-                Err(e) => noct_sched::set_error(e as _),
-                Ok(_) => return Some(0),
-            }
+            Ok(0)
         }
-        _ => {
-            noct_sched::set_error(noct_io::error::Error::InvalidHandle as _)
-        }
+        _ => Err(Error::InvalidHandle as _),
     }
-
-    None
 }

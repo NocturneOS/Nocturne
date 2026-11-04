@@ -14,7 +14,7 @@ mod proc;
 mod time;
 mod video;
 
-pub type SyscallResult = Option<usize>;
+pub type SyscallResult = Result<usize, noct_io::error::Error>;
 pub type SyscallHandler = fn(usize, usize, usize, usize, usize) -> SyscallResult;
 
 #[rustfmt::skip]
@@ -69,21 +69,6 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     dir::opendir,           // 29
 ];
 
-pub fn convert_err<T>(f: impl FnOnce() -> noct_io::Result<T>) -> Option<T> {
-    let result = f();
-
-    match result {
-        Err(e) => {
-            noct_sched::set_error(e as _);
-
-            None
-        }
-        Ok(x) => {
-            Some(x)
-        }
-    }
-}
-
 #[unsafe(no_mangle)]
 pub extern "C" fn syscall_handler(regs: &mut CPURegisters) {
     cfg_if::cfg_if! {
@@ -111,15 +96,22 @@ pub extern "C" fn syscall_handler(regs: &mut CPURegisters) {
     if let Some(handler) = SYSCALL_HANDLERS.get(nr) {
         let result = handler(arg1, arg2, arg3, arg4, arg5);
 
-        if let Some(r) = result {
-            #[cfg(target_arch = "x86")]
-            {
-                regs.eax = r as u32;
-            }
-            #[cfg(target_arch = "x86_64")]
-            {
-                regs.rax = r as u64;
-            }
+        // If the call was successful, the result is being returned
+        // If error was encountered, the error code is being translated into u32
+        // (see noct_io::error::Error, it's the enum's underlying type) then into isize,
+        // gets negated and then casted into usize.
+        let raw_result = match result {
+            Ok(val) => val,
+            Err(e) => (-((e as u32) as isize)) as usize
+        };
+
+        #[cfg(target_arch = "x86")]
+        {
+            regs.eax = raw_result as u32;
+        }
+        #[cfg(target_arch = "x86_64")]
+        {
+            regs.rax = raw_result as u64;
         }
     } else {
         qemu_log!("Error: no syscall handle for id: 0x{nr:x}");

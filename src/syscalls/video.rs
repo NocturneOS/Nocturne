@@ -3,8 +3,6 @@ use noct_io::error::{Error, FromPrimitive};
 use noct_logger::qemu_log;
 use noct_mem::paging::PageFlags;
 
-use crate::syscalls::convert_err;
-
 #[repr(C, packed)]
 pub struct VideoModeInfo {
     width: u32,
@@ -24,25 +22,20 @@ pub struct VideoModeInfo {
 /// On success a descriptor is being created and video info is being written into the [`VideoModeInfo`] pointer.
 ///
 /// Returns a file descriptor if everything's okay,
-/// Returns -1 if lock can't be acquired (video buffer is locked by another process/program).
-/// Returns -2 if system error happened (see errno for error code).
+/// Returns -errno if error is encountered.
 pub fn video_acquire(
     out_mode_info: usize,
     _: usize,
     _: usize,
     _: usize,
     _: usize,
-) -> Option<usize> {
+) -> Result<usize, Error> {
     let Some(modeinfo) = crate::mem::usermem::verify_ptr_mut::<VideoModeInfo>(out_mode_info) else {
-        noct_sched::set_error(Error::MemoryError as _);
-
-        return Some((-2_isize) as usize);
+        return Err(Error::MemoryError);
     };
 
     let Some(real_mode_info) = noct_video::CURRENT_VIDEO_MODE.try_lock() else {
-        noct_sched::set_error(Error::Busy as _);
-
-        return Some((-1_isize) as usize);
+        return Err(Error::Busy);
     };
 
     let binding = real_mode_info.as_ref().unwrap();
@@ -59,9 +52,7 @@ pub fn video_acquire(
             .pseudo_lock()
             .alloc_virt_region(size)
     }) else {
-        noct_sched::set_error(Error::MemoryError as _);
-
-        return Some((-2_isize) as usize);
+        return Err(Error::MemoryError as _);
     };
 
     let map_ctx = noct_mem::paging::MappingContext::map(
@@ -105,7 +96,7 @@ pub fn video_acquire(
             .id()
     };
 
-    Some(fd)
+    Ok(fd)
 }
 
 #[repr(usize)]
@@ -120,14 +111,15 @@ pub fn video_manage(
     _data2: usize,
     _data3: usize,
     _data4: usize,
-) -> Option<usize> {
-    let command = convert_err(|| VideoCommand::from_usize(command).ok_or(Error::InvalidArgument))?;
+) -> Result<usize, Error> {
+    let command = VideoCommand::from_usize(command).ok_or(Error::InvalidArgument)?;
 
     match command {
         VideoCommand::GetVideoInfo => {
-            let modeinfo = convert_err(|| {
-                crate::mem::usermem::verify_ptr_mut::<VideoModeInfo>(data1).ok_or(Error::MemoryError)
-            })?;
+            let modeinfo = {
+                crate::mem::usermem::verify_ptr_mut::<VideoModeInfo>(data1)
+                    .ok_or(Error::MemoryError)
+            }?;
 
             let process = &noct_sched::this_thread().process;
 
@@ -141,7 +133,7 @@ pub fn video_manage(
                 })
                 .next();
 
-            let binding = convert_err(|| handle.ok_or(Error::InvalidHandle))?;
+            let binding = handle.ok_or(Error::InvalidHandle)?;
 
             let vm_addr = binding.map_ctx().vm_addr();
 
@@ -167,12 +159,12 @@ pub fn video_manage(
 }
 
 /// Releases a video lock.
-/// 
+///
 /// Returns -1 if the lock wasn't acquired by the process before.
 /// Returns 0 if lock was acquired before and it was successfully closed.
-pub fn video_release(_: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
+pub fn video_release(_: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
     let process = &noct_sched::this_thread().process;
-
+ 
     let mut reslock = process.resources.lock();
 
     let handle = reslock
@@ -186,8 +178,8 @@ pub fn video_release(_: usize, _: usize, _: usize, _: usize, _: usize) -> Option
     if let Some(fd) = handle {
         reslock.close(fd);
 
-        return Some(0);
+        return Ok(0);
     }
 
-    Some(usize::MAX)
+    Ok(-1isize as usize)
 }

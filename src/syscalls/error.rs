@@ -1,9 +1,11 @@
 use core::sync::atomic::Ordering;
 
-pub fn geterror(_: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
+use noct_io::error::Error;
+
+pub fn geterror(_: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
     let this_thread = noct_sched::this_thread();
     
     let errno = this_thread.last_error.load(Ordering::Acquire);
 
-    Some(errno as _)
+    Ok(errno as _)
 }

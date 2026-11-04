@@ -9,8 +9,6 @@ use noct_io::error::Error;
 
 use bitflags::bitflags;
 
-use crate::syscalls::convert_err;
-
 bitflags! {
     pub struct ProgramRunFlags: u32 {
         const NoStdin  = 1 << 0;
@@ -24,9 +22,9 @@ bitflags! {
 }
 
 /// Spawns a new process.
-/// 
+///
 /// WARNING: Check errno before checking return value!
-/// 
+///
 /// Returns 0 if ELF loading error happened.
 /// Returns a new process' PID otherwise. (errno is set to 0)
 pub fn run(
@@ -35,21 +33,19 @@ pub fn run(
     args_len: usize,
     flags: usize,
     _: usize,
-) -> Option<usize> {
+) -> Result<usize, Error> {
     // XXX: Think on how to verify path.
-    let path = convert_err(|| {
-        crate::mem::usermem::verify_ptr::<c_char>(path_ptr).ok_or(Error::MemoryError)
-    })?;
-    let args = convert_err(|| {
+    let path = { crate::mem::usermem::verify_ptr::<c_char>(path_ptr).ok_or(Error::MemoryError) }?;
+    let args = {
         crate::mem::usermem::verify_ptr_range::<*const c_char>(arguments_ptr, args_len)
             .ok_or(Error::MemoryError)
-    })?;
+    }?;
 
-    let path = convert_err(|| unsafe {
+    let path = unsafe {
         CStr::from_ptr(path)
             .to_str()
             .map_err(|_| Error::InvalidArgument)
-    })?;
+    }?;
 
     let arguments = unsafe { core::slice::from_raw_parts(args, args_len) };
 
@@ -61,39 +57,27 @@ pub fn run(
     let flags = ProgramRunFlags::from_bits_truncate(flags as _);
 
     let hdl = match noct_elfloader::spawn(path, &arguments_str) {
-        Ok(hdl) => hdl,
-        Err(LoadError::System(e)) => {
-            noct_sched::set_error(e as _);
-
-            return Some(0);
-        }
+        Ok(hdl) => Ok(hdl),
+        Err(LoadError::System(e)) => Err(e as _),
         Err(LoadError::InvalidELFType | LoadError::UnsupportedArchitecture) => {
-            noct_sched::set_error(Error::ExecFormat as _);
-
-            return Some(0);
+            Err(Error::ExecFormat as _)
         }
-        Err(_) => {
-            noct_sched::set_error(Error::InvalidArgument as _);
+        Err(_) => Err(Error::InvalidArgument as _),
+    }?;
 
-            return Some(0);
-        }
-    };
-
-    noct_sched::set_error(Error::None as _);
-
-    Some(hdl.pid)
+    Ok(hdl.pid)
 }
 
-pub fn waitpid(pid: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
-    let ph = convert_err(|| noct_sched::get_process_handle(pid).ok_or(Error::InvalidHandle))?;
+pub fn waitpid(pid: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
+    let ph = noct_sched::get_process_handle(pid).ok_or(Error::InvalidHandle)?;
 
     let code = noct_sched::waitpid(&ph);
 
-    Some(code as usize)
+    Ok(code as usize)
 }
 
-pub fn yield_now(_: usize, _: usize, _: usize, _: usize, _: usize) -> Option<usize> {
+pub fn yield_now(_: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
     noct_sched::yield_now();
 
-    None
+    Ok(0)
 }
