@@ -59,7 +59,7 @@ pub fn gettimeofday(tv_ptr: usize, tz_ptr: usize, _: usize, _: usize, _: usize) 
     let timestamp = human_time.to_unix_timestamp().unwrap() as usize;
 
     tv.tv_sec = timestamp as _;
-    tv.tv_usec = (human_time.millis() * 1000) as _;
+    tv.tv_usec = (human_time.millis() as i32 * 1000) as _;
 
     Some(0)
 }
