@@ -207,66 +207,66 @@ impl Scheduler {
         unsafe {
             if is_user_proc {
                 stack.push(
-                    &mut addrspace,
+                    addrspace,
                     thread_trampoline_usermode as *const () as usize,
                 );
             } else {
                 // stack.push(
-                //     &mut addrspace,
+                //     addrspace,
                 //     thread_exit as *const () as usize,
                 // );
 
                 stack.push(
-                    &mut addrspace,
+                    addrspace,
                     thread_trampoline as *const () as usize,
                 );
             }
 
-            stack.push(&mut addrspace, 0x202); // IF=1, IOPL=0
+            stack.push(addrspace, 0x202); // IF=1, IOPL=0
 
-            stack.push(&mut addrspace, stack_top as usize); // EAX
-            stack.push(&mut addrspace, entry as *const () as usize); // EBX
-            stack.push(&mut addrspace, 0); // ECX
-            stack.push(&mut addrspace, 0); // EDX
-            stack.push(&mut addrspace, 0); // ESI
-            stack.push(&mut addrspace, 0); // EDI
-            stack.push(&mut addrspace, 0); // EBP
+            stack.push(addrspace, stack_top as usize); // EAX
+            stack.push(addrspace, entry as *const () as usize); // EBX
+            stack.push(addrspace, 0); // ECX
+            stack.push(addrspace, 0); // EDX
+            stack.push(addrspace, 0); // ESI
+            stack.push(addrspace, 0); // EDI
+            stack.push(addrspace, 0); // EBP
         }
 
         #[cfg(target_arch = "x86_64")]
         unsafe {
-            stack.push(&mut addrspace, 0);
+            stack.push(addrspace, 0);
 
             if is_user_proc {
                 // todo!("Usermode trampoline for x86_64")
                 stack.push(
-                    &mut addrspace,
+                    addrspace,
                     thread_trampoline_usermode64 as *const () as usize,
                 );
             } else {
                 stack.push(
-                    &mut addrspace,
+                    addrspace,
                     thread_trampoline64 as *const () as usize,
                 );
             }
 
-            stack.push(&mut addrspace, 0x202); // IF=1, IOPL=0
+            stack.push(addrspace, 0x202); // IF=1, IOPL=0
 
-            stack.push(&mut addrspace, stack_top as usize); // RAX
-            stack.push(&mut addrspace, entry as *const () as usize); // RBX = entry
-            stack.push(&mut addrspace, 0); // RCX
-            stack.push(&mut addrspace, 0); // RDX
-            stack.push(&mut addrspace, 0); // RSI
-            stack.push(&mut addrspace, 0); // RDI
-            stack.push(&mut addrspace, 0); // RBP
-            stack.push(&mut addrspace, 0); // R8
-            stack.push(&mut addrspace, 0); // R9
-            stack.push(&mut addrspace, 0); // R10
-            stack.push(&mut addrspace, 0); // R11
-            stack.push(&mut addrspace, 0); // R12
-            stack.push(&mut addrspace, 0); // R13
-            stack.push(&mut addrspace, 0); // R14
-            stack.push(&mut addrspace, 0); // R15
+            stack.push(addrspace, stack_top as usize); // RAX
+            stack.push(addrspace, entry as *const () as usize); // RBX = entry
+            stack.push(addrspace, 0); // RCX
+            stack.push(addrspace, 0); // RDX
+            stack.push(addrspace, 0); // RSI
+            stack.push(addrspace, 0); // RDI
+            stack.push(addrspace, 0); // RBP
+            stack.push(addrspace, 0); // R8
+            stack.push(addrspace, 0); // R9
+            stack.push(addrspace, 0); // R10
+            stack.push(addrspace, 0); // R11
+            stack.push(addrspace, 0); // R12
+            stack.push(addrspace, 0); // R13
+            stack.push(addrspace, 0); // R14
+            stack.push(addrspace, 0); // R15
         }
 
         // Drop the lock
