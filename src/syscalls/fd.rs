@@ -15,6 +15,7 @@ bitflags! {
     #[derive(Debug, Clone, Copy)]
     pub struct OpenFlags: u32 {
         // First flags are copied from noct_fsman::FileOpenFlags
+        const Directory = 1 << 6;
     }
 }
 
@@ -48,14 +49,15 @@ pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Result<us
     let flags = OpenFlags::from_bits_truncate(mode as _);
 
     let handle = {
-        let fh = match noct_fs::open_file(&path, FileOpenMode::from_bits_truncate(mode as _)) {
-            Ok(fh) => fh,
-            Err(e) => {
-                return Err(Error::NotFound);
-            }
-        };
+        if flags.contains(OpenFlags::Directory) {
+            let dh = noct_fs::open_directory(&path)?;
 
-        ResourceDescriptor::FileStream(fh)
+            ResourceDescriptor::DirectoryHandle(dh)
+        } else {
+            let fh = noct_fs::open_file(&path, FileOpenMode::from_bits_truncate(mode as _))?;
+
+            ResourceDescriptor::FileStream(fh)
+        }
     };
 
     let mut reslock = process.resources.lock();

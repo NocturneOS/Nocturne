@@ -19,54 +19,48 @@ pub type SyscallHandler = fn(usize, usize, usize, usize, usize) -> SyscallResult
 
 #[rustfmt::skip]
 const SYSCALL_HANDLERS: &[SyscallHandler] = &[
-    debug::debug,           // 0 - TO REMOVE?
-    debug::reg_debug,       // 1 - TO REMOVE?
-
-    exit::exit,             // 2
-    exit::process_exit,     // 3
+    exit::exit,             // 0
+    exit::process_exit,     // 1
     
-    error::geterror,        // 4
+    error::geterror,        // 2
     
-    proc::waitpid,          // 5
+    proc::waitpid,          // 3
     
-    print::write_tty,       // 6 - TO REMOVE?
+    fd::open,               // 4
+    fd::close,              // 5
+    fd::read,               // 6
+    fd::write,              // 7
+    fd::seek,               // 8
+    fd::tell,               // 9
 
-    fd::open,               // 7
-    fd::close,              // 8
-    fd::read,               // 9
-    fd::write,              // 10
-    fd::seek,               // 11
-    fd::tell,               // 12
+    mem::sbrk,              // 10
 
-    mem::sbrk,              // 13
+    event::open,            // 11
 
-    event::open,            // 14
+    fd::flush,              // 12
 
-    fd::flush,              // 15
+    time::sleep_millis,     // 13
+    time::sleep_nanos,      // 14
 
-    time::time,             // 16 - TO REMOVE?
-    time::sleep_millis,     // 17
-    time::sleep_nanos,      // 18
+    proc::yield_now,        // 15
 
-    proc::yield_now,        // 19
+    video::video_acquire,   // 16
 
-    video::video_acquire,   // 20
+    env::getcwd,            // 17
 
-    env::getcwd,            // 21
+    env::chdir,             // 18
 
-    env::chdir,             // 22
+    proc::run,              // 19
 
-    proc::run,              // 23
+    mem::mrequest,          // 20
+    mem::mfree,             // 21
 
-    mem::mrequest,          // 24
-    mem::mfree,             // 25
+    time::gettimeofday,     // 22
 
-    time::gettimeofday,     // 26
+    video::video_control,    // 23
+    video::video_release,   // 24
 
-    video::video_manage,    // 27
-    video::video_release,   // 28
-
-    dir::opendir,           // 29
+    dir::getdirents,        // 25
 ];
 
 #[unsafe(no_mangle)]

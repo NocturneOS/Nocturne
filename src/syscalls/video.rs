@@ -105,7 +105,7 @@ enum VideoCommand {
     GetVideoInfo = 0,
 }
 
-pub fn video_manage(
+pub fn video_control(
     command: usize,
     data1: usize,
     _data2: usize,
