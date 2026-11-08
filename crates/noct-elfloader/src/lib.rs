@@ -162,9 +162,12 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
         .sum::<usize>()
         .next_multiple_of(size_of::<usize>());
 
+    // The argument pointers plus the NULL terminator after argv[argc].
+    let argv_slots = all_args_count + 1;
+
     // The total memory size for the arguments, including null terminators.
     let total_memory_size = (raw_args_size
-        + all_args_count * core::mem::size_of::<usize>() // For the pointers to the arguments
+        + argv_slots * core::mem::size_of::<usize>() // For the pointers to the arguments and the NULL terminator
         + core::mem::size_of::<usize>() // For `char** argv`
         + core::mem::size_of::<usize>()) // For `int argc`
     .next_multiple_of(size_of::<usize>()); // Align the total memory size to the nearest multiple of `usize` for proper alignment.
@@ -194,7 +197,8 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
             }
         }
 
-        let argv_array = unsafe { ptr.add(raw_args_size).cast::<usize>() };
+        // Args size + 1 terminator.
+        let argv_array = unsafe { ptr.add(raw_args_size + size_of::<usize>()).cast::<usize>() };
 
         // Stack of the first thread of the process is always at 0xC000_0000 or 0x0000_8000_0000_0000 and grows downwards.
         let base = noct_spec::USER_SPACE_TOP;
@@ -210,11 +214,16 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
             offset += arg_len;
         }
 
+        // Terminate argv.
+        unsafe {
+            *argv_array.sub(1) = 0;
+        }
+
         // Write argv array pointer and argc counter
-        let arg_ptr = unsafe { ptr.add(raw_args_size + all_args_count * core::mem::size_of::<usize>()).cast::<usize>() };
+        let arg_ptr = unsafe { ptr.add(raw_args_size + argv_slots * core::mem::size_of::<usize>()).cast::<usize>() };
 
         unsafe {
-            *arg_ptr = (base - raw_args_size - all_args_count * core::mem::size_of::<usize>()) as usize; // char** argv
+            *arg_ptr = (base - raw_args_size - argv_slots * core::mem::size_of::<usize>()) as usize; // char** argv
             *arg_ptr.add(1) = all_args_count; // int argc
         }
     }

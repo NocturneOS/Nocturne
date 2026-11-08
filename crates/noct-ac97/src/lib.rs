@@ -1,3 +1,7 @@
+#![no_std]
+
+extern crate alloc;
+
 struct Ac97Card {
     busnum: u8,
     slot: u8,

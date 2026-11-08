@@ -179,6 +179,7 @@ fn kmain(boot_info: BootInformation) -> ! {
                 let code = handle.wait();
 
                 qemu_log!("Process exited with code: {code:?}");
+                qemu_log!("icode = {:?}", code.map(|x| (x as isize)));
             }
             Err(e) => {
                 qemu_log!("Failed to spawn process: {e:?}");
@@ -186,22 +187,22 @@ fn kmain(boot_info: BootInformation) -> ! {
         }
     }
 
-    {
-        let (data, time) = noct_tools::measure_time_timer(|| noct_fs::read_file("ata0:/hello.txt"));
+    // {
+    //     let (data, time) = noct_tools::measure_time_timer(|| noct_fs::read_file("ata0:/hello.txt"));
 
-        qemu_log!("Time: {} ms", time);
+    //     qemu_log!("Time: {} ms", time);
 
-        match data {
-            Ok(data) => {
-                let s = str::from_utf8(&data).unwrap();
+    //     match data {
+    //         Ok(data) => {
+    //             let s = str::from_utf8(&data).unwrap();
 
-                qemu_log!("Data: {s:?}");
-            }
-            Err(e) => {
-                qemu_log!("Error: {e:?}");
-            }
-        }
-    }
+    //             qemu_log!("Data: {s:?}");
+    //         }
+    //         Err(e) => {
+    //             qemu_log!("Error: {e:?}");
+    //         }
+    //     }
+    // }
 
     // {
     //     let mut lock = noct_video::CURRENT_VIDEO_MODE.lock();
