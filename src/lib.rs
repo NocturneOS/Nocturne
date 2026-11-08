@@ -179,7 +179,7 @@ fn kmain(boot_info: BootInformation) -> ! {
                 let code = handle.wait();
 
                 qemu_log!("Process exited with code: {code:?}");
-                qemu_log!("icode = {:?}", code.map(|x| (x as isize)));
+                qemu_log!("icode = {:?}", code.map(|x| x as isize));
             }
             Err(e) => {
                 qemu_log!("Failed to spawn process: {e:?}");

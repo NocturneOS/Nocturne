@@ -34,7 +34,7 @@ pub fn sleep_nanos(
 pub fn gettimeofday(tv_ptr: usize, tz_ptr: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
     #[repr(C)]
     struct TimeValue {
-        tv_sec: usize,  // time_t
+        tv_sec: u64,  // time_t
         tv_usec: i32, // suseconds_t
     }
 
