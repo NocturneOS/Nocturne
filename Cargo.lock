@@ -149,6 +149,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-ac97"
+version = "0.1.0"
+
+[[package]]
 name = "noct-acpi"
 version = "0.1.0"
 dependencies = [
@@ -172,6 +176,13 @@ dependencies = [
  "noct-pci",
  "noct-sync",
  "x86",
+]
+
+[[package]]
+name = "noct-audio"
+version = "0.1.0"
+dependencies = [
+ "noct-logger",
 ]
 
 [[package]]
@@ -526,6 +537,7 @@ dependencies = [
  "multiboot2",
  "noct-acpi",
  "noct-ata",
+ "noct-audio",
  "noct-boot",
  "noct-cpu",
  "noct-descriptor",

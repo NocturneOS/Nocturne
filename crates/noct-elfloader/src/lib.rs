@@ -196,8 +196,8 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
 
         let argv_array = unsafe { ptr.add(raw_args_size).cast::<usize>() };
 
-        // Stack of the first thread of the process is always at 0xC000_0000 or 0xFFFF_FFFF_8000_0000 and grows downwards.
-        let base = noct_spec::KERNEL_BASE;
+        // Stack of the first thread of the process is always at 0xC000_0000 or 0x0000_8000_0000_0000 and grows downwards.
+        let base = noct_spec::USER_SPACE_TOP;
 
         // Make argv array
         let mut offset = 0;

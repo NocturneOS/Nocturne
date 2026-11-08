@@ -41,7 +41,8 @@ members = [
     "crates/noct-rtc",
     "crates/noct-ioport",
     "crates/noct-acpi", "crates/noct-cmdline-parser", "crates/noct-ata",
-]
+    "crates/noct-audio"
+, "crates/noct-ac97"]
 resolver = "2"
 
 [dependencies]
@@ -53,6 +54,7 @@ bitflags = "2.11.1"
 multiboot2 = "0.26.1"
 
 noct-acpi = { path = "crates/noct-acpi" }
+noct-audio = { path = "crates/noct-audio" }
 noct-ata = { path = "crates/noct-ata" }
 noct-boot = { path = "crates/noct-boot" }
 noct-cpu = { path = "crates/noct-cpu" }
