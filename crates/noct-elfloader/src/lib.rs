@@ -168,6 +168,7 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
     // The total memory size for the arguments, including null terminators.
     let total_memory_size = (raw_args_size
         + argv_slots * core::mem::size_of::<usize>() // For the pointers to the arguments and the NULL terminator
+        + core::mem::size_of::<usize>() // For `char** envp`
         + core::mem::size_of::<usize>() // For `char** argv`
         + core::mem::size_of::<usize>()) // For `int argc`
     .next_multiple_of(size_of::<usize>()); // Align the total memory size to the nearest multiple of `usize` for proper alignment.
@@ -219,12 +220,13 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
             *argv_array.sub(1) = 0;
         }
 
-        // Write argv array pointer and argc counter
-        let arg_ptr = unsafe { ptr.add(raw_args_size + argv_slots * core::mem::size_of::<usize>()).cast::<usize>() };
+        // Write envp, argv array pointer and argc counter
+        let arg_ptr = unsafe { ptr.add(raw_args_size + (argv_slots) * core::mem::size_of::<usize>()).cast::<usize>() };
 
         unsafe {
-            *arg_ptr = (base - raw_args_size - argv_slots * core::mem::size_of::<usize>()) as usize; // char** argv
-            *arg_ptr.add(1) = all_args_count; // int argc
+            *arg_ptr = 0; // char** envp
+            *arg_ptr.add(1) = (base - raw_args_size - argv_slots * core::mem::size_of::<usize>()) as usize; // char** argv
+            *arg_ptr.add(2) = all_args_count; // int argc
         }
     }
 

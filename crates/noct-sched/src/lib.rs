@@ -272,7 +272,7 @@ impl Scheduler {
         // Drop the lock
         drop(addrspace);
 
-        // qemu_log!("STACK: {:08x?}; ESP: {:08x?}", stack.addr(), writeable_sp.addr());
+        // qemu_log!("STACK: {:08x?}", unsafe { stack.pointer().addr() });
 
         process.thread_count.fetch_add(1, Ordering::Release);
 
