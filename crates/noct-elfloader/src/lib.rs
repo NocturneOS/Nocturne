@@ -166,12 +166,18 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
     let argv_slots = all_args_count + 1;
 
     // The total memory size for the arguments, including null terminators.
-    let total_memory_size = (raw_args_size
+    let args_memory_size = (raw_args_size
         + argv_slots * core::mem::size_of::<usize>() // For the pointers to the arguments and the NULL terminator
         + core::mem::size_of::<usize>() // For `char** envp`
         + core::mem::size_of::<usize>() // For `char** argv`
         + core::mem::size_of::<usize>()) // For `int argc`
     .next_multiple_of(size_of::<usize>()); // Align the total memory size to the nearest multiple of `usize` for proper alignment.
+
+    // The process entry stack must be 16-byte aligned (SysV/i386 ABI).
+    // So pad the beginning (top) of the block, not the end (bottom),
+    // so that `argc` still ends up at the final stack pointer.
+    let stack_padding = args_memory_size.next_multiple_of(16) - args_memory_size;
+    let total_memory_size = args_memory_size + stack_padding;
 
     let mut values = vec![0_usize; total_memory_size / core::mem::size_of::<usize>()];
 
@@ -179,7 +185,8 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
     // Then build up argument list in the format expected by the C runtime (argc, argv)
     // And add pointer to pointer to the arguments list (char** argv) and argument count
     {
-        let ptr = values.as_mut_ptr().cast::<u8>();
+        // Skip the zeroed padding at the top of the stack.
+        let ptr = unsafe { values.as_mut_ptr().cast::<u8>().add(stack_padding) };
 
         // Make a vector of bytes that contain raw null-terminated strings.
         let mut raw_args = Vec::with_capacity(raw_args_size);
@@ -202,7 +209,8 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
         let argv_array = unsafe { ptr.add(raw_args_size + size_of::<usize>()).cast::<usize>() };
 
         // Stack of the first thread of the process is always at 0xC000_0000 or 0x0000_8000_0000_0000 and grows downwards.
-        let base = noct_spec::USER_SPACE_TOP;
+        // Account for the padding pushed above the arguments.
+        let base = noct_spec::USER_SPACE_TOP - stack_padding;
 
         // Make argv array
         let mut offset = 0;
@@ -229,6 +237,8 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
             *arg_ptr.add(2) = all_args_count; // int argc
         }
     }
+
+    // I think it needs some refactoring.
 
     qemu_log!("Upper stack dump: {values:08x?}");
 
