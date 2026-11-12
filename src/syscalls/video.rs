@@ -105,7 +105,7 @@ enum VideoCommand {
     GetVideoInfo = 0,
 }
 
-pub fn video_control(
+pub fn control(
     command: usize,
     data1: usize,
     _data2: usize,
@@ -162,7 +162,7 @@ pub fn video_control(
 ///
 /// Returns -1 if the lock wasn't acquired by the process before.
 /// Returns 0 if lock was acquired before and it was successfully closed.
-pub fn video_release(_: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
+pub fn release(_: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
     let process = &noct_sched::this_thread().process;
  
     let mut reslock = process.resources.lock();

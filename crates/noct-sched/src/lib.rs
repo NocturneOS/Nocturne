@@ -665,6 +665,7 @@ pub fn create_process_inherit(name: &str) -> SharedProcess {
     process
 }
 
+/// Creates a thread and returns its global TID.
 pub fn create_thread(
     process: SharedProcess,
     entry: fn() -> (),

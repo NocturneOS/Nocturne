@@ -1,6 +1,7 @@
 use noct_cpu::CPURegisters;
 use noct_logger::qemu_log;
 
+mod audio;
 mod debug;
 mod env;
 mod error;
@@ -11,6 +12,8 @@ mod fd;
 mod mem;
 mod print;
 mod proc;
+mod rand;
+mod thread;
 mod time;
 mod video;
 
@@ -57,10 +60,20 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
 
     time::gettimeofday,     // 22
 
-    video::video_control,    // 23
-    video::video_release,   // 24
+    video::control,         // 23
+    video::release,         // 24
 
     dir::getdirents,        // 25
+
+    rand::fillrandom,       // 26
+
+    audio::open,            // 27
+    audio::manage,          // 28
+    audio::write,           // 29
+    audio::read,            // 30
+    audio::close,           // 31
+
+    thread::create,         // 32
 ];
 
 #[unsafe(no_mangle)]
