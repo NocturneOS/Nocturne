@@ -816,7 +816,11 @@ pub fn resume_group(reason: thread::ThreadWaitReason) {
 pub fn get_process(pid: usize) -> Option<Arc<Process>> {
     let il = InterruptLocker::lock();
 
-    // unsafe { SCHEDULER.force_unlock() };
+    // The scheduler lock is intentionally left held across a context switch
+    // and force-unlocked by the next scheduler entry. Accessors that may run
+    // on a freshly scheduled thread (such as the input dispatcher) must do
+    // the same before taking the lock.
+    unsafe { SCHEDULER.force_unlock() };
 
     let result = this()
         .thread_list
