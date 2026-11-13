@@ -172,7 +172,7 @@ fn kmain(boot_info: BootInformation) -> ! {
     noct_sched::this_process().chdir("mem0:/");
 
     {
-        match noct_elfloader::spawn("mem0:/progs/doom.run", &[]) {
+        match noct_elfloader::spawn("mem0:/progs/noctsh.run", &[]) {
             Ok(handle) => {
                 qemu_log!("Started process {}", handle.pid);
 
@@ -180,6 +180,8 @@ fn kmain(boot_info: BootInformation) -> ! {
 
                 qemu_log!("Process exited with code: {code:?}");
                 qemu_log!("icode = {:?}", code.map(|x| x as isize));
+                
+                tty_println!("Process exited: {:?}", code.map(|x| x as isize).unwrap());
             }
             Err(e) => {
                 qemu_log!("Failed to spawn process: {e:?}");

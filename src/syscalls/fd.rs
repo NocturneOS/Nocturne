@@ -92,7 +92,7 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Result<us
 
     let fd_val = lock.find_mut(fd).ok_or(Error::InvalidHandle)?;
 
-    // qemu_log!("read: fd {fd} -> {:?}", fd_val.res);
+    qemu_log!("read: fd {fd} -> {:?}", fd_val.res);
 
     let mut input_needs_waiting = false;
 
@@ -119,6 +119,8 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Result<us
                 }
                 Some(ch) => {
                     slice[0] = ch;
+
+                    qemu_log!("Character: {ch}");
 
                     return Ok(1);
                 }
