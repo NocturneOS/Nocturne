@@ -151,6 +151,9 @@ dependencies = [
 [[package]]
 name = "noct-ac97"
 version = "0.1.0"
+dependencies = [
+ "x86",
+]
 
 [[package]]
 name = "noct-acpi"
