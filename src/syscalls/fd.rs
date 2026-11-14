@@ -126,6 +126,9 @@ pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Result<us
                 if let Some(ch) = noct_tty::input::try_read_char() {
                     slice[0] = ch;
 
+                    noct_tty::tty_print!("{}", ch as char);
+                    noct_tty::WRITER.lock().flush();
+
                     return Ok(1);
                 }
             }
