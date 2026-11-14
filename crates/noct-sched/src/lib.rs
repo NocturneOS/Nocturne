@@ -21,7 +21,7 @@ use spin::{Mutex, MutexGuard};
 
 use noct_logger::qemu_log;
 
-use crate::process::{ProcessHandle, ProcessEntry, ProcessState};
+use crate::process::{PROCESS_NO_PARENT, ProcessEntry, ProcessHandle, ProcessState};
 
 use self::{
     archspec::ArchitectureSpecificRegion,
@@ -165,7 +165,10 @@ impl Scheduler {
         let this_proc = &self.this_task().process;
         let proc = Process::new(this_proc.id, name, cwd);
 
-        self.process_table.insert(proc.id, ProcessEntry::alive(proc.into_handle_ref()));
+        self.process_table.insert(
+            proc.id,
+            ProcessEntry::alive(proc.parent_pid, proc.into_handle_ref()),
+        );
 
         Arc::new(proc)
     }
@@ -446,9 +449,70 @@ impl Scheduler {
 
     #[inline(always)]
     fn check_dead_tasks(&mut self) {
+        // `remove_task` frees the thread's stack, so the thread that is currently
+        // executing must not be reaped here. It stays in the queue and will be
+        // reaped by whichever thread schedules next.
+        let current_id = self.current_thread.as_ref().map(|t| t.id);
+
+        let mut not_reapable = LinkedList::new();
+
         while let Some(task) = self.dead_queue.pop_front() {
-            self.remove_task(task);
+            if Some(task.id) == current_id {
+                not_reapable.push_back(task);
+            } else {
+                self.remove_task(task);
+            }
         }
+
+        self.dead_queue = not_reapable;
+    }
+
+    /// Marks a process as finished and makes its exit status available to `waitpid`.
+    ///
+    /// Must be called with the scheduler lock held.
+    fn mark_process_exited(&mut self, proc_id: usize, exit_code: u32) {
+        let is_orphan = match self.process_table.get(&proc_id) {
+            Some(entry) => {
+                entry.handle().exit_code.store(exit_code, Ordering::Release);
+
+                entry.parent_pid() == PROCESS_NO_PARENT
+            }
+            // The process was already reaped (e.g. it was discarded while its
+            // owning pid was being cleaned up), there is nobody to report the
+            // status to.
+            None => return,
+        };
+
+        if is_orphan {
+            // Nobody can wait for an orphan, so drop the entry right away
+            // instead of leaking a zombie.
+            self.process_table.remove(&proc_id);
+
+            return;
+        }
+
+        self.process_table
+            .get_mut(&proc_id)
+            .unwrap()
+            .set_state(ProcessState::Zombie);
+    }
+
+    /// Called when a process dies: gives its children to the kernel process and
+    /// drops zombie children, since nobody can wait for them anymore.
+    fn orphan_children_of(&mut self, proc_id: usize) {
+        self.process_table.retain(|_, entry| {
+            if entry.parent_pid() != proc_id {
+                return true;
+            }
+
+            if entry.state() == ProcessState::Zombie {
+                return false;
+            }
+
+            entry.set_parent_pid(PROCESS_NO_PARENT);
+
+            true
+        });
     }
 
     fn check_sleeping_tasks(&mut self) {
@@ -480,12 +544,10 @@ impl Scheduler {
     }
 
     fn next_task(&mut self) -> SharedThread {
-        let current_id = self.this_task().id;
-
-        // If we are scheduling from a kernel task, do all dirty work to prevent use-after-free.
-        if current_id == 0 {
-            self.check_dead_tasks();
-        }
+        // Dead threads may belong to processes whose page tables are not the
+        // currently loaded ones, so it is safe to reap them here as long as we
+        // skip the thread that is still executing (see [`Scheduler::check_dead_tasks`]).
+        self.check_dead_tasks();
 
         self.check_sleeping_tasks();
 
@@ -849,37 +911,70 @@ pub fn get_process_handle(pid: usize) -> Option<Arc<ProcessHandle>> {
     result
 }
 
-/// Waits for process with specific PID (from hdl) to complete and returns its exit code
-pub fn waitpid(hdl: &ProcessHandle) -> u32 {
-    // TODO: Make a ThreadState::WaitingFor(pid: usize) and ThreadWaitReason::WaitingFor enum variant and set that state for this thread.
-    //       to avoid infinite CPU spinning.
-    fn does_exist(pid: usize) -> bool {
-        let il = InterruptLocker::lock();
+/// Removes a process from the process table without waiting for it.
+///
+/// Used when a process could not be fully created (e.g. thread creation failed).
+pub fn discard_process_entry(pid: usize) {
+    noct_tools::without_interrupts::without_interrupts(|| {
+        this().process_table.remove(&pid);
+    });
+}
 
-        let sched = this();
-        let result = sched
-            .thread_list
-            .iter()
-            .find(|x| x.process.id == pid)
-            .is_some();
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum WaitError {
+    /// There is no process with this PID, or it is not a child of the caller.
+    NoChild,
+    /// A process tried to wait for itself.
+    SelfWait,
+}
 
-        drop(sched);
-        drop(il);
+/// Waits for a child process to complete and returns its exit code.
+///
+/// The exit status is kept in the process table after the process itself has
+/// been destroyed, so it does not matter whether the child finished before or
+/// after this call was made.
+pub fn waitpid(pid: usize) -> Result<u32, WaitError> {
+    loop {
+        {
+            let _il = InterruptLocker::lock();
 
-        result
-    }
+            let mut sched = this();
 
-    while does_exist(hdl.pid) {
-        // FIXME: This is a temporary solution to avoid infinite CPU spinning.
-        //        We should implement a proper waiting mechanism.
+            let current_pid = sched
+                .current_process
+                .as_ref()
+                .map(|p| p.id)
+                .ok_or(WaitError::NoChild)?;
+
+            // Waiting for yourself would block forever.
+            if pid == current_pid {
+                return Err(WaitError::SelfWait);
+            }
+
+            let entry = sched
+                .process_table
+                .get_mut(&pid)
+                .ok_or(WaitError::NoChild)?;
+
+            // Only the parent is allowed to consume the child's exit status.
+            if entry.parent_pid() != current_pid {
+                return Err(WaitError::NoChild);
+            }
+
+            if entry.state() == ProcessState::Zombie {
+                let code = entry.handle().exit_code.load(Ordering::Acquire);
+
+                // Consuming the status reaps the zombie.
+                sched.process_table.remove(&pid);
+
+                return Ok(code);
+            }
+        }
+
+        // TODO: Replace polling with a `ThreadWaitReason::WaitingForChild` and
+        //       resume this thread from `process_exit`/`thread_exit` instead.
         sleep(Duration::from_millis(1));
-
-        // schedule();
     }
-
-    let code = hdl.exit_code.load(Ordering::Acquire);
-
-    code
 }
 
 #[deprecated]
@@ -898,19 +993,30 @@ pub fn thread_exit() -> ! {
             .state
             .store(thread::ThreadState::Dead as _, Ordering::Release);
 
-        if thread.process.thread_count.load(Ordering::Acquire) == 1 {
-            // If this is the last thread of the process, set exit code to 0.
-            thread
-                .process
-                .handle
-                .as_ref()
-                .unwrap()
-                .exit_code
-                .store(0, Ordering::Release);
-        }
-
         {
             let mut lock = this();
+
+            // `thread_count` counts threads that have not been reaped yet, so it
+            // cannot be used to detect the last *live* thread. Count those instead.
+            let live_threads = lock
+                .thread_list
+                .iter()
+                .filter(|x| x.process.id == thread.process.id)
+                .filter(|x| {
+                    thread::ThreadState::from(x.state.load(Ordering::Relaxed))
+                        != thread::ThreadState::Dead
+                })
+                .count();
+
+            if live_threads == 0 {
+                // This was the last thread of the process, so report the process'
+                // termination to the process table (the kernel process has no handle).
+                if let Some(handle) = thread.process.handle.as_ref() {
+                    handle.exit_code.store(0, Ordering::Release);
+                }
+
+                lock.mark_process_exited(thread.process.id, 0);
+            }
 
             lock.sleeping_queue.retain(|(x, _)| x.id != thread.id);
             lock.working_queue.retain(|x| x.id != thread.id);
@@ -930,24 +1036,29 @@ pub fn process_exit(exitcode: u32) -> ! {
 
     {
         let thread = this_thread();
-
-        thread
-            .process
-            .handle
-            .as_ref()
-            .unwrap()
-            .exit_code
-            .store(exitcode, Ordering::Release);
-
         let proc_id = thread.process.id;
+
+        if let Some(handle) = thread.process.handle.as_ref() {
+            handle.exit_code.store(exitcode, Ordering::Release);
+        }
 
         {
             let mut lock = this();
 
+            lock.mark_process_exited(proc_id, exitcode);
+            lock.orphan_children_of(proc_id);
+
+            // Skip threads that already exited (they are in the dead queue and
+            // pushing them again would cause a double reap) and the current one,
+            // which is still Running.
             let list: Vec<Arc<Thread>> = lock
                 .thread_list
                 .iter()
                 .filter(|x| x.process.id == proc_id)
+                .filter(|x| {
+                    thread::ThreadState::from(x.state.load(Ordering::Relaxed))
+                        != thread::ThreadState::Dead
+                })
                 .cloned()
                 .collect();
 

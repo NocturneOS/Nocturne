@@ -69,11 +69,12 @@ pub fn run(
 }
 
 pub fn waitpid(pid: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
-    let ph = noct_sched::get_process_handle(pid).ok_or(Error::InvalidHandle)?;
-
-    let code = noct_sched::waitpid(&ph);
-
-    Ok(code as usize)
+    // TODO: Parse the status pointer and options (WNOHANG) once the ABI is settled.
+    match noct_sched::waitpid(pid) {
+        Ok(code) => Ok(code as usize),
+        Err(noct_sched::WaitError::NoChild) => Err(Error::NotFound),
+        Err(noct_sched::WaitError::SelfWait) => Err(Error::InvalidArgument),
+    }
 }
 
 pub fn yield_now(_: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {

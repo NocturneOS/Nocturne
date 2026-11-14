@@ -84,6 +84,8 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
             Err(e) => {
                 qemu_log!("Error happened during load! ({e})");
 
+                noct_sched::discard_process_entry(proc.id);
+
                 return Err(LoadError::ElfParser(e));
             }
         };
@@ -242,7 +244,9 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
 
     qemu_log!("Upper stack dump: {values:08x?}");
 
-    noct_sched::create_thread(
+    let pid = proc.id;
+
+    if noct_sched::create_thread(
         Arc::clone(&proc),
         unsafe { core::mem::transmute(elf.ehdr.e_entry as usize) },
         1024 << 10, // Stack size = 1 MB
@@ -250,7 +254,13 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
         ThreadFlags::User,
         &values,
     )
-    .ok_or(LoadError::ThreadCreationFail)?;
+    .is_none()
+    {
+        // Do not leave a process that will never run in the process table.
+        noct_sched::discard_process_entry(pid);
+
+        return Err(LoadError::ThreadCreationFail);
+    }
 
     drop(values);
 

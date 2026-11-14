@@ -53,31 +53,52 @@ impl ProcessHandle {
         }
     }
 
-    pub fn wait(&self) -> Option<u32> {
-        Some(crate::waitpid(self))
+    pub fn wait(&self) -> Result<u32, crate::WaitError> {
+        crate::waitpid(self.pid)
     }
 }
 
+/// `parent_pid` value used for orphaned processes.
+pub const PROCESS_NO_PARENT: usize = usize::MAX;
+
 /// Used for tracking process states (dead or not).
 ///
-/// Those states are used to implement [`crate::waitpid`]
+/// Those states are used to implement [`crate::waitpid`].
+///
+/// The entry outlives the [`Process`] itself, so the exit
+/// status survives until somebody waits for it.
 pub struct ProcessEntry {
+    /// PID of the process that created this one.
+    /// 
+    /// `0` means the process was spawned by the kernel;
+    /// [`NO_PARENT`] means it was orphaned (its parent exited before it).
+    parent_pid: usize,
     handle: Arc<ProcessHandle>,
-    state: ProcessState
+    state: ProcessState,
 }
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum ProcessState {
     Alive,
-    Zombie
+    Zombie,
 }
 
 impl ProcessEntry {
-    pub fn alive(hdl: Arc<ProcessHandle>) -> Self {
+    pub fn alive(parent_pid: usize, hdl: Arc<ProcessHandle>) -> Self {
         Self {
+            parent_pid,
             handle: hdl,
-            state: ProcessState::Alive
+            state: ProcessState::Alive,
         }
+    }
+
+    pub fn parent_pid(&self) -> usize {
+        self.parent_pid
+    }
+
+    /// Reparent a process when its parent exits (see [`NO_PARENT`]).
+    pub fn set_parent_pid(&mut self, parent_pid: usize) {
+        self.parent_pid = parent_pid;
     }
 
     pub fn handle(&self) -> &Arc<ProcessHandle> {
