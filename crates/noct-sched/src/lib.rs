@@ -158,7 +158,8 @@ impl Scheduler {
     }
 
     pub fn create_process(&mut self, name: &str, cwd: &str) -> SharedProcess {
-        let proc = Process::new(name, cwd);
+        let this_proc = &self.this_task().process;
+        let proc = Process::new(this_proc.id, name, cwd);
 
         Arc::new(proc)
     }
