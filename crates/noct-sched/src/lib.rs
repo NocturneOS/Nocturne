@@ -163,11 +163,11 @@ impl Scheduler {
 
     pub fn create_process(&mut self, name: &str, cwd: &str) -> SharedProcess {
         let this_proc = &self.this_task().process;
-        let proc = Process::new(this_proc.id, name, cwd);
+        let proc = Process::new(name, cwd);
 
         self.process_table.insert(
             proc.id,
-            ProcessEntry::alive(proc.parent_pid, proc.into_handle_ref()),
+            ProcessEntry::alive(this_proc.id, proc.into_handle_ref()),
         );
 
         Arc::new(proc)

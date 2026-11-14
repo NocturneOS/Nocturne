@@ -26,7 +26,7 @@ pub struct Process {
     pub address_space: PseudoSync<AddressSpace<GlobalPagingArchitecture>>,
 
     // SAFE ZONE
-    pub parent_pid: usize,  // it is updated only on creation, so no synchronization needed there
+    // pub parent_pid: usize,  // it is updated only on creation, so no synchronization needed there
     pub thread_count: AtomicUsize,
     pub name: AtomicPtr<c_char>,
     pub cwd: AtomicPtr<c_char>,
@@ -125,7 +125,7 @@ fn next_pid() -> usize {
 }
 
 impl Process {
-    pub fn new(parent_pid: usize, name: &str, cwd: &str) -> Self {
+    pub fn new(name: &str, cwd: &str) -> Self {
         let name_ptr = CString::new(name).unwrap().into_raw();
         let cwd_ptr = CString::new(cwd).unwrap().into_raw();
 
@@ -144,7 +144,6 @@ impl Process {
             program_image: Some(ProgramImage::new().into()),
             handle: Some(ProcessHandle::new(pid).into()),
             resources: descriptors.into(),
-            parent_pid,
             heap: None.into(), // heap will be initialized after the program image is loaded and the heap region is determined
         }
     }
@@ -166,7 +165,6 @@ impl Process {
             handle: None,
             resources: descriptors.into(),
             heap: None.into(), // this method is only used on kernel initialization, heap is managed externally.
-            parent_pid: 0,
         }
     }
 
