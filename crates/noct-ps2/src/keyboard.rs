@@ -68,14 +68,19 @@ pub extern "C" fn keyboard_handler(_regs: &mut CPURegisters) {
     if (kbdstatus & 0x01) != 0 {
         let scancode = controller::read();
 
+        // Bit 5 indicates that the byte came from the auxiliary (mouse) port.
+        // Do not feed mouse bytes into the keyboard event stream.
+        if (kbdstatus & 0x20) != 0 {
+            return;
+        }
+
         let code = scancode & 0x7f;
         let pressed = (scancode & 0x80) == 0;
-        
-        qemu_log!("Keyboard event! Sending it...");
 
-        noct_input_dispatcher::deliver_event(noct_input_dispatcher::event::InputEvent::Key { code, pressed });
-
-        qemu_log!("{scancode} (code: {code}, pressed: {pressed})");
+        // The IRQ handler only queues the event. Translation and delivery
+        // happen later in the input dispatcher thread, where taking mutexes
+        // and calling the scheduler is safe.
+        noct_input::push_event(noct_input::event::InputEvent::Key { code, pressed });
     }
 }
 

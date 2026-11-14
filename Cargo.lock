@@ -417,7 +417,7 @@ name = "noct-ps2"
 version = "0.1.0"
 dependencies = [
  "noct-cpu",
- "noct-input-dispatcher",
+ "noct-input",
  "noct-interrupts",
  "noct-logger",
  "x86",

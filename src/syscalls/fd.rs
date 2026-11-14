@@ -1,4 +1,4 @@
-use core::{ffi::CStr, fmt::Write as FmtWrite};
+use core::{ffi::CStr, fmt::Write as FmtWrite, time::Duration};
 
 use alloc::borrow::ToOwned;
 use noct_descriptor::ResourceDescriptor;
@@ -7,9 +7,8 @@ use noct_io::{Read, Seek, SeekOffset, Write, error::Error};
 use noct_logger::qemu_log;
 
 use bitflags::bitflags;
-use noct_sched::thread::ThreadWaitReason;
 
-use crate::mem::usermem::verify_ptr;
+use crate::mem::usermem::{verify_ptr, verify_ptr_range, verify_ptr_range_mut};
 
 bitflags! {
     #[derive(Debug, Clone, Copy)]
@@ -70,98 +69,89 @@ pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Result<us
 pub fn close(fd: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
     let process = &noct_sched::this_thread().process;
 
-    let mut reslock = process.resources.lock();
+    {
+        let mut reslock = process.resources.lock();
 
-    reslock.close(fd);
+        reslock.close(fd);
+    }
+
+    // An event queue descriptor must also disappear from the dispatcher's listener list.
+    noct_input_dispatcher::unregister(process.id, fd);
 
     Ok(0)
 }
 
 pub fn read(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Result<usize, Error> {
-    // FIXME: VERIFY THE POINTER IS WITHIN USERSPACE AREA!
+    if len == 0 {
+        return Ok(0);
+    }
 
-    let ptr = data as *mut u8;
+    let ptr = verify_ptr_range_mut::<u8>(data, len).ok_or(Error::MemoryError)?;
     let slice = unsafe { core::slice::from_raw_parts_mut(ptr, len) };
-
-    // Test-fill that. If this call causes an exception (due to Page Fault / GPF) it will kill whole process.
-    slice.fill(0);
 
     let process = &noct_sched::this_thread().process;
 
-    let mut lock = process.resources.lock();
+    enum ReadAction {
+        TerminalInput,
+        Event(Option<noct_input::event::InputEvent>),
+    }
 
-    let fd_val = lock.find_mut(fd).ok_or(Error::InvalidHandle)?;
+    loop {
+        let action = {
+            let mut lock = process.resources.lock();
 
-    qemu_log!("read: fd {fd} -> {:?}", fd_val.res);
+            let fd_val = lock.find_mut(fd).ok_or(Error::InvalidHandle)?;
 
-    let mut input_needs_waiting = false;
+            match &mut fd_val.res {
+                ResourceDescriptor::Null => return Ok(0),
+                ResourceDescriptor::TerminalInput => ReadAction::TerminalInput,
+                ResourceDescriptor::EventQueue(queue) => {
+                    if len < noct_input::event::EVENT_WIRE_SIZE {
+                        return Err(Error::InvalidArgument);
+                    }
 
-    match &mut fd_val.res {
-        ResourceDescriptor::Null => return Ok(0),
-        ResourceDescriptor::TerminalInput => {
-            let ifd = noct_tty::input::input_fd();
-
-            // Kernel TTY is always in kernel process.
-            let kproc = noct_sched::this().kernel_process().clone();
-
-            let mut kres = kproc.resources.lock();
-
-            let evq = kres
-                .find_mut(ifd)
-                .ok_or(Error::InvalidHandle)?
-                .res
-                .as_event_queue_mut()
-                .expect("Input FD is not an EventQueue!");
-
-            match noct_tty::input::get_char(evq) {
-                Some(0) | None => {
-                    input_needs_waiting = true;
+                    ReadAction::Event(queue.get_raw())
                 }
-                Some(ch) => {
+                ResourceDescriptor::FileStream(file_handle) => {
+                    let read_bytes = file_handle.read(slice)?;
+
+                    return Ok(read_bytes as usize);
+                }
+                _ => return Err(Error::InvalidHandle),
+            }
+        };
+
+        match action {
+            ReadAction::TerminalInput => {
+                if let Some(ch) = noct_tty::input::try_read_char() {
                     slice[0] = ch;
 
-                    qemu_log!("Character: {ch}");
+                    noct_tty::tty_print!("{}", ch as char);
+                    noct_tty::WRITER.lock().flush();
 
                     return Ok(1);
                 }
             }
-        }
-        ResourceDescriptor::EventQueue(queue) => {
-            if len < 32 {
-                return Err(noct_io::error::Error::MemoryError as _);
+            ReadAction::Event(Some(event)) => {
+                let written = event.serialize_into(slice).ok_or(Error::MemoryError)?;
+
+                return Ok(written);
             }
-
-            if queue.is_empty() {
-                input_needs_waiting = true;
-            } else {
-                qemu_log!("Got past checking!");
-
-                let event = queue.get_raw().unwrap().serialize();
-
-                slice[..event.len()].copy_from_slice(&event);
-            }
+            ReadAction::Event(None) => {}
         }
-        ResourceDescriptor::FileStream(file_handle) => {
-            let read_bytes = file_handle.read(slice)?;
 
-            return Ok(read_bytes as usize);
-        }
-        _ => return Err(Error::InvalidHandle),
+        // No data yet. A real wait queue can replace this polling loop later;
+        // It's like in `waitpid` now.
+        noct_sched::sleep(Duration::from_millis(1));
     }
-
-    drop(lock);
-
-    if input_needs_waiting {
-        noct_sched::pause(ThreadWaitReason::InputEvent);
-    }
-
-    Ok(0)
 }
 
 pub fn write(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Result<usize, Error> {
-    // FIXME: VERIFY THE POINTER IS WITHIN USERSPACE AREA!
+    if len == 0 {
+        return Ok(0);
+    }
 
-    let ptr = data as *const u8;
+    let ptr = verify_ptr_range::<u8>(data, len).ok_or(Error::MemoryError)?;
     let slice = unsafe { core::slice::from_raw_parts(ptr, len) };
 
     let process = &noct_sched::this_thread().process;
@@ -176,9 +166,11 @@ pub fn write(fd: usize, data: usize, len: usize, _: usize, _: usize) -> Result<u
     match &mut fd_val.res {
         ResourceDescriptor::Null => return Ok(0),
         ResourceDescriptor::TerminalOutput => {
+            let text = core::str::from_utf8(slice).map_err(|_| Error::InvalidArgument)?;
+
             noct_tty::WRITER
                 .lock()
-                .write_str(unsafe { str::from_utf8_unchecked(slice) })
+                .write_str(text)
                 .map_err(|_| Error::Unknown)?;
 
             Ok(len)

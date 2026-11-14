@@ -1,11 +1,11 @@
 use core::sync::atomic::{
-    AtomicU8, AtomicUsize,
+    AtomicU8,
     Ordering::{Acquire, Release},
 };
 
-use noct_input_dispatcher::{EventQueue, event::InputEvent};
-
-static INPUT_FD: AtomicUsize = AtomicUsize::new(0);
+use lazy_static::lazy_static;
+use noct_input_dispatcher::{EventQueue, InputSink, event::InputEvent};
+use spin::Mutex;
 
 const SCANCODE_TRANSLATION_TABLE: &[u8] = &[
     0, b'\x1b', b'1', b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b'0', b'-', b'=', b'\x08',
@@ -36,64 +36,97 @@ bitflags! {
 
 static TTY_INPUT_STATE: AtomicU8 = AtomicU8::new(0);
 
-pub fn init() {
-    let fd = noct_input_dispatcher::register_this();
-
-    INPUT_FD.store(fd, Release);
+lazy_static! {
+    /// The TTY owns its stdin queue now. It is only touched by the input
+    /// dispatcher thread (producer) and read syscalls (consumer), never by an
+    /// IRQ handler.
+    /// Since the TTY is a global thing, making it static is okay.
+    static ref TTY_QUEUE: Mutex<EventQueue> = Mutex::new(EventQueue::new());
 }
 
-pub fn input_fd() -> usize {
-    INPUT_FD.load(Acquire)
-}
+struct TtyInputSink;
 
-pub fn get_key_from(evq: &mut EventQueue) -> Option<(u8, bool)> {
-    match evq.get_raw()? {
-        InputEvent::Key { code, pressed } => {
-            noct_sched::resume_group(noct_sched::thread::ThreadWaitReason::InputEvent);
-
-            Some((code, pressed))
+impl InputSink for TtyInputSink {
+    fn push_event(&self, event: InputEvent) {
+        // The TTY only cares about keyboard events.
+        if matches!(event, InputEvent::Key { .. }) {
+            TTY_QUEUE.lock().push(event);
         }
-        _ => None,
     }
 }
 
-pub fn get_char(evq: &mut EventQueue) -> Option<u8> {
-    let (key, pressed) = get_key_from(evq)?;
+static TTY_SINK: TtyInputSink = TtyInputSink;
 
-    match key {
-        // Left or Right shift
+pub fn init() {
+    noct_input_dispatcher::register_sink(&TTY_SINK);
+}
+
+/// Returns the next translated character, or `None` when no character is
+/// currently available.
+pub fn try_read_char() -> Option<u8> {
+    let mut queue = TTY_QUEUE.lock();
+
+    loop {
+        let event = queue.get_raw()?;
+
+        if let Some(character) = translate(event) {
+            return Some(character);
+        }
+    }
+}
+
+fn translate(event: InputEvent) -> Option<u8> {
+    let InputEvent::Key { code, pressed } = event else {
+        return None;
+    };
+
+    match code {
+        // Left or Right Shift
         0x2A | 0x36 => {
             if pressed {
                 TTY_INPUT_STATE.fetch_or(InputState::ShiftPressed.bits(), Release);
             } else {
                 TTY_INPUT_STATE.fetch_and(!InputState::ShiftPressed.bits(), Release);
             }
-            
+
             None
         }
-        // Caps Lock
+        // Caps Lock toggles on press only, not on both press and release.
         0x3A => {
-            TTY_INPUT_STATE.fetch_xor(InputState::CapsEnabled.bits(), Release);
+            if pressed {
+                TTY_INPUT_STATE.fetch_xor(InputState::CapsEnabled.bits(), Release);
+            }
+
             None
         }
         key if pressed => {
-            let state = InputState::from_bits(TTY_INPUT_STATE.load(Acquire)).unwrap();
+            let state = InputState::from_bits_truncate(TTY_INPUT_STATE.load(Acquire));
 
-            let ch = if state.contains(InputState::ShiftPressed) {
-                SCANCODE_TRANSLATION_TABLE_SHIFT
-                    .get(key as usize)
-                    .copied()?
+            let shift = state.contains(InputState::ShiftPressed);
+            let caps = state.contains(InputState::CapsEnabled);
+
+            let mut character = if shift {
+                SCANCODE_TRANSLATION_TABLE_SHIFT.get(key as usize).copied()?
             } else {
                 SCANCODE_TRANSLATION_TABLE.get(key as usize).copied()?
             };
 
-            let ch = if state.contains(InputState::CapsEnabled) {
-                ch.to_ascii_uppercase()
-            } else {
-                ch
-            };
+            // Zero entries are non-printing keys (Ctrl, Alt, ...).
+            if character == 0 {
+                return None;
+            }
 
-            Some(ch)
+            // Caps Lock affects letters only. With Shift held it inverts the
+            // shift state instead of uppercasing the shifted character.
+            if caps && character.is_ascii_alphabetic() {
+                character = if shift {
+                    character.to_ascii_lowercase()
+                } else {
+                    character.to_ascii_uppercase()
+                };
+            }
+
+            Some(character)
         }
         _ => None,
     }

@@ -141,8 +141,12 @@ fn kmain(boot_info: BootInformation) -> ! {
             (display_size.height / 16, display_size.width / 8)
         };
 
-        // noct_tty::init(25, 80);
         noct_tty::init(rows, cols);
+
+        // Start the input dispatcher.
+        // Keyboard IRQs only enqueue raw events.
+        // This thread is responsible for locking process resources and waking readers.
+        noct_input_dispatcher::init();
         
         qemu_log!("TTY initialized with {} rows and {} columns", rows, cols);
 
