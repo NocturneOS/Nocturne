@@ -5,13 +5,34 @@ extern crate alloc;
 
 use alloc::{collections::vec_deque::VecDeque};
 
-use crate::event::InputEvent;
+use crate::{event::InputEvent, ring::EventRing};
 
 use core::fmt::Debug;
 
 pub mod event;
 pub mod keyboard;
 pub mod mouse;
+pub mod ring;
+
+const INPUT_RING_SIZE: usize = 128;
+
+static INPUT_RING: EventRing<INPUT_RING_SIZE> = EventRing::new();
+
+/// Queues an event from IRQ context.
+///
+/// This performs no allocation and takes no locks.
+pub fn push_event(event: InputEvent) -> bool {
+    INPUT_RING.push(event)
+}
+
+/// Pops an event in thread context (the input dispatcher).
+pub fn pop_event() -> Option<InputEvent> {
+    INPUT_RING.pop()
+}
+
+pub fn input_pending() -> bool {
+    !INPUT_RING.is_empty()
+}
 
 /// Global keyboard buffer (kernel-wide). Used everywhere.
 // static EVENT_QUEUE: RwLock<spin::Once<EventQueue>> = RwLock::new(Once::new());
