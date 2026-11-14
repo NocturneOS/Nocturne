@@ -957,6 +957,7 @@ pub fn process_exit(exitcode: u32) -> ! {
 
                 lock.sleeping_queue.retain(|(x, _)| x.id != i.id);
                 lock.working_queue.retain(|x| x.id != i.id);
+                lock.waiting_queue.retain(|x| x.id != i.id);
 
                 lock.dead_queue.push_back(i);
             }
