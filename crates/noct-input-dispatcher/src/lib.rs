@@ -22,23 +22,32 @@ pub trait InputSink: Send + Sync {
     fn push_event(&self, event: InputEvent);
 }
 
+#[derive(Clone)]
+pub struct EventListener {
+    pub pid: usize,
+    pub descriptor_fd: usize
+}
+
 lazy_static! {
-    static ref EVENT_LISTENERS: Mutex<Vec<(usize, usize)>> = Mutex::new(Vec::new());
+    /// Event listeners registry is used to deliver events from kernel (actually drivers) to userspace.
+    static ref EVENT_LISTENERS: Mutex<Vec<EventListener>> = Mutex::new(Vec::new());
+
+    /// Input sinks are used by the kernel to delivers events INSIDE the kernel (from drivers to TTY).
     static ref SINKS: Mutex<Vec<&'static dyn InputSink>> = Mutex::new(Vec::new());
 }
 
-pub fn register(pid: usize, descriptor_id: usize) {
-    EVENT_LISTENERS.lock().push((pid, descriptor_id));
+pub fn register(pid: usize, descriptor_fd: usize) {
+    EVENT_LISTENERS.lock().push(EventListener { pid, descriptor_fd });
 }
 
-pub fn unregister(pid: usize, descriptor_id: usize) {
+pub fn unregister(pid: usize, descriptor_fd: usize) {
     EVENT_LISTENERS
         .lock()
-        .retain(|&(p, d)| !(p == pid && d == descriptor_id));
+        .retain(|ev| !(ev.pid == pid && ev.descriptor_fd == descriptor_fd));
 }
 
 pub fn unregister_process(pid: usize) {
-    EVENT_LISTENERS.lock().retain(|&(p, _)| p != pid);
+    EVENT_LISTENERS.lock().retain(|ev| ev.pid != pid);
 }
 
 pub fn register_sink(sink: &'static dyn InputSink) {
@@ -73,7 +82,7 @@ pub fn deliver_event(event: InputEvent) {
 
     let mut unavailable_processes = Vec::new();
 
-    for &(pid, fd) in listeners.iter() {
+    for &EventListener { pid, descriptor_fd: fd } in listeners.iter() {
         // Get the process. If it doesn't exist, push it to the unavailable process list.
         let Some(process) = noct_sched::get_process(pid) else {
             unavailable_processes.push(pid);
@@ -97,7 +106,7 @@ pub fn deliver_event(event: InputEvent) {
         let mut listeners = EVENT_LISTENERS.lock();
 
         for pid in unavailable_processes {
-            listeners.retain(|&(p, _)| p != pid);
+            listeners.retain(|ev| ev.pid != pid);
         }
     }
 
