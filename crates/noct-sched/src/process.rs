@@ -58,6 +58,41 @@ impl ProcessHandle {
     }
 }
 
+/// Used for tracking process states (dead or not).
+///
+/// Those states are used to implement [`crate::waitpid`]
+pub struct ProcessEntry {
+    handle: Arc<ProcessHandle>,
+    state: ProcessState
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub enum ProcessState {
+    Alive,
+    Zombie
+}
+
+impl ProcessEntry {
+    pub fn alive(hdl: Arc<ProcessHandle>) -> Self {
+        Self {
+            handle: hdl,
+            state: ProcessState::Alive
+        }
+    }
+
+    pub fn handle(&self) -> &Arc<ProcessHandle> {
+        &self.handle
+    }
+
+    pub fn state(&self) -> ProcessState {
+        self.state
+    }
+
+    pub fn set_state(&mut self, state: ProcessState) {
+        self.state = state;
+    }
+}
+
 #[cfg(target_arch = "x86")]
 const _: &[()] = &[
     assert!(core::mem::offset_of!(Process, id) == 0),
@@ -112,6 +147,10 @@ impl Process {
             heap: None.into(), // this method is only used on kernel initialization, heap is managed externally.
             parent_pid: 0,
         }
+    }
+
+    pub fn into_handle_ref(&self) -> Arc<ProcessHandle> {
+        Arc::clone(self.handle.as_ref().expect("Cannot call `Process::into_handle` on kernel process image!"))
     }
 
     pub fn into_handle(this: Arc<Self>) -> Arc<ProcessHandle> {

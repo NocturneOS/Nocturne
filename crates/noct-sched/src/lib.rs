@@ -10,7 +10,7 @@ use core::{
 };
 
 use alloc::{
-    collections::{linked_list::LinkedList, vec_deque::VecDeque},
+    collections::{linked_list::LinkedList, vec_deque::VecDeque, BTreeMap},
     sync::Arc,
     vec::Vec,
 };
@@ -21,7 +21,7 @@ use spin::{Mutex, MutexGuard};
 
 use noct_logger::qemu_log;
 
-use crate::process::ProcessHandle;
+use crate::process::{ProcessHandle, ProcessEntry, ProcessState};
 
 use self::{
     archspec::ArchitectureSpecificRegion,
@@ -60,6 +60,8 @@ pub struct Scheduler {
     current_thread: Option<SharedThread>,
 
     kernel_process: Option<SharedProcess>,
+
+    process_table: BTreeMap<usize, process::ProcessEntry>,
 }
 
 unsafe extern "C" {
@@ -92,6 +94,8 @@ impl Scheduler {
             current_thread: None,
 
             kernel_process: None,
+
+            process_table: BTreeMap::new()
         }
     }
 
@@ -160,6 +164,8 @@ impl Scheduler {
     pub fn create_process(&mut self, name: &str, cwd: &str) -> SharedProcess {
         let this_proc = &self.this_task().process;
         let proc = Process::new(this_proc.id, name, cwd);
+
+        self.process_table.insert(proc.id, ProcessEntry::alive(proc.into_handle_ref()));
 
         Arc::new(proc)
     }
@@ -834,10 +840,9 @@ pub fn get_process_handle(pid: usize) -> Option<Arc<ProcessHandle>> {
     let il = InterruptLocker::lock();
 
     let result = this()
-        .thread_list
-        .iter()
-        .find(|x| x.process.id == pid)
-        .map(|x| Arc::clone(&x.process.handle.as_ref().unwrap()));
+        .process_table
+        .get(&pid)
+        .map(|x| Arc::clone(&x.handle()));
 
     drop(il);
 
