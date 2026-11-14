@@ -6,7 +6,7 @@ pub fn verify_ptr_range_mut<T>(addr: usize, size: usize) -> Option<*mut T> {
         return None;
     }
 
-    let end = addr + size;
+    let end = addr.checked_add(size)?;
 
     // Kernel area starts in the kernel base and ends in kernel heap's end.
     let kernel_area = noct_spec::KERNEL_BASE..noct_mem::heap::heap_bounds().end;
@@ -19,7 +19,9 @@ pub fn verify_ptr_range_mut<T>(addr: usize, size: usize) -> Option<*mut T> {
 }
 
 pub fn verify_ptr_range<T>(addr: usize, len: usize) -> Option<*const T> {
-    verify_ptr_range_mut(addr, len * core::mem::size_of::<T>()).map(|x| x as *const T)
+    let size = len.checked_mul(core::mem::size_of::<T>())?;
+
+    verify_ptr_range_mut(addr, size).map(|x| x as *const T)
 }
 
 pub fn verify_ptr_mut<T>(addr: usize) -> Option<*mut T> {
