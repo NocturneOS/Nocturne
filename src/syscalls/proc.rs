@@ -23,9 +23,7 @@ bitflags! {
 
 /// Spawns a new process.
 ///
-/// WARNING: Check errno before checking return value!
-///
-/// Returns 0 if ELF loading error happened.
+/// Returns -errno if ELF loading error happened.
 /// Returns a new process' PID otherwise. (errno is set to 0)
 pub fn run(
     path_ptr: usize,
