@@ -52,6 +52,8 @@ pub enum Error {
     Busy = 21,
     /// Wrong executable format or unsupported architecture.
     ExecFormat = 22,
+    /// No child process with the given PID to wait for.
+    NoChild = 23,
     /// A kind of error that hasn't documented here yet.
     Unknown = 0xFFFF,
 }

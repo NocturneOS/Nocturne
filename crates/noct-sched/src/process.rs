@@ -26,7 +26,6 @@ pub struct Process {
     pub address_space: PseudoSync<AddressSpace<GlobalPagingArchitecture>>,
 
     // SAFE ZONE
-    // pub parent_pid: usize,  // it is updated only on creation, so no synchronization needed there
     pub thread_count: AtomicUsize,
     pub name: AtomicPtr<c_char>,
     pub cwd: AtomicPtr<c_char>,

@@ -72,7 +72,7 @@ pub fn waitpid(pid: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usi
     // TODO: Parse the status pointer and options (WNOHANG) once the ABI is settled.
     match noct_sched::waitpid(pid) {
         Ok(code) => Ok(code as usize),
-        Err(noct_sched::WaitError::NoChild) => Err(Error::NotFound),
+        Err(noct_sched::WaitError::NoChild) => Err(Error::NoChild),
         Err(noct_sched::WaitError::SelfWait) => Err(Error::InvalidArgument),
     }
 }
