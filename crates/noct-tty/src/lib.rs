@@ -2,9 +2,11 @@
 
 extern crate alloc;
 
-pub mod input;
 pub mod console;
+pub mod input;
 pub mod renderer;
+
+pub use console::{CELL_HEIGHT, CELL_WIDTH};
 
 use core::fmt;
 use core::fmt::Write;
@@ -36,12 +38,15 @@ lazy_static! {
 
 #[derive(Default)]
 pub struct Writer {
-    console: Option<RenderedConsole>
+    console: Option<RenderedConsole>,
 }
 
 impl fmt::Write for Writer {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        assert!(self.console.is_some(), "Attempted usage of uninitialized console!");
+        assert!(
+            self.console.is_some(),
+            "Attempted usage of uninitialized console!"
+        );
 
         self.console.as_mut().unwrap().print_str(s);
 
@@ -51,14 +56,22 @@ impl fmt::Write for Writer {
 
 impl Writer {
     pub fn flush(&mut self) {
-        assert!(self.console.is_some(), "Attempted usage of uninitialized console!");
+        assert!(
+            self.console.is_some(),
+            "Attempted usage of uninitialized console!"
+        );
 
         self.console.as_mut().unwrap().render();
     }
 }
 
 pub fn init(console_rows: usize, console_columns: usize) {
-    *WRITER.lock() = Writer { console: Some(RenderedConsole::new(Console::new(console_rows, console_columns))) };
+    *WRITER.lock() = Writer {
+        console: Some(RenderedConsole::new(Console::new(
+            console_rows,
+            console_columns,
+        ))),
+    };
 
     input::init();
 }

@@ -1,7 +1,13 @@
-use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
-use noct_logger::qemu_log;
+
+/// Width of a character cell in pixels.
+pub const CELL_WIDTH: usize = 8;
+/// Height of a character cell in pixels.
+pub const CELL_HEIGHT: usize = 16;
+
+pub const DEFAULT_FG: u32 = 0x00_ffffff;
+pub const DEFAULT_BG: u32 = 0x00_0000;
 
 const ANSI_COLORS: [u32; 8] = [
     0x00_0000, // Black
@@ -14,27 +20,27 @@ const ANSI_COLORS: [u32; 8] = [
     0xffffff,  // White
 ];
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Dimensions {
     pub rows: usize,
     pub columns: usize,
 }
 
-pub enum AttributeValue {
-    Color(u32),
-}
-
-pub struct Attribute {
-    pub row: usize,
-    pub column: usize,
-    pub attribute_value: AttributeValue,
-}
-
-#[derive(Copy, Clone, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Cell {
     pub ch: char,
     pub fg: u32,
     pub bg: u32,
+}
+
+impl Default for Cell {
+    fn default() -> Self {
+        Self {
+            ch: '\0',
+            fg: DEFAULT_FG,
+            bg: DEFAULT_BG,
+        }
+    }
 }
 
 pub struct Console {
@@ -42,7 +48,16 @@ pub struct Console {
     row: usize,
     column: usize,
 
-    matrix: Vec<Cell>
+    matrix: Vec<Cell>,
+
+    current_fg: u32,
+    current_bg: u32,
+    cursor_visible: bool,
+
+    /// A character was written in the last column flag.
+    /// The cursor stays on tha cell until the next printable
+    /// character wraps to the following line.
+    wrap_pending: bool,
 }
 
 impl Console {
@@ -52,6 +67,10 @@ impl Console {
             row: 0,
             column: 0,
             matrix: vec![Cell::default(); rows * columns],
+            current_fg: DEFAULT_FG,
+            current_bg: DEFAULT_BG,
+            cursor_visible: true,
+            wrap_pending: false,
         }
     }
 
@@ -69,6 +88,9 @@ impl Console {
 
         self.matrix = matrix;
         self.dimensions = Dimensions { rows, columns };
+        self.row = self.row.min(rows.saturating_sub(1));
+        self.column = self.column.min(columns.saturating_sub(1));
+        self.wrap_pending = false;
     }
 
     pub fn clear(&mut self) {
@@ -83,12 +105,24 @@ impl Console {
         (self.row * self.dimensions.columns) + self.column
     }
 
+    pub fn cell(&self, row: usize, column: usize) -> Option<&Cell> {
+        self.matrix.get((row * self.dimensions.columns) + column)
+    }
+
     pub fn get_character(&self, row: usize, column: usize) -> Option<&char> {
-        self.matrix.get((row * self.dimensions.columns) + column).map(|x| &x.ch)
+        self.cell(row, column).map(|cell| &cell.ch)
     }
 
     pub fn position(&self) -> (usize, usize) {
         (self.row, self.column)
+    }
+
+    pub fn cursor_visible(&self) -> bool {
+        self.cursor_visible
+    }
+
+    pub fn set_cursor_visible(&mut self, visible: bool) {
+        self.cursor_visible = visible;
     }
 
     pub fn current_line(&self) -> &[Cell] {
@@ -112,181 +146,312 @@ impl Console {
     }
 
     pub fn move_right(&mut self) {
-        self.column += 1;
+        if self.dimensions.columns == 0 {
+            return;
+        }
 
-        if self.column >= self.dimensions.columns {
+        if self.wrap_pending {
             self.column = 0;
-            self.row += 1;
+            self.advance_row();
+            self.wrap_pending = false;
+        } else if self.column + 1 >= self.dimensions.columns {
+            self.wrap_pending = true;
+        } else {
+            self.column += 1;
         }
     }
 
     pub fn move_left(&mut self) {
-        if self.column == 0 {
-            self.row = self.row.saturating_sub(1);
+        self.wrap_pending = false;
 
-            self.column = self.current_line_length();
+        if self.column > 0 {
+            self.column -= 1;
+        } else if self.row > 0 {
+            self.row -= 1;
+            self.column = self.dimensions.columns.saturating_sub(1);
         }
-
-        self.column = self.column.saturating_sub(1);
     }
 
     pub fn move_down(&mut self) {
         self.column = 0;
-        self.row += 1;
+        self.wrap_pending = false;
+        self.advance_row();
     }
 
     pub fn move_to_beginning(&mut self) {
         self.column = 0;
+        self.wrap_pending = false;
+    }
+
+    fn advance_row(&mut self) {
+        if self.dimensions.rows == 0 {
+            self.row = 0;
+            return;
+        }
+
+        if self.row + 1 >= self.dimensions.rows {
+            self.scroll();
+            self.row = self.dimensions.rows - 1;
+        } else {
+            self.row += 1;
+        }
     }
 
     pub fn print_char(&mut self, character: char) {
-        if self.row >= self.dimensions.rows {
-            self.scroll();
-            self.row = self.dimensions.rows - 1;
+        if self.dimensions.rows == 0 || self.dimensions.columns == 0 {
+            return;
+        }
+
+        match character {
+            '\n' => {
+                self.move_down();
+                return;
+            }
+            '\u{8}' => {
+                // Backspace only moves the caret. Erasing is done by the
+                // writer with the usual `\b \b` sequence.
+                self.move_left();
+                return;
+            }
+            '\r' => {
+                self.move_to_beginning();
+                return;
+            }
+            '\t' => {
+                for _ in 0..4 {
+                    self.print_char(' ');
+                }
+                return;
+            }
+            '\0' => return,
+            _ => {}
+        }
+
+        if self.wrap_pending {
+            self.column = 0;
+            self.advance_row();
+            self.wrap_pending = false;
         }
 
         let pos = self.data_position();
 
-        if character == '\n' {
-            self.move_down();
-            return;
-        } else if character as u32 == 8 {
-            // Backspace
-            self.move_left();
-            // self.data[pos] = char::default();
-            return;
-        } else if character == '\r' {
-            self.move_to_beginning();
-            return;
-        } else if character == '\t' {
-            //self.column += 4;
-            for _ in 0..4 {
-                self.print_char(' ');
-            }
-            return;
-        }
-
-        self.matrix[pos] = Cell { ch: character, bg: 0x00_00_00_00, fg: 0x00_ffffff };
+        self.matrix[pos] = Cell {
+            ch: character,
+            fg: self.current_fg,
+            bg: self.current_bg,
+        };
 
         self.move_right();
     }
 
-    pub fn get_attribute(&self, row: usize, column: usize) -> Option<(u32, u32)> {
-        let cell = &self.matrix.get(row * self.dimensions.columns + column);
-
-        cell.map(|x| (x.bg, x.fg))
-    }
-
     pub fn print_str(&mut self, input: &str) {
-        // qemu_note!("Printing string: {input:?}");
-
         let mut iterator = input.chars();
 
-        while let Some(i) = iterator.next() {
-            if i == '\u{1b}' {
-                let next = iterator.next();
-
-                if next == Some('[') {
-                    // Read digits until non-digit
-                    let mut digits = String::with_capacity(4);
-
-                    let mut values: Vec<u32> = Vec::with_capacity(2);
-
-                    let mut counter = 0;
-
-                    let mut last_char = char::default();
-
-                    // Consume bytes until it's non-digit character (4 MAX).
-                    while let Some(c) = iterator.next() && counter < 4 {
-                        if c.is_ascii_digit() {
-                            digits.push(c);
-                        } else if c == ';' {
-                            let value = digits.parse::<u32>();
-
-                            if let Ok(value) = value {
-                                values.push(value);
-                            }
-
-                            digits.clear();
-                        } else {
-                            let value = digits.parse::<u32>();
-
-                            if let Ok(value) = value {
-                                values.push(value);
-                            }
-
-                            last_char = c;
-                            break;
-                        }
-
-                        counter += 1;
-                    }
-
-                    //qemu_note!("Values: {values:?}; Letter: {last_char:?}");
-
-                    if last_char == 'm' {
-                        let code = *values.last().unwrap_or(&0);
-
-                        let color = if code == 0 {
-                            0x00_ffffff
-                        } else {
-                            *ANSI_COLORS.get((code - 30) as usize).unwrap_or(&0x00_ffffff)
-                        };
-
-                        self.matrix[self.row * self.dimensions.columns + self.column].fg = color;
-
-                        continue;
-                    } else if last_char == 'H' {
-                        if values.is_empty() {
-                            self.row = 0;
-                            self.column = 0;
-                        } else {
-                            let row = values.get(0).copied().unwrap_or(1).clamp(0, self.dimensions.rows as u32 - 1);
-                            let column = values.get(1).copied().unwrap_or(1).clamp(0, self.dimensions.columns as u32 - 1);
-
-                            // qemu_note!("Set position: {:?}", (row, column));
-
-                            self.row = row.saturating_sub(1) as usize;
-                            self.column = column.saturating_sub(1) as usize;
-                        }
-                    } else if last_char == 'J' {
-                        let code = *values.last().unwrap_or(&0);
-
-                        if code == 2 {
-                            self.clear();
-                        }
-                    } else if last_char == 'K' {
-                        let code = *values.last().unwrap_or(&0);
-
-                        if code == 0 {
-                            let start_position = self.column;
-                            let end_position = self.dimensions.columns - 1;
-                            let line = self.current_line_mut();
-
-                            line[start_position..end_position].fill(Cell::default());
-                        }
-                    } else {
-                        qemu_log!("ERROR: Unknown letter: {last_char:?}");
-                    }
-                }
-
+        while let Some(character) = iterator.next() {
+            if character != '\u{1b}' {
+                self.print_char(character);
                 continue;
             }
 
-            self.print_char(i);
+            // Only CSI sequences are interpreted. A bare ESC (or a different
+            // escape sequence) is ignored.
+            if iterator.next() != Some('[') {
+                continue;
+            }
+
+            let mut parameters = [0u32; 8];
+            let mut parameter_count = 0usize;
+            let mut current = 0u32;
+            let mut has_digits = false;
+            let mut private = false;
+
+            let command = loop {
+                let Some(character) = iterator.next() else {
+                    return;
+                };
+
+                match character {
+                    '0'..='9' => {
+                        has_digits = true;
+                        current = current
+                            .saturating_mul(10)
+                            .saturating_add(character as u32 - '0' as u32)
+                            .min(9999);
+                    }
+                    ';' | ':' => {
+                        if parameter_count < parameters.len() {
+                            parameters[parameter_count] = current;
+                            parameter_count += 1;
+                        }
+
+                        current = 0;
+                        has_digits = false;
+                    }
+                    '?' => private = true,
+                    '<' | '=' | '>' => {}
+                    ' '..='/' => {}
+                    '@'..='~' => {
+                        if (has_digits || parameter_count > 0) && parameter_count < parameters.len()
+                        {
+                            parameters[parameter_count] = current;
+                            parameter_count += 1;
+                        }
+
+                        break character;
+                    }
+                    _ => return,
+                }
+            };
+
+            self.handle_csi(&parameters[..parameter_count], private, command);
+        }
+    }
+
+    fn handle_csi(&mut self, parameters: &[u32], private: bool, command: char) {
+        let parameter =
+            |index: usize, default: u32| parameters.get(index).copied().unwrap_or(default);
+
+        match command {
+            'm' => self.set_graphics(parameters),
+            'H' | 'f' => {
+                let row = parameter(0, 1).max(1) as usize - 1;
+                let column = parameter(1, 1).max(1) as usize - 1;
+
+                self.set_position(column, row);
+            }
+            'J' => self.erase_display(parameter(0, 0)),
+            'K' => self.erase_line(parameter(0, 0)),
+            'h' if private => self.set_private_mode(parameters, true),
+            'l' if private => self.set_private_mode(parameters, false),
+            _ => {}
+        }
+    }
+
+    fn set_private_mode(&mut self, parameters: &[u32], enabled: bool) {
+        for &mode in parameters {
+            // DECTCEM: show/hide cursor.
+            if mode == 25 {
+                self.cursor_visible = enabled;
+            }
+        }
+    }
+
+    fn set_graphics(&mut self, parameters: &[u32]) {
+        if parameters.is_empty() {
+            self.current_fg = DEFAULT_FG;
+            self.current_bg = DEFAULT_BG;
+            return;
+        }
+
+        let mut index = 0;
+
+        while index < parameters.len() {
+            let code = parameters[index];
+
+            match code {
+                // Reset
+                0 => {
+                    self.current_fg = DEFAULT_FG;
+                    self.current_bg = DEFAULT_BG;
+                }
+                // Foreground
+                30..=37 => self.current_fg = ANSI_COLORS[(code - 30) as usize],
+                39 => self.current_fg = DEFAULT_FG,
+                // Background
+                40..=47 => self.current_bg = ANSI_COLORS[(code - 40) as usize],
+                49 => self.current_bg = DEFAULT_BG,
+                // Bright variants use the same palette for now.
+                90..=97 => self.current_fg = ANSI_COLORS[(code - 90) as usize],
+                100..=107 => self.current_bg = ANSI_COLORS[(code - 100) as usize],
+                38 | 48 => {
+                    // Extended colors (38;5;n / 38;2;r;g;b) are not supported
+                    // yet, but their parameters must not be interpreted as
+                    // separate SGR codes.
+                    match parameters.get(index + 1).copied() {
+                        Some(5) if index + 2 < parameters.len() => index += 2,
+                        Some(2) if index + 4 < parameters.len() => index += 4,
+                        _ => break,
+                    }
+                }
+                _ => {}
+            }
+
+            index += 1;
+        }
+    }
+
+    // For `[K` handling.
+    fn erase_line(&mut self, code: u32) {
+        let rows = self.dimensions.rows;
+        let columns = self.dimensions.columns;
+
+        if rows == 0 || columns == 0 {
+            return;
+        }
+
+        let row = self.row.min(rows - 1);
+        let column = self.column.min(columns - 1);
+        let line_start = row * columns;
+        let line = &mut self.matrix[line_start..line_start + columns];
+
+        match code {
+            0 => line[column..].fill(Cell::default()),
+            1 => line[..=column].fill(Cell::default()),
+            2 => line.fill(Cell::default()),
+            _ => {}
+        }
+    }
+
+    // Handle `[J` - erase display.
+    fn erase_display(&mut self, code: u32) {
+        let rows = self.dimensions.rows;
+        let columns = self.dimensions.columns;
+
+        if rows == 0 || columns == 0 {
+            return;
+        }
+
+        let row = self.row.min(rows - 1);
+        let column = self.column.min(columns - 1);
+
+        match code {
+            // Clear from the current position to the end of the screen.
+            0 => {
+                let line_start = row * columns;
+
+                self.matrix[line_start + column..line_start + columns].fill(Cell::default());
+                self.matrix[(row + 1) * columns..].fill(Cell::default());
+            }
+            // Clear from the beginning to the current position.
+            1 => {
+                let line_start = row * columns;
+
+                self.matrix[..line_start].fill(Cell::default());
+                self.matrix[line_start..line_start + column + 1].fill(Cell::default());
+            }
+            // Clear the whole screen (not returning cursor position to home)
+            2 | 3 => self.clear(),
+            _ => {}
         }
     }
 
     pub fn scroll(&mut self) {
-        self.matrix.copy_within(self.dimensions.columns.., 0);
+        let columns = self.dimensions.columns;
 
-        let last_line = self.matrix.len() - self.dimensions.columns;
+        if self.dimensions.rows == 0 || columns == 0 {
+            return;
+        }
+
+        self.matrix.copy_within(columns.., 0);
+
+        let last_line = self.matrix.len() - columns;
         self.matrix[last_line..].fill(Cell::default());
     }
 
     pub fn set_position(&mut self, x: usize, y: usize) {
-        self.row = y;
-        self.column = x;
+        self.row = y.min(self.dimensions.rows.saturating_sub(1));
+        self.column = x.min(self.dimensions.columns.saturating_sub(1));
+        self.wrap_pending = false;
     }
 
     pub fn size_chars(&self) -> (usize, usize) {
