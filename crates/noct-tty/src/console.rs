@@ -30,12 +30,19 @@ pub struct Attribute {
     pub attribute_value: AttributeValue,
 }
 
+#[derive(Copy, Clone, Default, PartialEq)]
+pub struct Cell {
+    pub ch: char,
+    pub fg: u32,
+    pub bg: u32,
+}
+
 pub struct Console {
     dimensions: Dimensions,
     row: usize,
     column: usize,
-    data: Vec<char>,
-    attributes: Vec<Attribute>,
+
+    matrix: Vec<Cell>
 }
 
 impl Console {
@@ -44,30 +51,28 @@ impl Console {
             dimensions: Dimensions { rows, columns },
             row: 0,
             column: 0,
-            data: vec![char::default(); rows * columns],
-            attributes: vec![],
+            matrix: vec![Cell::default(); rows * columns],
         }
     }
 
     pub fn resize(&mut self, rows: usize, columns: usize) {
-        let mut data = vec![char::default(); rows * columns];
+        let mut matrix = vec![Cell::default(); rows * columns];
 
         let target_rows = rows.min(self.dimensions.rows);
         let target_columns = columns.min(self.dimensions.columns);
 
         for i in 0..target_rows {
             for j in 0..target_columns {
-                data[i * columns + j] = self.data[i * self.dimensions.columns + j];
+                matrix[i * columns + j] = self.matrix[i * self.dimensions.columns + j];
             }
         }
 
-        self.data = data;
+        self.matrix = matrix;
         self.dimensions = Dimensions { rows, columns };
     }
 
     pub fn clear(&mut self) {
-        self.data.fill(char::default());
-        self.attributes.clear();
+        self.matrix.fill(Cell::default());
     }
 
     pub fn dimensions(&self) -> &Dimensions {
@@ -79,31 +84,31 @@ impl Console {
     }
 
     pub fn get_character(&self, row: usize, column: usize) -> Option<&char> {
-        self.data.get((row * self.dimensions.columns) + column)
+        self.matrix.get((row * self.dimensions.columns) + column).map(|x| &x.ch)
     }
 
     pub fn position(&self) -> (usize, usize) {
         (self.row, self.column)
     }
 
-    pub fn current_line(&self) -> &[char] {
+    pub fn current_line(&self) -> &[Cell] {
         let begin = self.row * self.dimensions.columns;
         let end = begin + self.dimensions.columns;
 
-        &self.data[begin..end]
+        &self.matrix[begin..end]
     }
 
-    pub fn current_line_mut(&mut self) -> &mut [char] {
+    pub fn current_line_mut(&mut self) -> &mut [Cell] {
         let begin = self.row * self.dimensions.columns;
         let end = begin + self.dimensions.columns;
 
-        &mut self.data[begin..end]
+        &mut self.matrix[begin..end]
     }
 
     pub fn current_line_length(&self) -> usize {
         let line = self.current_line();
 
-        line.iter().filter(|&a| *a != char::default()).count()
+        line.iter().filter(|&a| *a != Cell::default()).count()
     }
 
     pub fn move_right(&mut self) {
@@ -161,15 +166,15 @@ impl Console {
             return;
         }
 
-        self.data[pos] = character;
+        self.matrix[pos] = Cell { ch: character, bg: 0x00_00_00_00, fg: 0x00_ffffff };
 
         self.move_right();
     }
 
-    pub fn get_attribute(&self, row: usize, column: usize) -> Option<&Attribute> {
-        self.attributes
-            .iter()
-            .find(|a| a.row == row && a.column == column)
+    pub fn get_attribute(&self, row: usize, column: usize) -> Option<(u32, u32)> {
+        let cell = &self.matrix.get(row * self.dimensions.columns + column);
+
+        cell.map(|x| (x.bg, x.fg))
     }
 
     pub fn print_str(&mut self, input: &str) {
@@ -183,12 +188,16 @@ impl Console {
 
                 if next == Some('[') {
                     // Read digits until non-digit
-                    let mut digits = String::new();
+                    let mut digits = String::with_capacity(4);
 
-                    let mut values: Vec<u32> = vec![];
+                    let mut values: Vec<u32> = Vec::with_capacity(2);
+
+                    let mut counter = 0;
 
                     let mut last_char = char::default();
-                    while let Some(c) = iterator.next() {
+
+                    // Consume bytes until it's non-digit character (4 MAX).
+                    while let Some(c) = iterator.next() && counter < 4 {
                         if c.is_ascii_digit() {
                             digits.push(c);
                         } else if c == ';' {
@@ -209,6 +218,8 @@ impl Console {
                             last_char = c;
                             break;
                         }
+
+                        counter += 1;
                     }
 
                     //qemu_note!("Values: {values:?}; Letter: {last_char:?}");
@@ -216,17 +227,13 @@ impl Console {
                     if last_char == 'm' {
                         let code = *values.last().unwrap_or(&0);
 
-                        let color = AttributeValue::Color(if code == 0 {
+                        let color = if code == 0 {
                             0x00_ffffff
                         } else {
-                            ANSI_COLORS[(code - 30) as usize]
-                        });
+                            *ANSI_COLORS.get((code - 30) as usize).unwrap_or(&0x00_ffffff)
+                        };
 
-                        self.attributes.push(Attribute {
-                            row: self.row,
-                            column: self.column,
-                            attribute_value: color,
-                        });
+                        self.matrix[self.row * self.dimensions.columns + self.column].fg = color;
 
                         continue;
                     } else if last_char == 'H' {
@@ -234,8 +241,8 @@ impl Console {
                             self.row = 0;
                             self.column = 0;
                         } else {
-                            let row = *values.get(0).unwrap_or(&1);
-                            let column = *values.get(1).unwrap_or(&1);
+                            let row = values.get(0).copied().unwrap_or(1).clamp(0, self.dimensions.rows as u32 - 1);
+                            let column = values.get(1).copied().unwrap_or(1).clamp(0, self.dimensions.columns as u32 - 1);
 
                             // qemu_note!("Set position: {:?}", (row, column));
 
@@ -256,7 +263,7 @@ impl Console {
                             let end_position = self.dimensions.columns - 1;
                             let line = self.current_line_mut();
 
-                            line[start_position..end_position].fill(char::default());
+                            line[start_position..end_position].fill(Cell::default());
                         }
                     } else {
                         qemu_log!("ERROR: Unknown letter: {last_char:?}");
@@ -271,10 +278,10 @@ impl Console {
     }
 
     pub fn scroll(&mut self) {
-        self.data.copy_within(self.dimensions.columns.., 0);
+        self.matrix.copy_within(self.dimensions.columns.., 0);
 
-        let last_line = self.data.len() - self.dimensions.columns;
-        self.data[last_line..].fill(char::default());
+        let last_line = self.matrix.len() - self.dimensions.columns;
+        self.matrix[last_line..].fill(Cell::default());
     }
 
     pub fn set_position(&mut self, x: usize, y: usize) {

@@ -10,7 +10,6 @@ mod exit;
 mod dir;
 mod fd;
 mod mem;
-mod print;
 mod proc;
 mod rand;
 mod thread;

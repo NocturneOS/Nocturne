@@ -1,3 +1,5 @@
+use noct_video::canvas::Canvas;
+
 use crate::console::{AttributeValue, Console};
 
 pub struct RenderedConsole {
@@ -25,7 +27,7 @@ impl RenderedConsole {
         self.console.print_char(c);
 
         if c == '\n' {
-            self.render(None);
+            self.render();
         }
     }
 
@@ -33,11 +35,11 @@ impl RenderedConsole {
         self.console.print_str(input);
 
         if input.contains('\n') {
-            self.render(None);
+            self.render();
         }
     }
 
-    pub fn render(&mut self, start_position: Option<(usize, usize)>) {
+    pub fn render(&mut self) {
         // Try lock the video spinlock.
         // If can't, just don't render, as it may be locked by user program (it's okay).
         let Some(mut video_handle_lock) = noct_video::CURRENT_VIDEO_MODE.try_lock() else {
@@ -50,44 +52,47 @@ impl RenderedConsole {
 
         let dimensions = self.console.dimensions();
 
-        let start_row = start_position.map(|(row, _)| row).unwrap_or(0);
-        let start_column = start_position.map(|(_, column)| column).unwrap_or(0);
+        let (c_row, c_col) = self.console.position();
 
-        for row in start_row..dimensions.rows {
-            for column in start_column..dimensions.columns {
+        // Render the matrix
+        for row in 0..dimensions.rows {
+            for column in 0..dimensions.columns {
                 let char = self.console.get_character(row, column).unwrap();
 
                 if *char == char::default() {
                     continue;
                 }
 
-                if let Some(attribute) = self.console.get_attribute(row, column) {
-                    match attribute.attribute_value {
-                        AttributeValue::Color(color) => {
-                            self.current_color = color;
-                        }
-                    }
+                if let Some((bg, fg)) = self.console.get_attribute(row, column) {
+                    // match attribute.attribute_value {
+                    //     AttributeValue::Color(color) => {
+                    //         self.current_color = color;
+                    //     }
+                    // }
+
+                    self.current_color = fg;
                 }
 
-                let char = unifont::get_glyph(*char).expect("Couldn't find a glyph for character!");
+                let char = unifont::get_glyph(*char).unwrap_or(unifont::get_glyph('?').unwrap());
                 let charwidth = char.get_width();
 
                 let col_offset = column * 8;
                 let row_offset = row * 16;
+                
+                // TODO: Use that for cursor display.
+                // let is_cursor_char = column == c_col && row == c_row;
 
                 for i in 0..16_usize {
                     for j in 0..charwidth {
                         let pix = char.get_pixel(j, i);
 
-                        if !pix {
-                            continue;
+                        if pix {
+                            video_canvas.put_pixel(
+                                col_offset + j,
+                                row_offset + i,
+                                self.current_color as _,
+                            );
                         }
-
-                        video_canvas.put_pixel(
-                            col_offset + j,
-                            row_offset + i,
-                            self.current_color as _,
-                        );
                     }
                 }
             }

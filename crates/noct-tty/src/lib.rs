@@ -21,7 +21,7 @@ macro_rules! tty_print {
 
 #[macro_export]
 macro_rules! tty_println {
-    () => ($crate::print!("\n"));
+    () => ($crate::tty_print!("\n"));
     ($($arg:tt)*) => ($crate::tty_print!("{}\n", format_args!($($arg)*)));
 }
 
@@ -53,7 +53,7 @@ impl Writer {
     pub fn flush(&mut self) {
         assert!(self.console.is_some(), "Attempted usage of uninitialized console!");
 
-        self.console.as_mut().unwrap().render(None);
+        self.console.as_mut().unwrap().render();
     }
 }
 
