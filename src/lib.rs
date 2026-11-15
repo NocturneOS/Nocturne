@@ -138,7 +138,10 @@ fn kmain(boot_info: BootInformation) -> ! {
             let bind = noct_video::CURRENT_VIDEO_MODE.lock();
             let display_size = bind.as_ref().unwrap().resolution();
 
-            (display_size.height / 16, display_size.width / 8)
+            (
+                display_size.height / noct_tty::CELL_HEIGHT,
+                display_size.width / noct_tty::CELL_WIDTH,
+            )
         };
 
         noct_tty::init(rows, cols);
@@ -150,7 +153,7 @@ fn kmain(boot_info: BootInformation) -> ! {
         
         qemu_log!("TTY initialized with {} rows and {} columns", rows, cols);
 
-        tty_println!("\x1b[33mNocturneOS {}", env!("CARGO_PKG_VERSION"));
+        tty_println!("\x1b[33mNocturneOS {}\x1b[0m", env!("CARGO_PKG_VERSION"));
     }
 
     syscalls::init();
