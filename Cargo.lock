@@ -152,6 +152,9 @@ dependencies = [
 name = "noct-ac97"
 version = "0.1.0"
 dependencies = [
+ "noct-ioport",
+ "noct-logger",
+ "noct-pci",
  "x86",
 ]
 

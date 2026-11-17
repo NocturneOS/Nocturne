@@ -1,5 +1,6 @@
 #![no_std]
 
+#[derive(Debug)]
 pub struct IOPort(u16);
 
 impl IOPort {
