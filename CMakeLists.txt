@@ -73,12 +73,14 @@ set(QEMU_BASE_FLAGS
 	-netdev user,id=net0,net=192.168.111.0,dhcpstart=192.168.111.128,hostfwd=tcp::9999-:9999
 	-device rtl8139,netdev=net0,id=mydev0
 	-object filter-dump,id=dump0,netdev=net0,file=netdump.pcap
+	-audiodev pipewire,id=noct_audio
+	-device ac97,audiodev=noct_audio
 )
 
 if(NOCTURNE_ARCH STREQUAL "x86_64")
-	set(QEMU_FLAGS ${QEMU_ADDITIONAL_FLAGS} -cdrom ${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE} -d int,cpu_reset,guest_errors,invalid_mem -serial mon:stdio -rtc base=localtime -boot d -usb -audiodev pa,id=audiopa -device ac97,audiodev=audiopa -trace "*ac97*")
+	set(QEMU_FLAGS ${QEMU_ADDITIONAL_FLAGS} -cdrom ${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE} -d int,cpu_reset,guest_errors,invalid_mem -serial mon:stdio -rtc base=localtime -boot d -usb -trace "*ac97*")
 else()
-	set(QEMU_FLAGS ${QEMU_ADDITIONAL_FLAGS} -cdrom ${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE} -d int,cpu_reset,guest_errors,invalid_mem -serial mon:stdio -rtc base=localtime -boot d -usb -audiodev pa,id=audiopa -device ac97,audiodev=audiopa  -trace "*ac97*")
+	set(QEMU_FLAGS ${QEMU_ADDITIONAL_FLAGS} -cdrom ${CMAKE_CURRENT_BINARY_DIR}/${ISO_FILE} -d int,cpu_reset,guest_errors,invalid_mem -serial mon:stdio -rtc base=localtime -boot d -usb  -trace "*ac97*")
 endif()
 
 set(QEMU_FLAGS ${QEMU_BASE_FLAGS} ${QEMU_FLAGS})
