@@ -152,10 +152,13 @@ dependencies = [
 name = "noct-ac97"
 version = "0.1.0"
 dependencies = [
+ "noct-audio",
  "noct-ioport",
  "noct-logger",
+ "noct-mem",
  "noct-pci",
- "x86",
+ "noct-sched",
+ "noct-time",
 ]
 
 [[package]]
@@ -541,6 +544,7 @@ dependencies = [
  "cfg-if",
  "lazy_static",
  "multiboot2",
+ "noct-ac97",
  "noct-acpi",
  "noct-ata",
  "noct-audio",

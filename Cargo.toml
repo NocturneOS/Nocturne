@@ -54,6 +54,7 @@ bitflags = "2.11.1"
 multiboot2 = "0.26.1"
 
 noct-acpi = { path = "crates/noct-acpi" }
+noct-ac97 = { path = "crates/noct-ac97" }
 noct-audio = { path = "crates/noct-audio" }
 noct-ata = { path = "crates/noct-ata" }
 noct-boot = { path = "crates/noct-boot" }

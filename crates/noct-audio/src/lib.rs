@@ -24,6 +24,22 @@ pub fn generate_id() -> usize {
     AUDIO_DEVICE_GLOBAL_ID.fetch_add(1, Ordering::AcqRel)
 }
 
+/// Register an audio output device and return its global ID.
+#[allow(static_mut_refs)]
+pub fn register_device(device: Box<dyn AudioDevice>) -> usize {
+    let id = generate_id();
+
+    unsafe {
+        AUDIO_DEVICES
+            .as_mut()
+            .expect("Audio subsystem is not initialized!")
+            .push(device);
+    }
+
+    id
+}
+
+// Get device by its index
 #[inline]
 #[allow(static_mut_refs)]
 pub fn get_device(index: usize) -> Option<&'static dyn AudioDevice> {

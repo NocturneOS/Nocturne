@@ -94,6 +94,12 @@ fn kmain(boot_info: BootInformation) -> ! {
 
     noct_ata::init();
 
+    noct_audio::init();
+
+    if let Err(error) = noct_ac97::init() {
+        qemu_log!("AC'97 initialization failed: {error:?}");
+    }
+
     for (idx, disk) in noct_diskman::disk_list().iter().enumerate() {
         qemu_log!(
             "#{}: id={}, name={}, type={:?}, capacity={} blocks {} bytes each, is_partition={}",
