@@ -6,7 +6,9 @@
 use core::{panic::PanicInfo, time::Duration};
 
 use alloc::boxed::Box;
-use multiboot2::BootInformation;
+use multiboot2::{BootInformation};
+use noct_elfloader::LoadError;
+use noct_io::error::Error;
 use noct_logger::qemu_log;
 use noct_mem::{heap, paging::PageFlags};
 use noct_memdisk::MemoryDisk;
@@ -185,8 +187,7 @@ fn kmain(boot_info: BootInformation) -> ! {
     noct_sched::this_process().chdir("mem0:/");
 
     {
-        match noct_elfloader::spawn("mem0:/progs/noctsh.run", &[]) {
-        // match noct_elfloader::spawn("mem0:/progs/audioplayer.run", &["ata0:/test_audio_5s.wav"]) {
+        match noct_elfloader::spawn("mem0:/init.run", &[]) {
             Ok(handle) => {
                 qemu_log!("Started process {}", handle.pid);
 
@@ -197,36 +198,15 @@ fn kmain(boot_info: BootInformation) -> ! {
                 
                 tty_println!("Process exited: {:?}", code.map(|x| x as isize).unwrap());
             }
+            Err(LoadError::System(Error::NotFound)) => {
+                tty_println!("\x1b[31mError: `mem0:/init.run` not found. Cannot run initialization process. Please put the init.run executable binary to the ramdisk and rebuild the system.");
+                tty_println!("System halted.");
+            }
             Err(e) => {
                 qemu_log!("Failed to spawn process: {e:?}");
             }
         }
     }
-
-    // {
-    //     let (data, time) = noct_tools::measure_time_timer(|| noct_fs::read_file("ata0:/hello.txt"));
-
-    //     qemu_log!("Time: {} ms", time);
-
-    //     match data {
-    //         Ok(data) => {
-    //             let s = str::from_utf8(&data).unwrap();
-
-    //             qemu_log!("Data: {s:?}");
-    //         }
-    //         Err(e) => {
-    //             qemu_log!("Error: {e:?}");
-    //         }
-    //     }
-    // }
-
-    // {
-    //     let mut lock = noct_video::CURRENT_VIDEO_MODE.lock();
-
-    //     let mut canvas = noct_video::canvas::Canvas::new(lock.as_mut().unwrap());
-
-    //     canvas.fill(0x00_00_00_ff << 16);   // AA_RR_GG_BB
-    // }
 
     qemu_log!("It works!");
 
