@@ -1,12 +1,12 @@
 use core::{
-    ffi::{CStr, c_char},
+    ffi::c_char,
     sync::atomic::{
         AtomicPtr, AtomicU32, AtomicUsize,
         Ordering,
     },
 };
 
-use alloc::{borrow::Cow, ffi::CString, sync::Arc};
+use alloc::{ffi::CString, string::String, sync::Arc};
 use lazy_static::lazy_static;
 use noct_elf::ProgramImage;
 use noct_sync::pseudosync::PseudoSync;
@@ -26,9 +26,12 @@ pub struct Process {
     pub address_space: PseudoSync<AddressSpace<GlobalPagingArchitecture>>,
 
     // SAFE ZONE
+    
     pub thread_count: AtomicUsize,
+    // Process name - usually a full program path
     pub name: AtomicPtr<c_char>,
-    pub cwd: AtomicPtr<c_char>,
+    // Current working directory
+    pub cwd: Mutex<String>,
 
     pub program_image: Option<PseudoSync<ProgramImage>>,
     pub handle: Option<Arc<ProcessHandle>>,
@@ -126,7 +129,6 @@ fn next_pid() -> usize {
 impl Process {
     pub fn new(name: &str, cwd: &str) -> Self {
         let name_ptr = CString::new(name).unwrap().into_raw();
-        let cwd_ptr = CString::new(cwd).unwrap().into_raw();
 
         let address_space = AddressSpace::<GlobalPagingArchitecture>::new();
 
@@ -139,7 +141,7 @@ impl Process {
             address_space: address_space.into(),
             thread_count: 0.into(),
             name: name_ptr.into(),
-            cwd: cwd_ptr.into(),
+            cwd: Mutex::new(cwd.into()),
             program_image: Some(ProgramImage::new().into()),
             handle: Some(ProcessHandle::new(pid).into()),
             resources: descriptors.into(),
@@ -150,7 +152,6 @@ impl Process {
     /// This method is used only for kernel process initialization.
     pub fn with_predefined_page_roots(pageaddr_phys: usize, name: &str, cwd: &str) -> Self {
         let name_ptr = CString::new(name).unwrap().into_raw();
-        let cwd_ptr = CString::new(cwd).unwrap().into_raw();
 
         let descriptors = noct_descriptor::Descriptors::new();
 
@@ -159,7 +160,7 @@ impl Process {
             address_space: AddressSpace::predefined(pageaddr_phys).into(),
             thread_count: 0.into(),
             name: name_ptr.into(),
-            cwd: cwd_ptr.into(),
+            cwd: Mutex::new(cwd.into()),
             program_image: None,
             handle: None,
             resources: descriptors.into(),
@@ -205,16 +206,12 @@ impl Process {
         }
     }
 
-    pub fn cwd(&self) -> Cow<'_, str> {
-        unsafe { CStr::from_ptr(self.cwd.load(Ordering::Acquire)).to_string_lossy() }
+    pub fn cwd(&self) -> String {
+        self.cwd.lock().clone()
     }
 
     pub fn chdir(&self, new_path: &str) {
-        let cwd_ptr = CString::new(new_path).unwrap();
-
-        drop(unsafe { CString::from_raw(self.cwd.load(core::sync::atomic::Ordering::Relaxed)) });
-
-        self.cwd.store(cwd_ptr.into_raw(), Ordering::Release);
+        *self.cwd.lock() = new_path.into();
     }
 }
 
@@ -223,9 +220,6 @@ impl Drop for Process {
         unsafe {
             drop(CString::from_raw(
                 self.name.load(core::sync::atomic::Ordering::Relaxed),
-            ));
-            drop(CString::from_raw(
-                self.cwd.load(core::sync::atomic::Ordering::Relaxed),
             ));
 
             qemu_log!("PROCESS #{} DEALLOCATED!", self.id);
