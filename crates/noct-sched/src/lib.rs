@@ -4,7 +4,6 @@
 extern crate alloc;
 
 use core::{
-    ffi::CStr,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
     time::Duration,
 };
@@ -715,9 +714,7 @@ pub fn create_process(name: &str, cwd: &str) -> SharedProcess {
 }
 
 pub fn create_process_inherit(name: &str) -> SharedProcess {
-    let cwd = unsafe { CStr::from_ptr(this_process().cwd.load(Ordering::Acquire)) }
-        .to_str()
-        .unwrap();
+    let cwd = this_process().cwd();
 
     let il = InterruptLocker::lock();
 
@@ -726,7 +723,7 @@ pub fn create_process_inherit(name: &str) -> SharedProcess {
     {
         let mut binding = this();
 
-        process = binding.create_process(name, cwd);
+        process = binding.create_process(name, &cwd);
     }
 
     drop(il);
