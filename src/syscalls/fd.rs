@@ -8,7 +8,7 @@ use noct_logger::qemu_log;
 
 use bitflags::bitflags;
 
-use crate::mem::usermem::{verify_ptr, verify_ptr_range, verify_ptr_range_mut};
+use crate::mem::usermem::{copy_user_string, verify_ptr, verify_ptr_range, verify_ptr_range_mut};
 
 bitflags! {
     #[derive(Debug, Clone, Copy)]
@@ -19,29 +19,16 @@ bitflags! {
 }
 
 pub fn open(path: usize, mode: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
-    // TODO: Sanitize that.
-    // TODO: Set error on utf8 encoding failure
-    let path = verify_ptr(path).ok_or(Error::MemoryError)?;
-
-    let path = unsafe { CStr::from_ptr(path) }
-        .to_str()
-        .map(|path| path.to_owned());
-
-    let mut path = match path {
-        Ok(path) => path,
-        Err(e) => {
-            qemu_log!("open: Error while decoding UTF-8 path: {e:?}");
-
-            return Err(Error::InvalidPath);
-        }
-    };
-
     let process = &noct_sched::this_thread().process;
+    
+    let mut path = copy_user_string(path)?;
 
     // If path is relative, add the CWD to make it absolute.
-    if !path.contains(":/") {
-        path.insert_str(0, &process.cwd());
-    }
+    // if !path.contains(":/") {
+    //     path.insert_str(0, &process.cwd());
+    // }
+
+    let path = noct_fs::parser::PathParser::resolve(&path, &process.cwd()).ok_or(Error::InvalidPath)?;
 
     qemu_log!("Opening path: {path:?}");
 
