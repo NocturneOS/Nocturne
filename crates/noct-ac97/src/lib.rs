@@ -291,6 +291,7 @@ impl Ac97Card {
         let bdl = self.bdl.ptr().cast::<Bdl>();
 
         for i in 0..BDLS_COUNT {
+            // Do interrupt and stop playback when the BDL entry hits.
             let flags = if i == last {
                 BDL_FLAG_IOC | BDL_FLAG_BUP
             } else {
@@ -445,6 +446,7 @@ impl Ac97Card {
 
         let mut loaded = 0;
 
+        // Play the buffer block by block (block size matches audio buffer size)
         while loaded < data.len() {
             let end = (loaded + AUDIO_BUFFER_SIZE).min(data.len());
 
@@ -462,8 +464,6 @@ impl Ac97Card {
             .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
             .is_err()
         {
-            // Another thread is playing. Let it make progress instead of
-            // spinning the CPU inside a spin-lock.
             noct_sched::yield_now();
         }
 
@@ -539,6 +539,10 @@ impl Drop for PlaybackGuard<'_> {
 
 pub fn init() -> Result<(), Ac97Error> {
     let card = Ac97Card::new()?;
+
+    //card.set_volume(100, 100);
+    //card.set_sample_rate(44100).expect("Failed to set sample rate");
+
     let id = noct_audio::register_device(Box::new(card));
 
     qemu_log!("AC'97 initialized successfully (audio device #{id})");
