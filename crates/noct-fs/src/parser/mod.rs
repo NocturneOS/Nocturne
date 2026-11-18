@@ -58,6 +58,10 @@ pub struct PathParser {
 }
 
 impl PathParser {
+    pub fn is_absolute(path: &str) -> bool {
+        Self::parse_absolute_path(path).is_some()
+    }
+
     /// Parses path.
     // Path format: `disk0.1:/Photos/DC0000/IMG_0001.jpg`
     //               ------- ---------------------------
@@ -89,14 +93,16 @@ impl PathParser {
         })
     }
 
-    fn canonicalize(path: &str) -> String {
+    // FIXME: Should it be just called `clean_path`?
+    // Canonicalization walks through symlinks, though NocturneOS doesn't have symlink support.
+    pub fn canonicalize(path: &str) -> String {
         if path.trim().is_empty() {
             return String::new();
         }
 
         let mut stems: Vec<&str> = Vec::new();
 
-        for i in path.split('/') {
+        for i in path.trim().split('/') {
             let trimmed = i.trim();
 
             if matches!(trimmed, "" | ".") {

@@ -38,6 +38,25 @@ impl DirectoryHandle {
 
         Ok(data)
     }
+
+    pub fn read_n(&mut self, n: usize) -> noct_io::Result<Vec<DirectoryEntry>> {
+        let fs =
+            crate::mount::get_handle(&self.disk_id).ok_or(Error::FilesystemNotRecognized)?;
+
+        let mut data = vec![];
+
+        for _ in 0..n {
+            let entry = fs.readdir(self);
+
+            if let Err(Error::EndOfIterator) = entry {
+                break;
+            }
+
+            data.push(entry?);
+        }
+
+        Ok(data)
+    }
 }
 
 impl Drop for DirectoryHandle {

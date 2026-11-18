@@ -1,7 +1,7 @@
-#include <file.h>
 #include <stdio.h>
 #include <string.h>
 #include <syscall.h>
+#include <unistd.h>
 
 struct videomode_info {
   uint32_t width;
@@ -19,7 +19,7 @@ struct videomode_info {
 int main() {
   struct videomode_info video;
 
-  size_t fd = _syscall1(20, (size_t)&video);
+  size_t fd = _syscall1(SYS_VIDEO_ACQUIRE, (size_t)&video);
 
   memset((uint8_t *)((size_t)video.fb_addr), 0xff,
          video.width * video.height * (video.bpp >> 3));

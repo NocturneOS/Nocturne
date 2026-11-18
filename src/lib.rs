@@ -186,6 +186,7 @@ fn kmain(boot_info: BootInformation) -> ! {
 
     {
         match noct_elfloader::spawn("mem0:/progs/noctsh.run", &[]) {
+        // match noct_elfloader::spawn("mem0:/progs/audioplayer.run", &["ata0:/test_audio_5s.wav"]) {
             Ok(handle) => {
                 qemu_log!("Started process {}", handle.pid);
 

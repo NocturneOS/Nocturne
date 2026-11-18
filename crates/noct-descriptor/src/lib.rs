@@ -34,6 +34,22 @@ impl ResourceDescriptor {
         }
     }
 
+    pub fn as_directory_handle(&self) -> Option<&noct_fsman::handles::directory::DirectoryHandle> {
+        if let Self::DirectoryHandle(dh) = self {
+            Some(dh)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_directory_handle_mut(&mut self) -> Option<&mut noct_fsman::handles::directory::DirectoryHandle> {
+        if let Self::DirectoryHandle(dh) = self {
+            Some(dh)
+        } else {
+            None
+        }
+    }
+
     pub fn as_event_queue(&self) -> Option<&noct_input::EventQueue> {
         if let Self::EventQueue(eq) = self {
             Some(eq)

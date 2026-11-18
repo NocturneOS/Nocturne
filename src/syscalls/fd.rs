@@ -14,7 +14,7 @@ bitflags! {
     #[derive(Debug, Clone, Copy)]
     pub struct OpenFlags: u32 {
         // First flags are copied from noct_fsman::FileOpenFlags
-        const Directory = 1 << 6;
+        const Directory = 1 << 5;
     }
 }
 

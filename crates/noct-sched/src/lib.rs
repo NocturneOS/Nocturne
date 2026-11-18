@@ -342,7 +342,7 @@ impl Scheduler {
         // to avoid UB (because we free the thread's stack).
         debug_assert_eq!(Arc::strong_count(&thread), 1);
 
-        // qemu_log!("Strong count: {:?}", Arc::strong_count(&thread));
+        //qemu_log!("Strong count: {:?}", Arc::strong_count(&thread));
 
         (*thread.process)
             .thread_count
