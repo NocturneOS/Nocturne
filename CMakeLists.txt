@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 4.2.1)
 
-project(NocturneOS VERSION 0.4.3)
+project(NocturneOS VERSION 0.5.0)
 enable_language(ASM)
 
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;ReleaseSym;ReleaseOptimized;ReleaseOptSym" CACHE STRING "Available configurations" FORCE)
