@@ -2,7 +2,7 @@
 
 # NocturneOS
 
-NocturneOS is a SayoriOS fork.
+NocturneOS is an amateur operating system.
 
 ![C](https://img.shields.io/badge/c-%2300599C.svg?style=for-the-badge&logo=c&logoColor=white)
 ![Rust](https://img.shields.io/badge/rust-%239A0000.svg?style=for-the-badge&logo=rust&logoColor=white)
@@ -12,7 +12,7 @@ NocturneOS is a SayoriOS fork.
 ![Warnings](https://badgen.net/https/nocturneos.github.io/Nocturne/warning_count.txt?cache=3600)
 
 It's a simple operating system for x86-based computers.
-Written in C, Rust and x86 Assembly.
+Written in Rust and x86 Assembly.
 
 * [NocturneOS updates channel (IN RUSSIAN!)](https://t.me/ndraey_ch)
 
@@ -53,21 +53,13 @@ Coming soon :)
   - PCI
 - Drivers (built into kernel)
   - PS/2 keyboard and mouse
-  - PC Speaker
-  - Realek RTL-8139 network card
   - ATA drives (PIO + DMA; HD + Optical)
-  - AHCI drives (HD + Optical)
 - Filesystems (built into kernel)
   - TarFS
   - NoctFS
   - FAT32 (Read-Only)
-- Network protocols (built into kernel)
-  - ARP
-  - UDP
-  - DHCP
 - Other (built into kernel)
-  - ELF32 executable support
-  - Processor info
+  - ELF executable support
   - FPU
   - UEFI support (Not tested yet!)
 
@@ -157,5 +149,5 @@ The project contributors are not responsible for any damage caused as a result o
 
 ## Special thanks
 
-* [Nikita Piminov](https://github.com/pimnik98) (The SayoriOS creator)
+* [Nikita Piminov](https://github.com/pimnik98) (The SayoriOS creator, from where the old NocturneOS grew)
 * [Michael Glukhov](https://github.com/rigidus) (Russian README version)
