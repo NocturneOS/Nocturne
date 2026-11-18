@@ -1,6 +1,6 @@
 use alloc::{borrow::ToOwned, string::String};
 
-use crate::parser::PathParserBuilder;
+use crate::parser::{PathParser, PathParserBuilder};
 
 macro_rules! make_test {
     ($source:tt,$disk_id_:tt,$path_:tt) => {
@@ -66,6 +66,54 @@ pub fn disk_with_partition_and_any_path() {
     make_test!("disk0.1:/a/b/c/", "disk0.1", "/a/b/c");
     make_test!("disk0.1.2:/a/b/c/", "disk0.1.2", "/a/b/c");
     make_test!("disk0.1.2.3:/a/b/c/", "disk0.1.2.3", "/a/b/c");
+}
+
+#[test]
+pub fn resolve_absolute_path() {
+    assert_eq!(
+        PathParser::resolve("disk0:/a/../b", "disk1:/x").unwrap(),
+        "disk0:/b"
+    );
+}
+
+#[test]
+pub fn resolve_path_relative_to_disk_root() {
+    assert_eq!(
+        PathParser::resolve("/a/./b", "disk0:/home/me").unwrap(),
+        "disk0:/a/b"
+    );
+
+    assert_eq!(PathParser::resolve("/", "disk0:/home/me").unwrap(), "disk0:/");
+}
+
+#[test]
+pub fn resolve_relative_path() {
+    assert_eq!(
+        PathParser::resolve("../a/b", "disk0:/home/me").unwrap(),
+        "disk0:/home/a/b"
+    );
+
+    assert_eq!(PathParser::resolve(".", "disk0:/home/me").unwrap(), "disk0:/home/me");
+}
+
+#[test]
+pub fn resolve_never_escapes_disk_root() {
+    assert_eq!(
+        PathParser::resolve("../../../a", "disk0:/").unwrap(),
+        "disk0:/a"
+    );
+}
+
+#[test]
+pub fn resolve_rejects_empty_path() {
+    assert!(PathParser::resolve("", "disk0:/").is_none());
+    assert!(PathParser::resolve("   ", "disk0:/").is_none());
+}
+
+#[test]
+pub fn resolve_requires_disk_id_in_cwd() {
+    assert!(PathParser::resolve("/a", "no-disk-id").is_none());
+    assert!(PathParser::resolve("a", "").is_none());
 }
 
 #[test]

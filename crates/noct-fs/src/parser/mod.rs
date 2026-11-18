@@ -62,6 +62,44 @@ impl PathParser {
         Self::parse_absolute_path(path).is_some()
     }
 
+    /// Resolves `path` against `cwd` and returns a "canonical", disk-qualified path.
+    /// Accepted forms:
+    /// `disk0:/a/b` - absolute path on the given disk,
+    /// `/a/b`       - absolute path on the disk `cwd` belongs to,
+    /// `a/b`, `..`  - path relative to `cwd`.
+    pub fn resolve(path: &str, cwd: &str) -> Option<String> {
+        if path.trim().is_empty() {
+            return None;
+        }
+
+        let absolute = if Self::is_absolute(path) {
+            String::from(path)
+        } else if path.starts_with('/') {
+            let (disk_id, _) = cwd.split_once(':')?;
+
+            let mut absolute = String::with_capacity(disk_id.len() + path.len() + 1);
+
+            absolute.push_str(disk_id);
+            absolute.push(':');
+            absolute.push_str(path);
+
+            absolute
+        } else {
+            let mut absolute = String::with_capacity(cwd.len() + path.len() + 1);
+
+            absolute.push_str(cwd);
+            absolute.push('/');
+            absolute.push_str(path);
+
+            absolute
+        };
+
+        PathParserBuilder::new()
+            .build()
+            .parse(&absolute)
+            .map(|info| info.into_string())
+    }
+
     /// Parses path.
     // Path format: `disk0.1:/Photos/DC0000/IMG_0001.jpg`
     //               ------- ---------------------------
