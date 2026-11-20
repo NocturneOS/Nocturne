@@ -1,0 +1,80 @@
+name: Autobuild
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-26.04
+    permissions: write-all
+    if: "contains(github.event.head_commit.message, '[ci]')"
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Pre-setup preparation - disable man-db triggers
+        run: |
+          sudo rm -f /var/lib/man-db/auto-update
+
+      - name: Step 0.5 - Install LLVM 21
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22
+
+      - name: Step 1 - Software installation
+        run: |
+          sudo apt list "llvm*"
+          sudo apt install python3 build-essential xorriso grub-pc-bin mtools ninja-build cmake
+
+      - name: Check
+        run: |
+          sudo ln -sf /usr/bin/ld.lld-22 /usr/bin/ld.lld
+          ld.lld --version
+
+      - name: Step 1.1 - Install Rust
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y
+
+      - name: Step 2 - Configuring the kernel
+        run: bash tools/build/make_builds.sh
+
+      - name: Step 3 - Build all
+        run: bash tools/build/ci.sh
+
+      - name: Step 4 - Update to the latest unstable release
+        uses: "marvinpinto/action-automatic-releases@latest"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest-unstable"
+          prerelease: true
+          title: "💽 NocturneOS Leap - [Autobuild] Unstable release"
+          description: "Attention! This release is built from the latest kernel changes! This is not the final version and contains bugs and is not recommended to run without testing on a virtual machine."
+          files: |
+            cmake-build-release-opt/NocturneOS_x86_ReleaseOptimized.iso
+            cmake-build-release-opt64/NocturneOS_x86_64_ReleaseOptimized.iso
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Generate warnings badge
+        run: bash tools/generate_warning_badge.sh
+
+      - name: Copy badge to gh-pages
+        run: |
+          cp warning_count.txt gh-pages/warning_count.txt
+
+      - name: Commit and push badge
+        run: |
+          cd gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Update warning badge" || echo "No changes to commit"
+          git push origin gh-pages
+
