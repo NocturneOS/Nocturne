@@ -12,7 +12,7 @@ use noct_fsman::{
         file::{FileHandle, FileOpenMode},
     },
 };
-use noct_logger::noct_time::repr::DateTime;
+use noct_logger::{noct_time::repr::DateTime, qemu_log};
 use spin::Mutex;
 
 pub mod disk_device;
@@ -62,6 +62,7 @@ pub struct TarFSInstance {
 }
 
 impl TarFSInstance {
+    /// Generates a next FILE DESCRITOR ID, not NodeId
     fn next_id(&self) -> usize {
         let arena = self.id_arena.lock();
         let id = arena.get();
@@ -111,7 +112,8 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
             .find(|&&(fh, _)| fh == handle.file_handle)
             .ok_or(noct_io::error::Error::InvalidHandle)?;
 
-        let read_count = bind.read_file_by_entity(ent, handle.position as _, buffer)
+        let read_count = bind
+            .read_file_by_entity(ent, handle.position as _, buffer)
             .map_err(|_| noct_io::error::Error::IoError)?;
 
         Ok(read_count as _)
@@ -125,8 +127,12 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
         let mut bind = self.tar.lock();
         let id = self.next_id();
 
+        // When making a ramdisk it will always start the path with `./`
+        // But FS manager uses just root `/`, so the FS driver has to fix the path.
+        let fixed_path = String::from(".") + path;
+
         let list = bind
-            .list_by_path_shallow(path)
+            .list_by_path_shallow(&fixed_path)
             .map_err(|e| match e.kind() {
                 no_std_io::io::ErrorKind::NotFound => noct_io::error::Error::NotFound,
                 _ => noct_io::error::Error::Unknown,
@@ -136,7 +142,10 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
             .lock()
             .push((id as _, list.into_iter()));
 
-        todo!()
+        Ok(DirectoryHandle {
+            handle_id: id as _,
+            disk_id: Arc::clone(&self.disk_id),
+        })
     }
 
     fn readdir(&self, handle: &mut DirectoryHandle) -> noct_io::Result<DirectoryEntry> {
@@ -150,8 +159,11 @@ impl noct_fsman::FilesystemInstance for TarFSInstance {
             .next()
             .ok_or(noct_io::error::Error::EndOfIterator)?;
 
+        // Trim those `/` from the end of the raw name, and use last element as file name.
+        let name = entry.name.trim_end_matches('/').rsplit_once('/').unwrap().1;
+
         Ok(DirectoryEntry {
-            name: entry.name.clone(),
+            name: name.into(),
             info: EntityInfo {
                 node_id: entry.position as _,
                 entity_type: tarfs_type_to_fsm_type(entry._type),
