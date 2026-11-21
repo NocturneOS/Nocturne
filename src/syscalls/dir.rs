@@ -3,7 +3,7 @@ use core::ffi::c_char;
 use noct_fsman::NodeId;
 use noct_io::error::Error;
 
-use crate::mem::usermem::{verify_ptr_range, verify_ptr_range_mut};
+use crate::mem::usermem::{verify_array_ptr_mut, verify_ptr_range, verify_ptr_range_mut};
 
 #[repr(C)]
 struct InternalDirEntry {
@@ -15,7 +15,7 @@ struct InternalDirEntry {
 }
 
 pub fn getdirents(fd: usize, ptr: usize, count: usize, _: usize, _: usize) -> Result<usize, Error> {
-    let buffer = verify_ptr_range_mut::<InternalDirEntry>(ptr, count).ok_or(Error::MemoryError)?;
+    let buffer = verify_array_ptr_mut::<InternalDirEntry>(ptr, count).ok_or(Error::MemoryError)?;
 
     let ents = {
         let proc = noct_sched::this_process();
