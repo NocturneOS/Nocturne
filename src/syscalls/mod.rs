@@ -2,7 +2,6 @@ use noct_cpu::CPURegisters;
 use noct_logger::qemu_log;
 
 mod audio;
-mod debug;
 mod env;
 mod error;
 mod event;

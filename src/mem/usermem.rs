@@ -35,14 +35,6 @@ pub fn verify_ptr<T>(addr: usize) -> Option<*const T> {
     verify_ptr_range(addr, core::mem::size_of::<T>()).map(|x| x as *const T)
 }
 
-pub fn verify_array_ptr_mut<T>(addr: usize, len: usize) -> Option<*mut T> {
-    verify_ptr_range_mut(addr, core::mem::size_of::<T>() * len)
-}
-
-pub fn verify_array_ptr<T>(addr: usize, len: usize) -> Option<*const T> {
-    verify_ptr_range(addr, core::mem::size_of::<T>() * len).map(|x| x as *const T)
-}
-
 
 /// Maximum accepted string length from user space, including the NUL terminator.
 const MAX_STRING_LEN: usize = 4096;

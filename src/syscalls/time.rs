@@ -2,15 +2,6 @@ use core::time::Duration;
 
 use noct_io::error::Error;
 
-pub fn time(_: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
-    let human_time = noct_rtc::read();
-
-    // SAFETY: It seems always return Ok(...)
-    let timestamp = human_time.to_unix_timestamp().unwrap() as usize;
-
-    Ok(timestamp)
-}
-
 pub fn sleep_millis(millis: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
     noct_sched::sleep(Duration::from_millis(millis as _));
 

@@ -151,6 +151,7 @@ pub fn init() {
         32 << 10,
         ThreadPriority::Low,
         ThreadFlags::empty(),
+        None,
         &[],
     )
     .expect("Failed to create input dispatcher thread");

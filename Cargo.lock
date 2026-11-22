@@ -168,6 +168,7 @@ dependencies = [
  "acpi",
  "noct-logger",
  "noct-mem",
+ "noct-sched",
  "noct-spec",
  "x86",
 ]

@@ -7,6 +7,7 @@ edition = "2024"
 noct-mem = { path = "../noct-mem" }
 noct-logger = { path = "../noct-logger" }
 noct-spec = { path = "../noct-spec" }
+noct-sched = { path = "../noct-sched" }
 
 acpi = { version = "6.1.1", default-features = false }
 x86 = "0.52.0"

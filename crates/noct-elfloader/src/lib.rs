@@ -1,9 +1,9 @@
 #![no_std]
 
-use noct_elf::load::{LoadInfo, LoadedSegments};
+use noct_elf::load::LoadInfo;
 use noct_mem::paging::PageFlags;
 
-use alloc::{string::String, sync::Arc, vec::Vec, vec};
+use alloc::{sync::Arc, vec::Vec, vec};
 use elf::{ParseError, endian::LittleEndian};
 use noct_logger::qemu_log;
 use noct_sched::{
@@ -98,7 +98,7 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
         };
 
         unsafe {
-            let mut addrspace = proc.address_space.pseudo_lock();
+            let addrspace = proc.address_space.pseudo_lock();
 
             let physical_allocation = addrspace
                 .alloc_map_multiple_pages(
@@ -252,6 +252,7 @@ pub fn spawn(path: &str, _args: &[&str]) -> Result<Arc<ProcessHandle>, LoadError
         1024 << 10, // Stack size = 1 MB
         ThreadPriority::Medium,
         ThreadFlags::User,
+        None,
         &values,
     )
     .is_none()

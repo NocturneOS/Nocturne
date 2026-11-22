@@ -1,5 +1,6 @@
 #![no_std]
 
+use core::time::Duration;
 use core::{alloc::Layout, ptr::NonNull};
 
 use acpi::sdt::Signature;
@@ -174,7 +175,7 @@ impl acpi::Handler for ACPIHandler {
     }
 
     fn sleep(&self, milliseconds: u64) {
-        todo!()
+        noct_sched::sleep(Duration::from_millis(milliseconds as _));
     }
 }
 
@@ -191,33 +192,6 @@ pub fn table<T: AcpiTable>() -> Result<PhysicalMapping<ACPIHandler, T>, acpi::Ac
 }
 
 pub fn init() -> Result<(), acpi::AcpiError> {
-    // let rsdp = unsafe { acpi::rsdp::Rsdp::search_for_on_bios(ACPIHandler)? };
-
-    // let tables = unsafe {
-    //     acpi::AcpiTables::from_rsdt(ACPIHandler, rsdp.revision(), rsdp.rsdt_address() as _)?
-    // };
-
-    // // Find tables
-
-    // let madt = tables.find_table::<Madt>();
-
-    // if let Some(ref madt) = madt {
-    //     qemu_log!("MADT: {madt:?}");
-
-    //     let entrs = madt.get();
-
-    //     let processor_count = entrs
-    //         .entries()
-    //         .filter(|x| matches!(x, MadtEntry::LocalApic(_)))
-    //         .count();
-
-    //     for i in entrs.entries() {
-    //         qemu_log!(" `- MADT: {i:?}");
-    //     }
-
-    //     qemu_log!("Found {processor_count} processors.");
-    // }
-
     let madt = table::<Madt>()?;
 
     qemu_log!("MADT: {madt:?}");
