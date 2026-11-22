@@ -5,7 +5,8 @@ use noct_spec::{KERNEL_BASE, WORD_SIZE};
 use crate::qemu_log;
 
 use noct_mem::{
-    addrspace_manager::{AddressSpace, page_allocation::PageAllocation}, paging::{GlobalPagingArchitecture, PageFlags},
+    addrspace_manager::{AddressSpace, page_allocation::PageAllocation},
+    paging::{GlobalPagingArchitecture, PageFlags},
 };
 
 const STACK_ALIGNMENT: usize = 0x1000;
@@ -16,7 +17,7 @@ pub struct ThreadStack {
     pub(super) stack_addr: usize,
     pub(super) stack_size: usize,
 
-    pa: Option<PageAllocation>
+    pa: Option<PageAllocation>,
 }
 
 impl ThreadStack {
@@ -52,7 +53,7 @@ impl ThreadStack {
             stack_size: size,
             stack_addr: allocation as usize,
 
-            pa: None
+            pa: None,
         }
     }
 
@@ -81,12 +82,22 @@ impl ThreadStack {
             stack_addr: mapped_base,
             stack_size: size,
 
-            pa: Some(pa)
+            pa: Some(pa),
+        }
+    }
+
+    pub fn from_raw_user_parts(stack_addr: usize, stack_size: usize) -> Self {
+        Self {
+            stack_pointer: unsafe { stack_addr + stack_size },
+            stack_addr: stack_addr,
+            stack_size,
+
+            pa: None
         }
     }
 
     /// Creates a `ThreadStack` from its raw parameters.
-    /// 
+    ///
     /// This is used ONLY by kernel to describe it's main thread on scheduler init, so PageAllocation is not needed.
     pub fn from_existing(stack_ptr: *mut usize, size: usize, stack_addr: *mut usize) -> Self {
         Self {
@@ -94,7 +105,7 @@ impl ThreadStack {
             stack_size: size,
             stack_addr: stack_addr as usize,
 
-            pa: None
+            pa: None,
         }
     }
 

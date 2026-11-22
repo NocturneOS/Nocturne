@@ -9,7 +9,7 @@ use core::{
 };
 
 use alloc::{
-    collections::{linked_list::LinkedList, vec_deque::VecDeque, BTreeMap},
+    collections::{BTreeMap, linked_list::LinkedList, vec_deque::VecDeque},
     sync::Arc,
     vec::Vec,
 };
@@ -94,7 +94,7 @@ impl Scheduler {
 
             kernel_process: None,
 
-            process_table: BTreeMap::new()
+            process_table: BTreeMap::new(),
         }
     }
 
@@ -142,9 +142,10 @@ impl Scheduler {
             .create_thread(
                 Arc::clone(&kernel_process),
                 idle_task,
-                16 << 10,    // 16 KB should be enough.
+                16 << 10, // 16 KB should be enough.
                 ThreadPriority::Low,
                 ThreadFlags::Raw,
+                None,
                 &[],
             )
             .or_else(|| panic!("Failed to create idle task thread"));
@@ -179,6 +180,7 @@ impl Scheduler {
         stack_size: usize,
         priority: ThreadPriority,
         flags: ThreadFlags,
+        user_stack_addr_bottom: Option<usize>,
         args: &[usize],
     ) -> Option<SharedThread> {
         let is_user_proc = process.id != 0;
@@ -186,7 +188,11 @@ impl Scheduler {
         let mut addrspace = unsafe { process.address_space.pseudo_lock() };
 
         let mut stack = if is_user_proc {
-            ThreadStack::new_user(&mut addrspace, stack_size)
+            if let Some(user_stack) = user_stack_addr_bottom {
+                ThreadStack::from_raw_user_parts(user_stack, stack_size)
+            } else {
+                ThreadStack::new_user(&mut addrspace, stack_size)
+            }
         } else {
             ThreadStack::new(stack_size)
         };
@@ -215,20 +221,14 @@ impl Scheduler {
         #[cfg(target_arch = "x86")]
         unsafe {
             if is_user_proc {
-                stack.push(
-                    addrspace,
-                    thread_trampoline_usermode as *const () as usize,
-                );
+                stack.push(addrspace, thread_trampoline_usermode as *const () as usize);
             } else {
                 // stack.push(
                 //     addrspace,
                 //     thread_exit as *const () as usize,
                 // );
 
-                stack.push(
-                    addrspace,
-                    thread_trampoline as *const () as usize,
-                );
+                stack.push(addrspace, thread_trampoline as *const () as usize);
             }
 
             stack.push(addrspace, 0x202); // IF=1, IOPL=0
@@ -253,10 +253,7 @@ impl Scheduler {
                     thread_trampoline_usermode64 as *const () as usize,
                 );
             } else {
-                stack.push(
-                    addrspace,
-                    thread_trampoline64 as *const () as usize,
-                );
+                stack.push(addrspace, thread_trampoline64 as *const () as usize);
             }
 
             stack.push(addrspace, 0x202); // IF=1, IOPL=0
@@ -320,8 +317,7 @@ impl Scheduler {
             // Count guard page in.
             let addr = stack_addr - noct_mem::paging::PAGE_SIZE;
 
-            address_space
-                .unmap_pages(stack_addr, thread.stack.stack_size);
+            address_space.unmap_pages(stack_addr, thread.stack.stack_size);
 
             address_space.free_virt_region(addr);
 
@@ -738,6 +734,7 @@ pub fn create_thread(
     stack_size: usize,
     priority: ThreadPriority,
     flags: ThreadFlags,
+    user_stack_bottom: Option<usize>,
     args: &[usize],
 ) -> Option<usize> {
     let il = InterruptLocker::lock();
@@ -749,7 +746,15 @@ pub fn create_thread(
     {
         let mut binding = this();
 
-        let thread = binding.create_thread(process, entry, stack_size, priority, flags, args)?;
+        let thread = binding.create_thread(
+            process,
+            entry,
+            stack_size,
+            priority,
+            flags,
+            user_stack_bottom,
+            args,
+        )?;
 
         id = thread.id;
     }
