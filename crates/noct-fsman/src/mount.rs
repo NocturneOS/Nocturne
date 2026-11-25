@@ -9,6 +9,10 @@ use crate::{FilesystemInstance};
 pub type SharedFilesystemInstance = Arc<Box<dyn FilesystemInstance>>;
 
 lazy_static! {
+    /// Mapping from disk ID to FS instance.
+    /// 
+    /// TODO: Make a virtual binding from non-existent drive `disks` to virtual `devfs` filesystem to allow accessing
+    /// disks directly (e.g. "disks:/ata0").
     pub static ref MOUNTED_DISKS: Mutex<Vec<(String, SharedFilesystemInstance)>> =
         Mutex::new(Vec::new());
 }
