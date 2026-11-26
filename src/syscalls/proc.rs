@@ -75,6 +75,10 @@ pub fn waitpid(pid: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usi
     }
 }
 
+pub fn getpid(_: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
+    Ok(noct_sched::this_process().id)
+}
+
 pub fn yield_now(_: usize, _: usize, _: usize, _: usize, _: usize) -> Result<usize, Error> {
     noct_sched::yield_now();
 

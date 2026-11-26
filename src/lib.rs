@@ -1,7 +1,7 @@
 #![no_std]
 
 #![feature(get_disjoint_mut_helpers)]
-
+#![feature(core_io)]
 
 use core::{panic::PanicInfo, time::Duration};
 

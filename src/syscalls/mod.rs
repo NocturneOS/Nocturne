@@ -9,6 +9,7 @@ mod exit;
 mod dir;
 mod fd;
 mod mem;
+mod metrics;
 mod proc;
 mod rand;
 mod thread;
@@ -72,6 +73,22 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
     audio::close,           // 31
 
     thread::create,         // 32
+    
+    metrics::getmetrics,    // 33
+
+    proc::getpid,           // 34
+
+    // futex_make
+    // futex_wait
+    //
+    // ipc_open
+    // ipc_close
+    //
+    // net_open
+    // net_accept
+    // net_listen
+    // net_close
+    //
 ];
 
 #[unsafe(no_mangle)]
