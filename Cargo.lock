@@ -174,6 +174,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-apic"
+version = "0.1.0"
+dependencies = [
+ "acpi",
+ "noct-acpi",
+ "noct-interrupts",
+ "noct-logger",
+ "noct-mem",
+ "noct-pic",
+ "noct-sync",
+ "x86",
+]
+
+[[package]]
 name = "noct-ata"
 version = "0.1.0"
 dependencies = [
@@ -420,6 +434,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "noct-pic"
+version = "0.1.0"
+dependencies = [
+ "noct-interrupts",
+ "x86",
+]
+
+[[package]]
 name = "noct-ps2"
 version = "0.1.0"
 dependencies = [
@@ -547,6 +569,7 @@ dependencies = [
  "multiboot2",
  "noct-ac97",
  "noct-acpi",
+ "noct-apic",
  "noct-ata",
  "noct-audio",
  "noct-boot",
@@ -568,6 +591,7 @@ dependencies = [
  "noct-memdisk",
  "noct-pci",
  "noct-physmem-alloc",
+ "noct-pic",
  "noct-ps2",
  "noct-rtc",
  "noct-sched",

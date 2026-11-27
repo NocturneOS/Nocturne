@@ -1,0 +1,15 @@
+[package]
+name = "noct-apic"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+noct-acpi = { path = "../noct-acpi" }
+noct-logger = { path = "../noct-logger" }
+noct-pic = { path = "../noct-pic" }
+noct-interrupts = { path = "../noct-interrupts" }
+noct-mem = { path = "../noct-mem" }
+noct-sync = { path = "../noct-sync" }
+
+acpi = { version = "6.1.1", default-features = false }
+x86 = "0.52.0"

@@ -19,14 +19,24 @@ pub extern "C" fn __arch_init(multiboot_header: *const BootInformationHeader) ->
     use noct_cpu::{gdt, idt, tss};
 
     qemu_log!("Welcome to NocturneOS NK {}!", env!("CARGO_PKG_VERSION"));
-    
+
     let bootinfo = unsafe { BootInformation::load(multiboot_header).unwrap() };
 
-    qemu_log!("Header area: {:#x?} - {:#x?}", bootinfo.start_address(), bootinfo.end_address());
+    qemu_log!(
+        "Header area: {:#x?} - {:#x?}",
+        bootinfo.start_address(),
+        bootinfo.end_address()
+    );
 
-    qemu_log!("Bootloader: {:?}", bootinfo.boot_loader_name_tag().unwrap().name());
+    qemu_log!(
+        "Bootloader: {:?}",
+        bootinfo.boot_loader_name_tag().unwrap().name()
+    );
 
-    qemu_log!("Command line: {:?}", bootinfo.command_line_tag().and_then(|x| x.cmdline().ok()));
+    qemu_log!(
+        "Command line: {:?}",
+        bootinfo.command_line_tag().and_then(|x| x.cmdline().ok())
+    );
     qemu_log!("Modules count: {:?}", bootinfo.module_tags().count());
 
     for i in bootinfo.module_tags() {
@@ -73,7 +83,7 @@ pub extern "C" fn __arch_init(multiboot_header: *const BootInformationHeader) ->
     idt::init();
 
     interrupts::exceptions::register_exceptions();
-    interrupts::pic::init();
+    noct_pic::init();
 
     let total_memory_size = (bootinfo
         .basic_memory_info_tag()
@@ -113,7 +123,11 @@ pub extern "C" fn __arch_init(multiboot_header: *const BootInformationHeader) ->
             noct_physmem_alloc::mark_page(addr.try_into().unwrap(), true);
         }
 
-        qemu_log!("[reserved memmap] Marked {:#x?} - {:#x?} as reserved.", addr_start, addr_end);
+        qemu_log!(
+            "[reserved memmap] Marked {:#x?} - {:#x?} as reserved.",
+            addr_start,
+            addr_end
+        );
     }
 
     // Reserve memory for modules we load.
@@ -175,6 +189,16 @@ pub extern "C" fn __arch_init(multiboot_header: *const BootInformationHeader) ->
 pub fn post_init(boot: &BootInformation) {
     qemu_log!("Post init...");
 
+    // Initialize ACPI
+
+    noct_tools::without_interrupts::without_interrupts(|| {
+        if let Err(e) = noct_acpi::init() {
+            panic!("ACPI initialization failed! ({e:?})");
+        };
+
+        noct_apic::init();
+    });
+
     // Init RTC
     noct_rtc::init();
 
@@ -185,9 +209,16 @@ pub fn post_init(boot: &BootInformation) {
 
     let size = (fb.width() * fb.height() * (fb.bpp() as u32 >> 3)) as usize;
 
-    qemu_log!("Framebuffer @ {:#x?} ({}x{}@{})", phys_addr, fb.width(), fb.height(), fb.bpp());
+    qemu_log!(
+        "Framebuffer @ {:#x?} ({}x{}@{})",
+        phys_addr,
+        fb.width(),
+        fb.height(),
+        fb.bpp()
+    );
 
-    let ptr = unsafe { noct_mem::heap::allocate_no_map(Layout::from_size_align_unchecked(size, 0x1000)) };
+    let ptr =
+        unsafe { noct_mem::heap::allocate_no_map(Layout::from_size_align_unchecked(size, 0x1000)) };
 
     // PAT = Write-Combining
     let flags = PageFlags::empty().with_pat(0b100) | PageFlags::Writeable;
@@ -199,20 +230,10 @@ pub fn post_init(boot: &BootInformation) {
     *lock = Some(VideoMode::new_graphics(
         ptr,
         phys_addr as _,
-        Size::from((
-            fb.width() as _,
-            fb.height() as _,
-        )),
+        Size::from((fb.width() as _, fb.height() as _)),
         (fb.bpp() >> 3) as _,
-        ColorLayout::new(16, 8, 0)
+        ColorLayout::new(16, 8, 0),
     ));
 
     qemu_log!("Video initialized");
-
-
-    // Now, initialize ACPI
-
-    if let Err(e) = noct_acpi::init() {
-        panic!("ACPI initialization failed! ({e:?})");
-    };
 }

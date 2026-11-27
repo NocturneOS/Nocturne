@@ -57,7 +57,7 @@ pub extern "C" fn __arch_init(header: *const BootInformationHeader) -> ! {
     idt::init();
 
     interrupts::exceptions::register_exceptions();
-    interrupts::pic::init();
+    noct_pic::init();
 
     let total_memory_size = (bootinfo
         .basic_memory_info_tag()

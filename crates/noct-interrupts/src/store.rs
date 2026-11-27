@@ -1,6 +1,7 @@
 use crate::InterruptController;
 
 pub struct ICStore {
+    // TODO: Use `AtomicPtr`?
     pub(crate) ic: Option<&'static dyn InterruptController>,
 }
 

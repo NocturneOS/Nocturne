@@ -197,7 +197,7 @@ pub fn init() -> Result<(), acpi::AcpiError> {
     qemu_log!("MADT: {madt:?}");
 
     for i in madt.get().entries() {
-        qemu_log!(" `- MADT: {i:?}");
+        qemu_log!(" `- {i:?}");
     }
 
     let processor_count = madt

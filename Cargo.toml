@@ -42,7 +42,7 @@ members = [
     "crates/noct-ioport",
     "crates/noct-acpi", "crates/noct-cmdline-parser", "crates/noct-ata",
     "crates/noct-audio"
-, "crates/noct-ac97"]
+, "crates/noct-ac97", "crates/noct-apic", "crates/noct-pic"]
 resolver = "2"
 
 [dependencies]
@@ -54,6 +54,7 @@ bitflags = "2.11.1"
 multiboot2 = "0.26.1"
 
 noct-acpi = { path = "crates/noct-acpi" }
+noct-apic = { path = "crates/noct-apic" }
 noct-ac97 = { path = "crates/noct-ac97" }
 noct-audio = { path = "crates/noct-audio" }
 noct-ata = { path = "crates/noct-ata" }
@@ -73,6 +74,7 @@ noct-iso9660 = { path = "crates/noct-iso9660" }
 noct-logger = { path = "crates/noct-logger" }
 noct-memdisk = { path = "crates/noct-memdisk" }
 noct-pci = { path = "crates/noct-pci" }
+noct-pic = { path = "crates/noct-pic" }
 noct-physmem-alloc = { path = "crates/noct-physmem-alloc" }
 noct-ps2 = { path = "crates/noct-ps2" }
 noct-smbios = { path = "crates/noct-smbios" }
