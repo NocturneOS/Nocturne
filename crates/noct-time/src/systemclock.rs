@@ -33,6 +33,7 @@ pub fn get_uptime_nanos() -> u128 {
     (ticks * 1_000_000_000) / freq as u128
 }
 
+#[inline]
 pub fn get_uptime_millis() -> u128 {
     get_uptime_nanos() / 1_000_000
 }
