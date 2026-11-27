@@ -80,9 +80,10 @@ const SYSCALL_HANDLERS: &[SyscallHandler] = &[
 
     // futex_make
     // futex_wait
+    // futex_wake
     //
     // ipc_open
-    // ipc_close
+    // ipc_close  (IPC will use `write`/`read` for operations)
     //
     // net_open
     // net_accept
