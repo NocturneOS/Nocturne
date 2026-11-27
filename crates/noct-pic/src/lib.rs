@@ -1,3 +1,5 @@
+#![no_std]
+
 use noct_interrupts::InterruptController;
 use x86::io::outb;
 
