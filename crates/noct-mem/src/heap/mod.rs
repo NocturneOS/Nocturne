@@ -248,8 +248,11 @@ impl InnerArenaAllocator {
 
     // Ensures that we have enough space in arena to insert new block.
     fn ensure_arena_available(&mut self) {
-        let old_arena_addr = self.arena.as_ref().unwrap().as_ptr().addr();
-        let arena_len = self.arena.as_ref().unwrap().len();
+        let (old_arena_addr, arena_len) = {
+            let arena = self.arena.as_ref().expect("No arena, it's a bug!");
+            
+            (arena.as_ptr().addr(), arena.len())
+        };
 
         // Why `-2`? Because with `-1` we convert length to index of last element,
         // and another `-1` ensures that if condition below confirms, we can place a block with new arena there.
