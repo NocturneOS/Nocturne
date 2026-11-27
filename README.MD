@@ -14,8 +14,6 @@ NocturneOS is an amateur operating system.
 It's a simple operating system for x86-based computers.
 Written in Rust and x86 Assembly.
 
-* [NocturneOS updates channel (IN RUSSIAN!)](https://t.me/ndraey_ch)
-
 ## Targets
 
 * Be minimal.
