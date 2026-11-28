@@ -57,7 +57,7 @@ jobs:
             cmake-build-release-opt64/NocturneOS_x86_64_ReleaseOptimized.iso
 
       - name: Checkout gh-pages
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: gh-pages
           path: gh-pages
