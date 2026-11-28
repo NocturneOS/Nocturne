@@ -1,12 +1,10 @@
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
 use lazy_static::lazy_static;
 use noct_sync::pseudosync::PseudoSync;
 
-lazy_static! {
-    static ref TIME_TICKS: PseudoSync<u128> = PseudoSync::new(0);
-    static ref TICKING_FREQUENCY: AtomicUsize = 1.into();
-}
+static TIME_TICKS: AtomicU64 = AtomicU64::new(0);
+static TICKING_FREQUENCY: AtomicUsize = AtomicUsize::new(1);
 
 #[inline]
 pub fn set_timer_frequency(freq: usize) {
@@ -15,14 +13,12 @@ pub fn set_timer_frequency(freq: usize) {
 
 #[inline]
 pub fn tick() {
-    unsafe {
-        *TIME_TICKS.pseudo_lock() += 1;
-    }
+    TIME_TICKS.fetch_add(1, Ordering::Release);
 }
 
 #[inline]
 pub fn get_uptime_ticks() -> u128 {
-    *TIME_TICKS.get()
+    TIME_TICKS.load(Ordering::Relaxed) as _
 }
 
 #[inline]
