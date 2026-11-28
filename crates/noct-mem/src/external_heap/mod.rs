@@ -36,6 +36,10 @@ impl<PG: PagingHierarchy> Heap<PG> {
         self.heap_end
     }
 
+    pub fn len(&self) -> usize {
+        self.end() - self.base()
+    }
+
     pub fn max(&self) -> usize {
         self.heap_max
     }

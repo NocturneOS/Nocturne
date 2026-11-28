@@ -7,7 +7,7 @@
 // C010_0000: Kernel itself
 // C010_0000 + KERNEL_SIZE: Physical memory bitmap
 
-use core::ops::Range;
+use core::{ops::Range, sync::atomic::{AtomicUsize, Ordering}};
 
 use multiboot2::BootInformation;
 use noct_logger::qemu_log;
@@ -20,6 +20,8 @@ unsafe extern "C" {
 }
 
 static mut BITMAP_START_VIRT: usize = 0x0;
+
+static PAGES_USED: AtomicUsize = AtomicUsize::new(0);
 
 pub fn get_bitmap_range() -> Range<usize> {
     let range = bitmap().as_ptr_range();
@@ -91,11 +93,20 @@ pub fn mark_page(address: usize, is_used: bool) {
 
     without_interrupts(|| {
         let data = bitmap()[idx];
+        let was_used = (bitmap_mut()[idx] & (1 << bitidx)) != 0;
 
         if is_used {
             bitmap_mut()[idx] = data | (1 << bitidx);
+
+            if !was_used {
+                PAGES_USED.fetch_add(1, Ordering::Release);
+            }
         } else {
             bitmap_mut()[idx] = data & !(1 << bitidx);
+
+            if was_used {
+                PAGES_USED.fetch_sub(1, Ordering::Release);
+            }
         }
     });
 }
@@ -205,6 +216,14 @@ pub fn free_bulk(address: usize, page_count: usize) {
             mark_page(address + (i * arch::get_page_size()), false);
         }
     });
+}
+
+pub fn used_page_count() -> usize {
+    PAGES_USED.load(Ordering::Relaxed)
+}
+
+pub fn total_page_count() -> usize {
+    noct_sysinfo::info().installed_memory.unwrap() / arch::get_page_size()
 }
 
 pub fn init(boot: &BootInformation) {
