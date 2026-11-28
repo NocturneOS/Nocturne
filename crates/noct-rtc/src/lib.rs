@@ -1,12 +1,14 @@
 #![no_std]
 
-use core::cell::Cell;
+use core::{
+    cell::Cell,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 use noct_cpu::CPURegisters;
 use noct_interrupts::handler::register_interrupt_handler;
 use noct_ioport::IOPort;
 use noct_logger::{qemu_log, qemu_println};
-use noct_sync::pseudosync::PseudoSync;
 use noct_time::repr::DateTime;
 use noct_tools::without_interrupts::without_interrupts;
 
@@ -23,7 +25,7 @@ const RTC_STAT_A: u8 = 0x0A;
 const RTC_STAT_B: u8 = 0x0B;
 const RTC_STAT_C: u8 = 0x0C;
 
-static TIMER_AT_SYNC: PseudoSync<u128> = PseudoSync::new(0);
+static TIMER_AT_SYNC: AtomicU64 = AtomicU64::new(0);
 
 pub fn init() {
     register_interrupt_handler(0x20 + 8, interrupt_handler);
@@ -118,13 +120,26 @@ pub fn read() -> DateTime {
     // TODO: Use ACPI's Century Register to determine the century.
     year += 2000;
 
-    let millis = noct_time::systemclock::get_uptime_millis() - TIMER_AT_SYNC.get();
+    let millis: u128 =
+        noct_time::systemclock::get_uptime_millis() - TIMER_AT_SYNC.load(Ordering::Relaxed) as u128;
 
-    DateTime::new(year, month, day, hour, minute, sec, (millis.clamp(0, 999)) as _).unwrap()
+    DateTime::new(
+        year,
+        month,
+        day,
+        hour,
+        minute,
+        sec,
+        (millis.clamp(0, 999)) as _,
+    )
+    .unwrap()
 }
 
 extern "C" fn interrupt_handler(_regs: &mut CPURegisters) {
-    *unsafe { TIMER_AT_SYNC.pseudo_lock() } = noct_time::systemclock::get_uptime_millis();
+    TIMER_AT_SYNC.store(
+        noct_time::systemclock::get_uptime_millis() as _,
+        Ordering::Release,
+    );
 
     // RTC EOI
     let _ = read_reg(RTC_STAT_C);
