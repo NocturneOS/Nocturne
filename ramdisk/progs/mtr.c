@@ -45,9 +45,21 @@ int main() {
           (struct memory_metric *)(cursor + sizeof(struct metric_header));
 
       printf("Memory:\n");
-      printf("\tHeap used: %" PRIu64 "\n", mem->heap_used);
-      printf("\tTotal system RAM: %" PRIu32 "\n", mem->system_total);
-      printf("\tFree system RAM: %" PRIu32 "\n", mem->system_free);
+      printf("\tHeap used: %" PRIu64 " bytes\n", mem->heap_used);
+      printf("\tTotal system RAM: %" PRIu32 " pages\n", mem->system_total);
+      printf("\tFree system RAM: %" PRIu32 " pages\n", mem->system_free);
+    } else if (hdr->id == 1) {
+      struct processinfo_metric {
+        uint64_t pid;
+        uint64_t thread_count;
+      };
+
+      struct processinfo_metric *proc =
+          (struct processinfo_metric *)(cursor + sizeof(struct metric_header));
+
+      printf("Process info\n");
+      printf("\tPID: %" PRIu64 "\n", proc->pid);
+      printf("\tThread count: %" PRIu64 "\n", proc->thread_count);
     }
 
     cursor += sizeof(struct metric_header) + hdr->size;
