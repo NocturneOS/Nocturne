@@ -183,7 +183,6 @@ dependencies = [
  "noct-logger",
  "noct-mem",
  "noct-pic",
- "noct-sync",
  "spin 0.12.3",
  "x86",
 ]
@@ -199,7 +198,6 @@ dependencies = [
  "noct-logger",
  "noct-mem",
  "noct-pci",
- "noct-sync",
  "spin 0.12.3",
  "x86",
 ]
@@ -225,7 +223,6 @@ version = "0.1.0"
 dependencies = [
  "cfg-if",
  "lazy_static",
- "noct-sync",
  "spin 0.12.3",
  "x86",
  "x86_64",
@@ -334,9 +331,8 @@ dependencies = [
 name = "noct-interrupts"
 version = "0.1.0"
 dependencies = [
- "lazy_static",
  "noct-cpu",
- "noct-sync",
+ "spin 0.12.3",
  "x86",
 ]
 
@@ -461,8 +457,6 @@ dependencies = [
  "noct-cpu",
  "noct-interrupts",
  "noct-ioport",
- "noct-logger",
- "noct-sync",
  "noct-time",
  "noct-tools",
 ]
