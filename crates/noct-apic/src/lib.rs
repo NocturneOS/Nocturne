@@ -51,6 +51,7 @@ pub fn init() {
 
     let lapic = unsafe { LAPIC.pseudo_lock().get_or_init(|| Lapic::init()) };
 
+	// Software-enable LAPIC (flag 0x100 + spurious vector 0xFF)
     lapic.write(0xF0, 0x1FF);
 
     let ver = ioapic.read(ioapic::REG_VER) & 0xff;
