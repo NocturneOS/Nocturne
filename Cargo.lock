@@ -184,6 +184,7 @@ dependencies = [
  "noct-mem",
  "noct-pic",
  "noct-sync",
+ "spin 0.12.3",
  "x86",
 ]
 
@@ -522,10 +523,6 @@ dependencies = [
 [[package]]
 name = "noct-time"
 version = "0.1.0"
-dependencies = [
- "lazy_static",
- "noct-sync",
-]
 
 [[package]]
 name = "noct-tools"

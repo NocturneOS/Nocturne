@@ -13,3 +13,4 @@ noct-sync = { path = "../noct-sync" }
 
 acpi = { version = "6.1.1", default-features = false }
 x86 = "0.52.0"
+spin = "0.12.3"

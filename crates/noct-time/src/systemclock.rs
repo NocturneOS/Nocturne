@@ -1,8 +1,5 @@
 use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
-use lazy_static::lazy_static;
-use noct_sync::pseudosync::PseudoSync;
-
 static TIME_TICKS: AtomicU64 = AtomicU64::new(0);
 static TICKING_FREQUENCY: AtomicUsize = AtomicUsize::new(1);
 

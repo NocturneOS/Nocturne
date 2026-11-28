@@ -11,19 +11,19 @@ pub mod ioapic;
 pub mod lapic;
 
 struct SyncLapic {
-    inner: PseudoSync<OnceCell<Lapic>>,
+    inner: spin::Once<Lapic>,
 }
 
 impl SyncLapic {
     pub const fn new() -> Self {
         Self {
-            inner: PseudoSync::new(OnceCell::new()),
+            inner: spin::Once::new(),
         }
     }
 }
 
 impl Deref for SyncLapic {
-    type Target = PseudoSync<OnceCell<Lapic>>;
+    type Target = spin::Once<Lapic>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -32,7 +32,7 @@ impl Deref for SyncLapic {
 
 impl noct_interrupts::InterruptController for SyncLapic {
     fn eoi(&self, _interrupt_nr: u8) {
-        self.get().get().unwrap().write(0xB0, 0x00);
+        self.get().unwrap().write(0xB0, 0x00);
     }
 }
 
@@ -49,7 +49,7 @@ pub fn init() {
 
     noct_pic::disable();
 
-    let lapic = unsafe { LAPIC.pseudo_lock().get_or_init(|| Lapic::init()) };
+    let lapic = LAPIC.call_once(|| Lapic::init());
 
     lapic.write(0xF0, 0x1FF);
 
