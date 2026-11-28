@@ -200,6 +200,7 @@ dependencies = [
  "noct-mem",
  "noct-pci",
  "noct-sync",
+ "spin 0.12.3",
  "x86",
 ]
 

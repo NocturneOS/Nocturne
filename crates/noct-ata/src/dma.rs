@@ -1,21 +1,25 @@
-use core::cell::Cell;
-
 use noct_diskman::drive::Drive;
 use noct_logger::qemu_log;
-use noct_sync::pseudosync::PseudoSync;
 
 use super::dma_prdt::Prdt;
 use crate::{
-        ATADrive, atapi::send_scsi, commands::{ATA_CMD_READ_DMA_EXT, ATA_CMD_WRITE_DMA_EXT, ATAPI_CMD_READ}, drive::AtaPhysicalDrive, error::{AtaIoError, ATAIOResult}, ide_poll, io::ATAIO, regs::{
-            ATA_REG_COMMAND, ATA_REG_HDDEVSEL, ATA_REG_LBA0, ATA_REG_LBA1, ATA_REG_LBA2,
-            ATA_REG_SECCOUNT0,
+    ATADrive,
+    atapi::send_scsi,
+    commands::{ATA_CMD_READ_DMA_EXT, ATA_CMD_WRITE_DMA_EXT, ATAPI_CMD_READ},
+    drive::AtaPhysicalDrive,
+    error::{ATAIOResult, AtaIoError},
+    ide_poll,
+    io::ATAIO,
+    regs::{
+        ATA_REG_COMMAND, ATA_REG_HDDEVSEL, ATA_REG_LBA0, ATA_REG_LBA1, ATA_REG_LBA2,
+        ATA_REG_SECCOUNT0,
     },
 };
 
 const PCI_VENDOR: u16 = 0x8086;
 const PCI_DEVICE: u16 = 0x7010;
 
-pub(super) static DMA_IO_PORT: PseudoSync<Cell<Option<u16>>> = PseudoSync::new(Cell::new(None));
+pub(super) static DMA_IO_PORT: spin::Once<u16> = spin::Once::new();
 
 pub fn init() -> Result<(), ()> {
     let device = match noct_pci::find_device(PCI_VENDOR, PCI_DEVICE) {
@@ -34,11 +38,7 @@ pub fn init() -> Result<(), ()> {
 
     qemu_log!("BAR4: {bar4:08x?}");
 
-    unsafe {
-        DMA_IO_PORT
-            .pseudo_lock()
-            .set(Some(bar4.address.try_into().unwrap()))
-    };
+    DMA_IO_PORT.call_once(|| bar4.address.try_into().unwrap());
 
     Ok(())
 }

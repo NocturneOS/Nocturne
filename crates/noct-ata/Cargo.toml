@@ -14,3 +14,4 @@ noct-pci = { path = "../noct-pci" }
 noct-sync = { path = "../noct-sync" }
 
 x86 = "0.52.0"
+spin = "0.12.3"

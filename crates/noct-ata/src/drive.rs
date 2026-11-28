@@ -43,7 +43,6 @@ impl AtaPhysicalDrive {
 
         DMA_IO_PORT
             .get()
-            .get()
             .map(|base| IOPort::new(base + offset))
     }
 
