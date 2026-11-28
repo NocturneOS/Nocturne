@@ -1,14 +1,10 @@
 #![no_std]
 
-use core::{
-    cell::Cell,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use core::sync::atomic::{AtomicU64, Ordering};
 
 use noct_cpu::CPURegisters;
 use noct_interrupts::handler::register_interrupt_handler;
 use noct_ioport::IOPort;
-use noct_logger::{qemu_log, qemu_println};
 use noct_time::repr::DateTime;
 use noct_tools::without_interrupts::without_interrupts;
 
