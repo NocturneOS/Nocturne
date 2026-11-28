@@ -1,9 +1,6 @@
 #![no_std]
 
-use core::{cell::OnceCell, ops::Deref};
-
 use noct_logger::qemu_log;
-use noct_sync::pseudosync::PseudoSync;
 
 use crate::lapic::Lapic;
 
@@ -22,17 +19,11 @@ impl SyncLapic {
     }
 }
 
-impl Deref for SyncLapic {
-    type Target = spin::Once<Lapic>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
 impl noct_interrupts::InterruptController for SyncLapic {
     fn eoi(&self, _interrupt_nr: u8) {
-        self.get().unwrap().write(0xB0, 0x00);
+        if let Some(lapic) = self.inner.get() {
+            lapic.write(0xB0, 0x00);
+        }
     }
 }
 
@@ -49,7 +40,7 @@ pub fn init() {
 
     noct_pic::disable();
 
-    let lapic = LAPIC.call_once(|| Lapic::init());
+    let lapic = LAPIC.inner.call_once(|| Lapic::init());
 
 	// Software-enable LAPIC (flag 0x100 + spurious vector 0xFF)
     lapic.write(0xF0, 0x1FF);
