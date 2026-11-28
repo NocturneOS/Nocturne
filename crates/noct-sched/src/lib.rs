@@ -276,7 +276,7 @@ impl Scheduler {
         }
 
         // Drop the lock
-        drop(addrspace);
+        let _ = addrspace;
 
         // qemu_log!("STACK: {:08x?}", unsafe { stack.pointer().addr() });
 
@@ -311,7 +311,7 @@ impl Scheduler {
     fn remove_task(&mut self, thread: SharedThread) {
         // If thread is placed in userspace AddrSpace.
         if unsafe { thread.stack.pointer().addr() } < KERNEL_BASE {
-            let mut address_space = unsafe { thread.process.address_space.pseudo_lock() };
+            let address_space = unsafe { thread.process.address_space.pseudo_lock() };
             let stack_addr = thread.stack.stack_addr;
 
             // Count guard page in.

@@ -1,4 +1,4 @@
-use core::{arch::asm, sync::atomic::Ordering};
+use core::arch::asm;
 
 use noct_logger::qemu_log;
 use x86::io::{inb, outb};

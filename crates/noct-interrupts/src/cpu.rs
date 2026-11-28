@@ -11,7 +11,7 @@ pub fn are_interrupts_enabled() -> bool {
     {
         use x86::current::rflags::RFlags;
 
-        unsafe { x86::current::rflags::read() }.contains(RFlags::FLAGS_IF)
+        x86::current::rflags::read().contains(RFlags::FLAGS_IF)
     }
 }
 

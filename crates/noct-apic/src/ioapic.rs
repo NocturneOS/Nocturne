@@ -1,6 +1,6 @@
 use acpi::{
     AcpiError,
-    sdt::{Signature, madt::MadtEntry},
+    sdt::madt::MadtEntry,
 };
 use noct_logger::qemu_log;
 use noct_mem::paging::PageFlags;

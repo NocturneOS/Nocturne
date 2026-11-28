@@ -1,6 +1,5 @@
 use core::{alloc::Layout, ops::Range};
 
-use noct_logger::qemu_log;
 use noct_tools::interrupt_locker::InterruptLocker;
 
 use crate::heap::ArenaAllocator;
@@ -49,18 +48,19 @@ pub unsafe fn allocate_no_map(layout: Layout) -> *mut u8 {
     ptr
 }
 
-pub fn dump() {
-    let il = InterruptLocker::lock();
+// pub fn dump() {
+// use noct_logger::qemu_log;
+//     let il = InterruptLocker::lock();
 
-    let lock = GLOBAL_ALLOCATOR.inner();
+//     let lock = GLOBAL_ALLOCATOR.inner();
 
-    for (n, i) in lock.blocks().iter().enumerate() {
-        if i.address == 0 {
-            break;
-        }
+//     for (n, i) in lock.blocks().iter().enumerate() {
+//         if i.address == 0 {
+//             break;
+//         }
 
-        qemu_log!("#{n}: {:x?} - ({})", i.address, i.size);
-    }
+//         qemu_log!("#{n}: {:x?} - ({})", i.address, i.size);
+//     }
 
-    drop(il);
-}
+//     drop(il);
+// }

@@ -353,7 +353,7 @@ impl InnerArenaAllocator {
         let start_addr = self.heap_start;
         let end_addr = start_addr + self.heap_size;
 
-        (start_addr..end_addr)
+        start_addr..end_addr
     }
 }
 

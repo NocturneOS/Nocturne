@@ -10,7 +10,6 @@ use noct_diskman::{
     error::{DiskManError, DiskManResult},
     structures::{Command, DriveType},
 };
-use noct_logger::qemu_log;
 use noct_mem::paging::PageFlags;
 
 extern crate alloc;
