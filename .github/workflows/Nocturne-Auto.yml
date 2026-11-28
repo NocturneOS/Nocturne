@@ -56,25 +56,3 @@ jobs:
             cmake-build-release-opt/NocturneOS_x86_ReleaseOptimized.iso
             cmake-build-release-opt64/NocturneOS_x86_64_ReleaseOptimized.iso
 
-      - name: Checkout gh-pages
-        uses: actions/checkout@v7
-        with:
-          ref: gh-pages
-          path: gh-pages
-
-      - name: Generate warnings badge
-        run: bash tools/generate_warning_badge.sh
-
-      - name: Copy badge to gh-pages
-        run: |
-          cp warning_count.txt gh-pages/warning_count.txt
-
-      - name: Commit and push badge
-        run: |
-          cd gh-pages
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "Update warning badge" || echo "No changes to commit"
-          git push origin gh-pages
-

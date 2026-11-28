@@ -9,7 +9,6 @@ NocturneOS is an amateur operating system.
 
 
 ![Workflow](https://github.com/NDRAEY/NocturneOS-base/actions/workflows/Nocturne-Auto.yml/badge.svg)
-![Warnings](https://badgen.net/https/nocturneos.github.io/Nocturne/warning_count.txt?cache=3600)
 
 It's a simple operating system for x86-based computers.
 Written in Rust and x86 Assembly.
