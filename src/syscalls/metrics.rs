@@ -3,6 +3,7 @@ use core::{io::Write, sync::atomic::Ordering};
 use alloc::{boxed::Box, vec::Vec};
 use bitflags::bitflags;
 use noct_io::error::Error;
+use noct_logger::qemu_log;
 
 bitflags! {
     /// Common metric flags.
@@ -20,17 +21,20 @@ bitflags! {
 }
 
 /// An item that implements that trait can serialize itself into raw data.
-trait Serializable {
+/// 
+/// TODO: Remove that `core::fmt::Debug` constraint
+trait Serializable: core::fmt::Debug {
     fn write(&self, buffer: &mut Vec<u8>);
     fn raw_len(&self) -> u16;
 }
 
 #[repr(C)]
+#[derive(Debug)]
 struct MemoryUsageMetric {
-    heap_used: u64,
+    heap_used: u64,    // in bytes
 
-    system_total: u64,
-    system_free: u64,
+    system_total: u32, // in machine pages
+    system_free: u32,  // in machine pages
 }
 
 impl Serializable for MemoryUsageMetric {
@@ -41,11 +45,12 @@ impl Serializable for MemoryUsageMetric {
     }
     
     fn raw_len(&self) -> u16 {
-        24
+        16
     }
 }
 
 #[repr(C)]
+#[derive(Debug)]
 struct ProcessInfoMetric {
     pid: u64,
 
@@ -102,8 +107,8 @@ pub fn getmetrics(
 
         if i == MetricFlags::MemoryUsage {
             let heap_lock = proc.heap.lock();
-            let system_total = noct_physmem_alloc::total_page_count() as u64;
-            let system_free = system_total - noct_physmem_alloc::used_page_count() as u64;
+            let system_total = noct_physmem_alloc::total_page_count() as u32;
+            let system_free = system_total - noct_physmem_alloc::used_page_count() as u32;
 
             metric = Box::new(MemoryUsageMetric {
                 heap_used: heap_lock.as_ref().unwrap().len() as _,
@@ -129,6 +134,8 @@ pub fn getmetrics(
         } else {
             todo!("More metric kinds");
         }
+
+        qemu_log!("Metric: {:#?}", metric);
 
         buffer.write(&id.to_le_bytes()).unwrap();
         buffer.write(&metric.raw_len().to_le_bytes()).unwrap();
