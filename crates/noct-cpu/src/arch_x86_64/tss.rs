@@ -1,6 +1,3 @@
-#![allow(static_mut_refs)]
-
-use noct_sync::pseudosync::PseudoSync;
 use x86::{Ring, segmentation::SegmentSelector};
 
 use crate::arch_x86::gdt;
@@ -28,8 +25,11 @@ pub struct TSSEntry {
 }
 
 #[cfg(target_arch = "x86_64")]
+const _: () = assert!(core::mem::offset_of!(TSSEntry, rsp0) == 4);
+
+#[cfg(target_arch = "x86_64")]
 #[unsafe(no_mangle)]
-pub static mut BSP_TSS: PseudoSync<TSSEntry> = unsafe { core::mem::zeroed() };
+pub static BSP_TSS: TssCell<TSSEntry> = TssCell::zeroed();
 
 const DUMB_STACK_SIZE: usize = 0x4000;
 
@@ -41,11 +41,13 @@ static DUMB_STACK: AlignedStack = AlignedStack([0; DUMB_STACK_SIZE]);
 
 pub fn init() {
     unsafe {
-        BSP_TSS.pseudo_lock().iopb = core::mem::size_of::<TSSEntry>() as u16;
-        BSP_TSS.pseudo_lock().ist1 = DUMB_STACK.0.as_ptr().add(DUMB_STACK_SIZE).addr() as u64;
+        let tss = BSP_TSS.get_mut();
+
+        tss.iopb = core::mem::size_of::<TSSEntry>() as u16;
+        tss.ist1 = DUMB_STACK.0.as_ptr().add(DUMB_STACK_SIZE).addr() as u64;
     }
 
-    let base = (unsafe { BSP_TSS.get() as *const TSSEntry }).addr();
+    let base = BSP_TSS.get().addr();
     let limit = core::mem::size_of::<TSSEntry>() - 1;
 
     // qemu_log!("TSS BASE: {base:#x?}; TSS LIMIT: {limit:#x?}");

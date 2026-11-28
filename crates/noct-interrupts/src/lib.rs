@@ -2,9 +2,6 @@
 
 extern crate alloc;
 
-use lazy_static::lazy_static;
-use noct_sync::pseudosync::PseudoSync;
-
 use crate::store::ICStore;
 
 pub mod handler;
@@ -12,18 +9,16 @@ pub mod store;
 
 pub mod cpu;
 
-lazy_static! {
-    static ref CURRENT_INTERRUPT_CONTROLLER: PseudoSync<ICStore> = PseudoSync::new(ICStore::new());
-}
+static CURRENT_INTERRUPT_CONTROLLER: ICStore = ICStore::new();
 
-pub trait InterruptController {
+pub trait InterruptController: Sync {
     fn eoi(&self, interrupt_nr: u8);
 }
 
 pub fn set_interrupt_controller(ic: &'static dyn InterruptController) {
-    unsafe { CURRENT_INTERRUPT_CONTROLLER.pseudo_lock().ic = Some(ic) };
+    CURRENT_INTERRUPT_CONTROLLER.set(ic);
 }
 
 pub fn eoi(interrupt_nr: u8) {
-    CURRENT_INTERRUPT_CONTROLLER.get().eoi(interrupt_nr);
+    CURRENT_INTERRUPT_CONTROLLER.eoi(interrupt_nr);
 }

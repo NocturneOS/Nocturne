@@ -1,7 +1,35 @@
-use noct_sync::pseudosync::PseudoSync;
+use core::cell::UnsafeCell;
+
+#[cfg(target_arch = "x86")]
 use x86::{Ring, segmentation::SegmentSelector};
 
+#[cfg(target_arch = "x86")]
 use crate::gdt;
+
+/// Layout-transparent storage for the bootstrap TSS.
+#[repr(transparent)]
+pub struct TssCell<T>(UnsafeCell<T>);
+
+unsafe impl<T: Send> Sync for TssCell<T> {}
+
+impl<T> TssCell<T> {
+    pub const fn zeroed() -> Self {
+        Self(UnsafeCell::new(unsafe { core::mem::zeroed() }))
+    }
+
+    pub fn get(&self) -> *mut T {
+        self.0.get()
+    }
+
+    /// # Safety
+    ///
+    /// The caller must ensure that no other reference to the TSS exists for
+    /// the duration of the returned borrow.
+    #[allow(clippy::mut_from_ref)]
+    pub unsafe fn get_mut(&self) -> &mut T {
+        unsafe { &mut *self.0.get() }
+    }
+}
 
 #[cfg(target_arch = "x86")]
 #[repr(C, packed)]
@@ -36,18 +64,21 @@ pub struct TSSEntry {
     pub iomap_base: u16,
 }
 
+#[cfg(target_arch = "x86")]
+const _: () = assert!(core::mem::offset_of!(TSSEntry, esp0) == 4);
+
 pub const TSS_KERNEL_STACK_SIZE: usize = 0x4000;
 
 #[cfg(target_arch = "x86")]
 #[unsafe(no_mangle)]
-static BSP_TSS: PseudoSync<TSSEntry> = unsafe { core::mem::zeroed() };
+static BSP_TSS: TssCell<TSSEntry> = TssCell::zeroed();
 static BSP_TSS_KERNEL_STACK: [usize; TSS_KERNEL_STACK_SIZE / core::mem::size_of::<usize>()] =
     [0; TSS_KERNEL_STACK_SIZE / core::mem::size_of::<usize>()];
 
 #[cfg(target_arch = "x86")]
 pub fn init() {
     unsafe {
-        let tss = BSP_TSS.pseudo_lock();
+        let tss = BSP_TSS.get_mut();
 
         tss.ss0 = 0x10;
         tss.esp0 = (BSP_TSS_KERNEL_STACK.as_ptr().addr()
