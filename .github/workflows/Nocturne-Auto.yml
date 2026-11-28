@@ -25,7 +25,7 @@ jobs:
       - name: Step 1 - Software installation
         run: |
           sudo apt list "llvm*"
-          sudo apt install python3 build-essential xorriso grub-pc-bin mtools ninja-build cmake
+          sudo apt install python3 git build-essential xorriso grub-pc-bin mtools ninja-build cmake -y
 
       - name: Check
         run: |
